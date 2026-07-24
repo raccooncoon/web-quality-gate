@@ -92,6 +92,14 @@ public final class CheckService {
 
             progress.accept("리포트 생성…");
 
+            // 컴플라이언스 스코어링(계획 2) — 기존 결과를 37항목 판정으로 변환·집계
+            com.kt.wqg.compliance.KwcagCatalog catalog = com.kt.wqg.compliance.KwcagCatalog.load();
+            com.kt.wqg.compliance.ComplianceEvaluator.Compliance compliance =
+                    new com.kt.wqg.compliance.ComplianceEvaluator(catalog).evaluate(
+                            new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results));
+            progress.accept("컴플라이언스: " + compliance.status()
+                    + " (미확정 " + compliance.pendingTotal() + "건)");
+
             List<ReportWriter.EngineInfo> engines = engineVersions.entrySet().stream()
                     .map(en -> new ReportWriter.EngineInfo(en.getKey(), en.getValue()))
                     .toList();
