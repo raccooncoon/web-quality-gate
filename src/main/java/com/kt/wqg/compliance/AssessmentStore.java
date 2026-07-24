@@ -1,11 +1,9 @@
 // AssessmentStore.java
-package com.kt.wqg.web;
+package com.kt.wqg.compliance;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.kt.wqg.compliance.ItemResult;
-import com.kt.wqg.compliance.ItemVerdict;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;

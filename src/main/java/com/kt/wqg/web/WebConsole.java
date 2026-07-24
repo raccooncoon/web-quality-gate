@@ -3,6 +3,7 @@ package com.kt.wqg.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kt.wqg.check.CheckService;
+import com.kt.wqg.compliance.AssessmentView;
 import com.kt.wqg.compliance.KwcagCatalog;
 import com.kt.wqg.config.SitesConfig;
 import com.sun.net.httpserver.HttpExchange;

@@ -1,7 +1,5 @@
 // AssessmentView.java
-package com.kt.wqg.web;
-
-import com.kt.wqg.compliance.*;
+package com.kt.wqg.compliance;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

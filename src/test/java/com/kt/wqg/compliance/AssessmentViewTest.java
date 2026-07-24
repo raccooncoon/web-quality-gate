@@ -1,6 +1,5 @@
-package com.kt.wqg.web;
+package com.kt.wqg.compliance;
 
-import com.kt.wqg.compliance.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Path;
