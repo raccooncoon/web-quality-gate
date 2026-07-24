@@ -2,8 +2,10 @@ package com.kt.wqg.check;
 
 import com.deque.html.axecore.playwright.AxeBuilder;
 import com.deque.html.axecore.results.AxeResults;
+import com.deque.html.axecore.results.CheckedNode;
 import com.deque.html.axecore.results.Rule;
 import com.kt.wqg.report.CheckResult;
+import com.kt.wqg.report.KwcagMapping;
 import com.microsoft.playwright.Page;
 
 import java.util.List;
@@ -33,12 +35,29 @@ public final class AccessibilityCheck {
                 violations.isEmpty(), violations);
     }
 
-    /** axe 위반(Rule)을 리포트 스키마 Violation 으로 매핑한다. nodes 는 영향 노드 수. */
+    /**
+     * axe 위반(Rule)을 리포트 스키마 Violation 으로 매핑한다.
+     * nodes 는 영향 노드 수, kwcag 는 KWCAG 2.1 병기, elements 는 문제 요소 샘플(최대 5개).
+     */
     static List<CheckResult.Violation> toViolations(List<Rule> rules) {
-        return rules.stream()
-                .map(r -> new CheckResult.Violation(
-                        r.getId(), r.getImpact(), r.getHelp(),
-                        r.getNodes() == null ? 0 : r.getNodes().size()))
-                .toList();
+        return rules.stream().map(r -> {
+            List<CheckedNode> nodes = r.getNodes() == null ? List.of() : r.getNodes();
+            List<CheckResult.Element> elements = nodes.stream()
+                    .limit(5)
+                    .map(n -> new CheckResult.Element(targetOf(n.getTarget()), n.getHtml()))
+                    .toList();
+            return new CheckResult.Violation(
+                    r.getId(), r.getImpact(), r.getHelp(), nodes.size(),
+                    KwcagMapping.of(r.getId()), elements.isEmpty() ? null : elements);
+        }).toList();
+    }
+
+    /** axe 의 target(보통 셀렉터 리스트)을 사람이 읽을 문자열로 변환. */
+    private static String targetOf(Object target) {
+        if (target == null) return null;
+        if (target instanceof List<?> list) {
+            return list.stream().map(String::valueOf).reduce((a, b) -> a + " " + b).orElse(null);
+        }
+        return String.valueOf(target);
     }
 }
