@@ -37,6 +37,7 @@ if "%JAVA_HOME%"=="" (echo JAVA_HOME(JDK17) 설정 필요 & goto :err)
 echo [6/6] 설정·실행기 복사
 copy /y config\sites.yaml "%OUT%\config\sites.yaml" >nul
 copy /y scripts\win\start.bat "%OUT%\start.bat" >nul
+copy /y scripts\win\run-all.bat "%OUT%\run-all.bat" >nul
 
 echo.
 echo 완료: %OUT%  (폴더째 압축해 폐쇄망 반입)

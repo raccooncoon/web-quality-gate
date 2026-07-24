@@ -66,6 +66,21 @@ class ComplianceReportWriterTest {
     }
 
     @Test
+    void write_는_screenshots_를_스캔해_리포트에_담는다(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        java.nio.file.Path sd = dir.resolve("screenshots");
+        java.nio.file.Files.createDirectories(sd);
+        for (String f : List.of("chromium-defects.png", "firefox-defects.png", "webkit-defects.png")) {
+            java.nio.file.Files.writeString(sd.resolve(f), "x");
+        }
+        ComplianceReportWriter.write(dir, payload());
+        String html = java.nio.file.Files.readString(dir.resolve("report.html"));
+        // 임베드 JSON 에 slug 그룹과 엔진별 상대경로가 들어감
+        assertTrue(html.contains("\"slug\":\"defects\""), html.substring(0, Math.min(200, html.length())));
+        assertTrue(html.contains("screenshots/chromium-defects.png"));
+        assertTrue(html.contains("screenshots/webkit-defects.png"));
+    }
+
+    @Test
     void 미확정_있으면_미완료_안내() {
         Map<String, Object> p = new java.util.HashMap<>(payload());
         p.put("compliance", Map.of("status", "미완료", "pendingTotal", 5, "categories", List.of()));
