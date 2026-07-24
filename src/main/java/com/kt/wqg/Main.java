@@ -2,6 +2,7 @@ package com.kt.wqg;
 
 import com.kt.wqg.check.AccessibilityCheck;
 import com.kt.wqg.check.CheckRunner;
+import com.kt.wqg.check.CompatibilityCheck;
 import com.kt.wqg.check.MarkupCheck;
 import com.kt.wqg.config.SitesConfig;
 import com.kt.wqg.config.SitesConfigLoader;
@@ -57,12 +58,15 @@ public class Main {
 
         Browser chromium = playwright.chromium()
                 .launch(new BrowserType.LaunchOptions().setHeadless(true));
+        String storageState = null;
         try (BrowserContext context = chromium.newContext()) {
             Page page = context.newPage();
 
             if (site.auth() != null && site.auth().required()) {
                 CheckRunner.login(page, site,
                         CheckRunner.credentialsOf(site.name(), System::getenv));
+                // 로그인 세션을 저장해 호환성 검사의 다른 엔진에서 재사용 (재로그인 회피)
+                storageState = context.storageState();
             }
 
             for (SitesConfig.Url url : site.urls()) {
@@ -77,6 +81,12 @@ public class Main {
             }
         } finally {
             chromium.close();
+        }
+
+        if (config.checks().compatibility().enabled()) {
+            SitesConfig.Compatibility compat = config.checks().compatibility();
+            results.addAll(CompatibilityCheck.run(playwright, site, timestamp,
+                    compat.engines(), compat.pixelDiffThreshold(), storageState));
         }
         return results;
     }
