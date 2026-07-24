@@ -21,13 +21,45 @@ public final class ComplianceReportWriter {
 
     /** 페이로드로 reportDir/report.html 저장. */
     public static Path write(Path reportDir, Map<String, Object> payload) {
+        java.util.Map<String, Object> enriched = new java.util.LinkedHashMap<>(payload);
+        enriched.put("screenshots", scanScreenshots(reportDir));
         Path out = reportDir.resolve("report.html");
         try {
-            Files.writeString(out, toHtml(payload));
+            Files.writeString(out, toHtml(enriched));
             return out;
         } catch (IOException e) {
             throw new UncheckedIOException("report.html 저장 실패: " + out, e);
         }
+    }
+
+    /** reports/&lt;&gt;/screenshots/&lt;engine&gt;-&lt;slug&gt;.png 를 slug(화면)별로 엔진 목록으로 묶는다. */
+    private static java.util.List<Map<String, Object>> scanScreenshots(Path reportDir) {
+        Path dir = reportDir.resolve("screenshots");
+        if (!Files.isDirectory(dir)) return java.util.List.of();
+        java.util.Map<String, java.util.Map<String, String>> bySlug = new java.util.LinkedHashMap<>();
+        try (var s = Files.list(dir)) {
+            s.filter(p -> p.getFileName().toString().endsWith(".png"))
+                    .sorted()
+                    .forEach(p -> {
+                        String f = p.getFileName().toString();
+                        String base = f.substring(0, f.length() - 4);
+                        int dash = base.indexOf('-');
+                        if (dash < 0) return;
+                        String engine = base.substring(0, dash), slug = base.substring(dash + 1);
+                        bySlug.computeIfAbsent(slug, k -> new java.util.LinkedHashMap<>())
+                                .put(engine, "screenshots/" + f);
+                    });
+        } catch (IOException e) {
+            return java.util.List.of();
+        }
+        java.util.List<Map<String, Object>> out = new java.util.ArrayList<>();
+        bySlug.forEach((slug, shots) -> {
+            Map<String, Object> m = new java.util.LinkedHashMap<>();
+            m.put("slug", slug);
+            m.put("shots", shots);
+            out.add(m);
+        });
+        return out;
     }
 
     public static String toHtml(Map<String, Object> payload) {
@@ -73,9 +105,17 @@ public final class ComplianceReportWriter {
             .ev{font-size:12px;color:var(--muted);margin-top:4px;font-family:ui-monospace,monospace;word-break:break-all}
             code{font-family:ui-monospace,monospace;font-size:12px}
             footer{margin-top:28px;padding-top:12px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px}
+            .pbtn{position:fixed;top:14px;right:16px;background:var(--accent);color:#fff;border:none;border-radius:8px;
+              padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;z-index:9}
+            .shoturl{font-size:12.5px;color:var(--muted);margin:12px 0 4px;font-family:ui-monospace,monospace}
+            .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:12px}
+            .shot{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+            .shot .cap{font-size:12px;font-weight:600;padding:5px 8px;border-bottom:1px solid var(--line)}
+            .shot img{display:block;width:100%;height:auto}
             @media print{body{padding:0;max-width:none;font-size:11.5px}.sec,table,.verdict{break-inside:avoid;box-shadow:none}
-              h2{break-after:avoid}a{color:inherit;text-decoration:none}}
-            </style></head><body><div id="app"></div>
+              h2{break-after:avoid}a{color:inherit;text-decoration:none}.noprint{display:none!important}
+              .shot img{max-height:340px;object-fit:contain;object-position:top}}
+            </style></head><body><button class="pbtn noprint" onclick="window.print()">🖨 인쇄 / PDF 저장</button><div id="app"></div>
             <script id="data" type="application/json">/*__DATA__*/</script>
             <script>
             const R=JSON.parse(document.getElementById('data').textContent);
@@ -99,9 +139,11 @@ public final class ComplianceReportWriter {
                 <td><span class="badge ${esc(it.verdict)}">${esc(it.verdict)}</span></td><td>${it.source==='assessor'?'평가자':'자동'}</td></tr>`});
               h+='</tbody></table>';
             });
-            // 부적합·수동확인 상세(상세설명+증거)
-            const detail=R.items.filter(it=>it.verdict==='부적합'||it.verdict==='수동확인필요');
-            if(detail.length){h+='<h2>상세 — 부적합 · 수동확인 항목</h2>';
+            // 개선 필요 항목(부적합·수동확인) 상세 — 부적합 먼저
+            const detail=R.items.filter(it=>it.verdict==='부적합'||it.verdict==='수동확인필요')
+              .sort((a,b)=>(a.verdict==='부적합'?0:1)-(b.verdict==='부적합'?0:1));
+            if(detail.length){const nBad=detail.filter(it=>it.verdict==='부적합').length;
+              h+=`<h2>개선 필요 항목 — 부적합 ${nBad} · 수동확인 ${detail.length-nBad}</h2>`;
               detail.forEach(it=>{const g=it.guide||{};
                 h+=`<div class="sec ${esc(it.verdict)}"><div class="sh"><span class="sub">${it.no}.</span>
                   <b>${esc(it.title)}</b> <code>${esc(it.code)}</code>
@@ -111,6 +153,14 @@ public final class ComplianceReportWriter {
                   <div><b>근거</b> ${esc(g.basis)}</div><div><b>개선 방법</b> ${esc(g.fix)}</div>
                   ${g.limit?'<div><b>검사 한계</b> '+esc(g.limit)+'</div>':''}</div>`;
                 (it.evidence||[]).forEach(e=>{h+=`<div class="ev">${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`});
+                h+='</div>';
+              });
+            }
+            // 브라우저 호환성 화면 비교 (3개 엔진 스크린샷)
+            if((R.screenshots||[]).length){h+='<h2>브라우저 호환성 화면 비교 (3개 엔진)</h2>';
+              R.screenshots.forEach(sc=>{h+=`<div class="shoturl">/${esc(sc.slug)}</div><div class="shots">`;
+                Object.entries(sc.shots).forEach(([eng,path])=>{
+                  h+=`<div class="shot"><div class="cap">${esc(eng)}</div><img loading="lazy" src="${esc(path)}"></div>`});
                 h+='</div>';
               });
             }
