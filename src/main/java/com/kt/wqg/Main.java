@@ -39,9 +39,13 @@ public class Main {
             return;
         }
 
+        // 계정: 콘솔에서 저장한 로컬 파일 우선, 없으면 환경변수(주간 예약 실행에서 콘솔 설정 재사용)
+        var credResolver = new com.kt.wqg.web.CredentialStore(
+                configPath.resolveSibling("credentials.properties")).resolver();
+
         for (SitesConfig.Site site : targets) {
             try {
-                Path report = CheckService.runSite(config, site, System::getenv,
+                Path report = CheckService.runSite(config, site, credResolver,
                         msg -> System.out.printf("[%s] %s%n", site.name(), msg));
                 System.out.printf("[%s] 검사 완료 → %s%n", site.name(), report);
             } catch (RuntimeException e) {
