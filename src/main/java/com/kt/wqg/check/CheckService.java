@@ -55,8 +55,7 @@ public final class CheckService {
                                 config.checks().accessibility().tags()));
                     }
                     if (config.checks().markup().enabled()) {
-                        results.add(MarkupCheck.run(page, site, url, timestamp,
-                                config.checks().markup().vnuJarPath()));
+                        results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config)));
                     }
                 }
             } finally {
@@ -79,6 +78,15 @@ public final class CheckService {
                     STANDARD, engines, results);
             return reportDir.resolve("report.html");
         }
+    }
+
+    /**
+     * vnu.jar 경로. 환경변수 WQG_VNU_JAR 이 있으면 우선(패키지마다 위치가 달라
+     * 윈도우 반입 패키지의 start.bat 등에서 절대경로를 주입한다), 없으면 설정값.
+     */
+    private static String vnuJarPath(SitesConfig config) {
+        String env = System.getenv("WQG_VNU_JAR");
+        return env != null && !env.isBlank() ? env : config.checks().markup().vnuJarPath();
     }
 
     /** reports 디렉터리 명명에 쓰는 yyyyMMdd-HHmm. */
