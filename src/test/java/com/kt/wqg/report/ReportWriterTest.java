@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReportWriterTest {
 
@@ -39,5 +41,23 @@ class ReportWriterTest {
         assertEquals(0, s.total());
         assertEquals(0, s.passed());
         assertEquals(0, s.failed());
+    }
+
+    @Test
+    void HTML_대시보드는_자기완결형이며_핵심_데이터를_담는다() {
+        CheckResult a = new CheckResult("defect-kwater", "https://x/defects", "accessibility",
+                "20260724-1500", null, false,
+                List.of(new CheckResult.Violation("image-alt", "critical", "대체텍스트 필요", 3)));
+        ReportWriter.Report report = new ReportWriter.Report(
+                "defect-kwater", "20260724-1500", ReportWriter.summarize(List.of(a)), List.of(a));
+
+        String html = ReportWriter.toHtml(report);
+
+        assertTrue(html.startsWith("<!DOCTYPE html>"), "완전한 HTML 문서여야 함");
+        assertFalse(html.contains("<script src") || html.contains("<link "),
+                "외부 스크립트/스타일시트 참조가 없어야 폐쇄망에서 열림");
+        assertTrue(html.contains("defect-kwater"), "사이트명 포함");
+        assertTrue(html.contains("대체텍스트 필요"), "위반 내용 포함");
+        assertTrue(html.contains("image-alt"), "위반 id 포함");
     }
 }
