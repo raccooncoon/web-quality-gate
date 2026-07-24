@@ -3,6 +3,7 @@ package com.kt.wqg.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kt.wqg.check.CheckService;
+import com.kt.wqg.compliance.KwcagCatalog;
 import com.kt.wqg.config.SitesConfig;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
@@ -63,6 +64,7 @@ public final class WebConsole {
             if (path.startsWith("/api/credentials/")) { saveCredentials(ex, path.substring("/api/credentials/".length())); return; }
             if (path.startsWith("/api/health/")) { health(ex, path.substring("/api/health/".length())); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
+            if (path.equals("/api/assessment")) { assessment(ex); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
             send(ex, 404, "text/plain; charset=utf-8", "not found".getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
@@ -178,6 +180,45 @@ public final class WebConsole {
         }
         reports.sort(Comparator.comparing((Map<String, Object> m) -> (String) m.get("timestamp")).reversed());
         return Map.of("reports", reports);
+    }
+
+    /** GET: 검수 뷰(37항목+준수율) 조회. POST: 항목 확정 후 갱신된 뷰 반환. */
+    private void assessment(HttpExchange ex) throws IOException {
+        Map<String, String> q = queryParams(ex.getRequestURI().getRawQuery());
+        Path dir = reportDirOf(q.get("site"), q.get("ts"));
+        if (!Files.isRegularFile(dir.resolve("compliance.json"))) {
+            send(ex, 404, "application/json; charset=utf-8",
+                    "{\"error\":\"compliance.json 없음\"}".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        KwcagCatalog catalog = KwcagCatalog.load();
+        if ("POST".equalsIgnoreCase(ex.getRequestMethod())) {
+            JsonNode b = JSON.readTree(ex.getRequestBody());
+            AssessmentView.confirm(dir, b.path("code").asText(),
+                    com.kt.wqg.compliance.ItemVerdict.valueOf(b.path("verdict").asText()),
+                    b.path("memo").asText(""));
+        }
+        sendJson(ex, AssessmentView.build(dir, catalog));
+    }
+
+    /** site/ts 파라미터로부터 reports 하위 안전 경로를 만든다(경로 탈출 차단). */
+    static Path reportDirOf(String site, String ts) {
+        if (site == null || ts == null || site.contains("/") || site.contains("\\")
+                || site.contains("..") || ts.contains("/") || ts.contains("\\") || ts.contains("..")) {
+            throw new IllegalArgumentException("잘못된 site/ts");
+        }
+        return Path.of("reports", site, ts);
+    }
+
+    private static Map<String, String> queryParams(String raw) {
+        Map<String, String> m = new LinkedHashMap<>();
+        if (raw == null) return m;
+        for (String kv : raw.split("&")) {
+            int i = kv.indexOf('=');
+            if (i > 0) m.put(java.net.URLDecoder.decode(kv.substring(0, i), StandardCharsets.UTF_8),
+                    java.net.URLDecoder.decode(kv.substring(i + 1), StandardCharsets.UTF_8));
+        }
+        return m;
     }
 
     private void serveReportFile(HttpExchange ex, String urlPath) throws IOException {
