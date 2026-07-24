@@ -69,6 +69,9 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>com.kt.wqg.Main</mainClass>
                                 </transformer>
+                                <!-- META-INF/services/* 병합. 없으면 여러 jar의 동명 SPI 파일 중
+                                     하나만 남아 런타임에 구현체를 못 찾는다 (Jackson/Playwright) -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                             </transformers>
                         </configuration>
                     </execution>
