@@ -18,12 +18,23 @@ public final class AssessmentView {
         new AssessmentStore(reportDir).save(code, verdict, memo);
     }
 
-    public static Map<String, Object> build(Path reportDir, KwcagCatalog catalog) {
+    /** compliance.json + 평가자 확정을 병합한 항목 맵(code→ItemResult). */
+    public static Map<String, ItemResult> mergedByCode(Path reportDir) {
         ComplianceDoc doc = ComplianceStore.read(reportDir);
         List<ItemResult> merged = new AssessmentStore(reportDir).merge(doc.items());
-
         Map<String, ItemResult> byCode = new LinkedHashMap<>();
         merged.forEach(r -> byCode.put(r.code(), r));
+        return byCode;
+    }
+
+    /** 병합 결과로 종합 판정을 재평가한다(결과 목록 배지·실행 요약용 경량 경로). */
+    public static ComplianceEvaluator.Compliance evaluateMerged(Path reportDir, KwcagCatalog catalog) {
+        return new ComplianceEvaluator(catalog).evaluate(mergedByCode(reportDir));
+    }
+
+    public static Map<String, Object> build(Path reportDir, KwcagCatalog catalog) {
+        ComplianceDoc doc = ComplianceStore.read(reportDir);
+        Map<String, ItemResult> byCode = mergedByCode(reportDir);
 
         List<Map<String, Object>> items = new ArrayList<>();
         for (CatalogItem c : catalog.items()) {
