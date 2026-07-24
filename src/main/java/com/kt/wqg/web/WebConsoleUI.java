@@ -52,6 +52,9 @@ final class WebConsoleUI {
             th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}
             th{font-size:11px;color:var(--muted);text-transform:uppercase}tr:last-child td{border-bottom:none}
             a{color:var(--accent)}.auth-only{display:none}.auth-form .auth-only{display:block}
+            .hbox{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;border:1px solid var(--line)}
+            .hbox.ok{background:var(--okbg);border-color:var(--ok)}.hbox.no{background:var(--badbg);border-color:var(--bad)}
+            .hbox b{display:block;margin-bottom:5px}.hstep{padding:2px 0;font-size:12.5px}
             </style></head><body>
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
@@ -81,7 +84,15 @@ final class WebConsoleUI {
                   el.querySelector('.body').classList.toggle('auth-form',e.target.value==='form');
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
+                el.querySelector('.health').onclick=()=>healthCheck(s.name);
               })}
+            async function healthCheck(name){const box=document.getElementById('health-'+name);
+              box.innerHTML='<div class=st>설정 확인 중… (브라우저 기동·로그인 점검, 최대 30초)</div>';
+              try{const r=await api('/api/health/'+name,'POST',{});
+                box.innerHTML='<div class="hbox '+(r.ok?'ok':'no')+'">'+
+                  '<b>'+(r.ok?'✓ 설정 정상':'✗ 설정 확인 실패')+'</b>'+
+                  r.steps.map(s=>`<div class=hstep>${s.ok?'✓':'✗'} ${esc(s.name)} <span class=st>${esc(s.detail)}</span></div>`).join('')+'</div>';
+              }catch(e){box.innerHTML='<div class="hbox no">확인 중 오류: '+esc(e)+'</div>'}}
             function sysCard(s){const cfg=s.configured;
               return `<div class="sys" id="sys-${s.name}"><div class="hd">
                 <div class="nm">${esc(s.displayName)}<small>${s.name}</small></div>
@@ -108,7 +119,9 @@ final class WebConsoleUI {
                 <label>검사 경로 (한 줄에 하나, "경로 | readySelector" 형식 가능)</label>
                 <textarea name="urls">${esc((s.urls||[]).join('\\n'))}</textarea>
                 <div class="hint">로그인 후 경로 자동수집: 터미널에서 DiscoverMain 실행 (README 참고).</div>
-                <button class="act save">설정 저장</button></div></div>`}
+                <button class="act save">설정 저장</button>
+                <button class="act ghost health">설정 확인(헬스체크)</button>
+                <div class="health" id="health-${s.name}"></div></div></div>`}
             function parseUrls(t){return t.split('\\n').map(l=>l.trim()).filter(Boolean).map(l=>{
               const[p,rs]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||''}})}
             async function saveSys(name,el){const g=n=>el.querySelector('[name='+n+']').value;
@@ -135,9 +148,9 @@ final class WebConsoleUI {
             async function runSys(name){await api('/api/run/'+name,'POST',{});toast('검사 시작: '+name);refreshStatus()}
             async function refreshStatus(){const {status}=await api('/api/status');
               Object.entries(status).forEach(([site,st])=>{const el=document.getElementById('stat-'+site);if(!el)return;
-                if(st.state==='RUNNING')el.innerHTML='<span class=pill wait>검사 중…</span>';
-                else if(st.state==='DONE')el.innerHTML='<span class=pill ok>완료</span> <a href="/'+st.message.replace(/^\\.?\\//,'')+'" target="_blank">리포트</a>';
-                else if(st.state==='ERROR')el.innerHTML='<span class=pill no>실패</span> '+esc(st.message)})}
+                if(st.state==='RUNNING')el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
+                else if(st.state==='DONE')el.innerHTML='<span class=pill ok>완료</span> <a href="/'+st.message.replace(/^\\.?\\//,'')+'" target="_blank">리포트 열기 ↗</a>';
+                else if(st.state==='ERROR')el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>'})}
 
             // ── 결과 탭 ──
             async function loadResult(){const {reports}=await api('/api/reports');

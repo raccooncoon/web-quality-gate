@@ -44,7 +44,8 @@ public final class WebConsole {
     public void start() throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
         server.createContext("/", this::route);
-        server.setExecutor(null);
+        // 헬스체크(수초 소요)와 상태 폴링이 서로 막지 않도록 소규모 풀 사용
+        server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(4));
         server.start();
         String url = "http://localhost:" + port + "/";
         System.out.println("웹 콘솔 시작: " + url + "  (종료: Ctrl+C)");
@@ -60,6 +61,7 @@ public final class WebConsole {
             if (path.equals("/api/reports")) { sendJson(ex, reportsPayload()); return; }
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
             if (path.startsWith("/api/credentials/")) { saveCredentials(ex, path.substring("/api/credentials/".length())); return; }
+            if (path.startsWith("/api/health/")) { health(ex, path.substring("/api/health/".length())); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
             send(ex, 404, "text/plain; charset=utf-8", "not found".getBytes(StandardCharsets.UTF_8));
@@ -134,9 +136,22 @@ public final class WebConsole {
         SitesConfig.Site site = config.sites().stream()
                 .filter(s -> s.name().equals(name)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
-        jobs.submit(name, () -> CheckService.runSite(config, site, credentials.resolver())
+        jobs.submit(name, report -> CheckService.runSite(config, site, credentials.resolver(), report)
                 .toString().replace('\\', '/'));
         sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
+    }
+
+    /** 설정 확인(헬스체크) — baseUrl 접속·로그인·첫 화면 렌더를 빠르게 점검. 동기 응답. */
+    private void health(HttpExchange ex, String name) throws IOException {
+        SitesConfig config = configStore.load();
+        SitesConfig.Site site = config.sites().stream()
+                .filter(s -> s.name().equals(name)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
+        CheckService.HealthResult r = CheckService.healthCheck(config, site, credentials.resolver());
+        List<Map<String, Object>> steps = r.steps().stream()
+                .map(s -> Map.<String, Object>of("name", s.name(), "ok", s.ok(), "detail", s.detail()))
+                .toList();
+        sendJson(ex, Map.of("ok", r.ok(), "steps", steps));
     }
 
     private Object statusPayload() {

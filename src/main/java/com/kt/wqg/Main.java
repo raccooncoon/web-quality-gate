@@ -41,7 +41,8 @@ public class Main {
 
         for (SitesConfig.Site site : targets) {
             try {
-                Path report = CheckService.runSite(config, site, System::getenv);
+                Path report = CheckService.runSite(config, site, System::getenv,
+                        msg -> System.out.printf("[%s] %s%n", site.name(), msg));
                 System.out.printf("[%s] 검사 완료 → %s%n", site.name(), report);
             } catch (RuntimeException e) {
                 // 시스템 단위 실패 격리 — 하나가 죽어도 나머지는 계속

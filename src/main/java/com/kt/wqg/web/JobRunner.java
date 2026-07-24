@@ -4,7 +4,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.function.Supplier;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 /**
  * 검사 작업을 비동기로 실행하고 시스템별 진행 상태를 추적한다.
@@ -31,13 +32,17 @@ public final class JobRunner {
         }));
     }
 
-    /** 검사 작업을 제출한다. work 는 완료 시 리포트 경로를 반환한다. */
-    public void submit(String site, Supplier<String> work) {
-        statuses.put(site, new Status(site, State.RUNNING, "검사 중…"));
+    /**
+     * 검사 작업을 제출한다. work 는 진행 보고 함수를 받아 완료 시 리포트 경로를 반환한다.
+     * 보고된 메시지는 RUNNING 상태의 message 로 실시간 반영된다.
+     */
+    public void submit(String site, Function<Consumer<String>, String> work) {
+        statuses.put(site, new Status(site, State.RUNNING, "시작 중…"));
         executor.execute(() -> {
             try {
-                String report = work.get();
-                statuses.put(site, new Status(site, State.DONE, report));
+                Consumer<String> report = msg -> statuses.put(site, new Status(site, State.RUNNING, msg));
+                String result = work.apply(report);
+                statuses.put(site, new Status(site, State.DONE, result));
             } catch (Exception e) {
                 String msg = e.getMessage() != null ? e.getMessage() : e.toString();
                 statuses.put(site, new Status(site, State.ERROR, msg));
