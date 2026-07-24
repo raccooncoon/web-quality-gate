@@ -20,8 +20,8 @@ public final class CheckRunner {
     /** 순회 대상에서 제외할 경로 (로그아웃 등 세션을 끊거나 검사 의미가 없는 것). */
     private static final Set<String> EXCLUDED_PATHS = Set.of("/logout", "/login");
 
-    /** 로그인 계정. 설정 파일이 아닌 환경변수에서만 온다. */
-    record Credentials(String id, String pw) {}
+    /** 로그인 계정. 코드·설정 파일이 아닌 환경변수/로컬 계정 파일에서만 온다. */
+    public record Credentials(String id, String pw) {}
 
     /** URL 한 건의 방문 결과. 실패해도 순회는 중단하지 않는다. */
     record UrlResult(String url, boolean ok, String error) {}

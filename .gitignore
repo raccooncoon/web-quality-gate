@@ -8,3 +8,5 @@ reports/
 .vscode/
 .env
 .DS_Store
+credentials.properties
+secrets.properties
