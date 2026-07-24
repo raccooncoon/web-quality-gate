@@ -46,4 +46,32 @@ class ConfigStoreTest {
         // 다른 섹션도 보존
         assertEquals(List.of("chromium"), reloaded.checks().compatibility().engines());
     }
+
+    @Test
+    void 시스템_추가_삭제가_왕복된다(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("sites.yaml");
+        Files.writeString(file, YAML);
+        ConfigStore store = new ConfigStore(file);
+
+        store.addSite(new SitesConfig.Site("cloud-cmp", "클라우드포털", "spa", "http://TODO",
+                new SitesConfig.Auth("none", null, null, null, null),
+                List.of(new SitesConfig.Url("/", null))));
+        assertEquals(2, new ConfigStore(file).load().sites().size());
+
+        store.removeSite("main-portal");
+        SitesConfig after = new ConfigStore(file).load();
+        assertEquals(1, after.sites().size());
+        assertEquals("cloud-cmp", after.sites().get(0).name());
+    }
+
+    @Test
+    void 중복_추가와_없는_삭제는_예외(@TempDir Path dir) throws IOException {
+        Path file = dir.resolve("sites.yaml");
+        Files.writeString(file, YAML);
+        ConfigStore store = new ConfigStore(file);
+        SitesConfig.Site dup = new SitesConfig.Site("main-portal", "x", "spa", "http://x",
+                new SitesConfig.Auth("none", null, null, null, null), List.of(new SitesConfig.Url("/", null)));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> store.addSite(dup));
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalArgumentException.class, () -> store.removeSite("nope"));
+    }
 }

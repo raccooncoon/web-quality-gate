@@ -105,9 +105,16 @@ final class WebConsoleUI {
 
             // ── 설정 탭 ──
             const isTest=s=>s.name==='defect-kwater'||(s.displayName||'').includes('테스트');
+            const addForm=`<div class="sys" style="border-style:dashed"><div class="body" style="display:block;border:none">
+              <div class="grouphd" style="margin-top:0">시스템 추가</div>
+              <div class="row3"><div><label>시스템명(영문)</label><input id="ns-name" placeholder="cloud-cmp"></div>
+                <div><label>표시 이름</label><input id="ns-disp" placeholder="클라우드포털-CMP"></div>
+                <div><label>유형</label><select id="ns-type"><option value="spa">SPA</option><option value="mpa">MPA</option></select></div></div>
+              <button class="act" onclick="addSystem()">＋ 추가</button>
+              <div class="hint">추가 후 baseUrl·계정·경로를 채우세요. 이름은 영소문자·숫자·하이픈만.</div></div></div>`;
             async function loadConfig(){const {systems}=await api('/api/systems');
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
-              let html='';
+              let html=addForm;
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
               $('#config').innerHTML=html;
@@ -119,7 +126,25 @@ final class WebConsoleUI {
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
+                el.querySelector('.detect').onclick=()=>detectSel(s.name,el);
+                el.querySelector('.del').onclick=()=>delSystem(s.name,s.displayName);
               })}
+            async function addSystem(){const name=$('#ns-name').value.trim();
+              if(!name){toast('시스템명 입력');return}
+              const r=await api('/api/systems/add','POST',{name,displayName:$('#ns-disp').value.trim()||name,type:$('#ns-type').value});
+              if(r.error){toast(r.error);return}toast('추가됨: '+name);loadConfig()}
+            async function delSystem(name,disp){if(!confirm('시스템 삭제: '+(disp||name)+'\\n설정과 저장된 계정이 삭제됩니다. 계속?'))return;
+              await api('/api/systems/delete/'+name,'POST',{});toast('삭제됨: '+name);loadConfig()}
+            async function detectSel(name,el){const g=n=>el.querySelector('[name='+n+']');
+              const baseUrl=g('baseUrl').value.trim(),loginPath=g('loginPath').value.trim()||'/login';
+              const box=el.querySelector('.health');box.innerHTML='<div class=st>로그인 페이지 여는 중… 필드 감지</div>';
+              const r=await api('/api/detect-selectors','POST',{baseUrl,loginPath});
+              if(r.error){box.innerHTML='<div class="hbox no">'+esc(r.error)+'</div>';return}
+              if(r.idSelector)g('idSelector').value=r.idSelector;
+              if(r.pwSelector)g('pwSelector').value=r.pwSelector;
+              if(r.submitSelector)g('submitSelector').value=r.submitSelector;
+              const found=[r.idSelector&&'아이디',r.pwSelector&&'비번',r.submitSelector&&'제출'].filter(Boolean);
+              box.innerHTML='<div class="hbox '+(found.length?'ok':'no')+'">'+(found.length?'✓ 감지: '+found.join('·')+' (확인 후 저장)':'✗ 로그인 필드를 못 찾음 — 수동 입력')+'</div>'}
             async function healthCheck(name){const box=document.getElementById('health-'+name);
               box.innerHTML='<div class=st>설정 확인 중… (브라우저 기동·로그인 점검, 최대 30초)</div>';
               try{const r=await api('/api/health/'+name,'POST',{});
@@ -145,8 +170,12 @@ final class WebConsoleUI {
                     <div><label>아이디 셀렉터</label><input name="idSelector" value="${esc(s.idSelector||'')}" placeholder="input[name=username]"></div>
                     <div><label>비번 셀렉터</label><input name="pwSelector" value="${esc(s.pwSelector||'')}" placeholder="input[name=password]"></div></div>
                   <label>제출 버튼 셀렉터</label><input name="submitSelector" value="${esc(s.submitSelector||'')}" placeholder="button[type=submit]">
-                  <div class="row"><div><label>계정 ID</label><input name="cid" placeholder="${s.hasCredentials?'저장됨 (변경 시 입력)':''}"></div>
-                    <div><label>계정 PW</label><input name="cpw" type="password" placeholder="${s.hasCredentials?'저장됨 (변경 시 입력)':''}"></div></div>
+                  <button class="act ghost detect">🔍 로그인 필드 자동 감지</button>
+                  <div class="hint">baseUrl·로그인 경로를 채운 뒤 누르면 로그인 페이지를 열어 셀렉터를 채웁니다.</div>
+                  <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
+                    <input name="cid" placeholder="${s.hasCredentials?'●●●●●●●● (변경 시에만 입력)':'아이디'}"></div>
+                    <div><label>계정 PW ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
+                    <input name="cpw" type="password" placeholder="${s.hasCredentials?'●●●●●●●● (변경 시에만 입력)':'비밀번호'}"></div></div>
                   <button class="act ghost savecred">계정만 저장</button>
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>
                 </div>
@@ -155,6 +184,7 @@ final class WebConsoleUI {
                 <div class="hint">로그인 후 경로 자동수집: 터미널에서 DiscoverMain 실행 (README 참고).</div>
                 <button class="act save">설정 저장</button>
                 <button class="act ghost health">설정 확인(헬스체크)</button>
+                <button class="act ghost del" style="color:var(--bad)">시스템 삭제</button>
                 <div class="health" id="health-${s.name}"></div></div></div>`}
             function parseUrls(t){return t.split('\\n').map(l=>l.trim()).filter(Boolean).map(l=>{
               const[p,rs]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||''}})}

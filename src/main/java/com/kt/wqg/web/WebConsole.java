@@ -59,6 +59,9 @@ public final class WebConsole {
         try {
             if (path.equals("/")) { sendHtml(ex, UI); return; }
             if (path.equals("/api/systems")) { sendJson(ex, systemsPayload()); return; }
+            if (path.equals("/api/systems/add")) { addSystem(ex); return; }
+            if (path.startsWith("/api/systems/delete/")) { deleteSystem(ex, path.substring("/api/systems/delete/".length())); return; }
+            if (path.equals("/api/detect-selectors")) { detectSelectors(ex); return; }
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
             if (path.equals("/api/reports")) { sendJson(ex, reportsPayload()); return; }
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
@@ -132,6 +135,48 @@ public final class WebConsole {
         JsonNode b = JSON.readTree(ex.getRequestBody());
         credentials.save(name, b.path("id").asText(""), b.path("pw").asText(""));
         sendJson(ex, Map.of("ok", true));
+    }
+
+    /** 새 시스템 추가 — name(슬러그)·displayName·type. 미설정 템플릿으로 생성. */
+    private void addSystem(HttpExchange ex) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        String name = b.path("name").asText("").trim();
+        if (!name.matches("[a-z0-9][a-z0-9-]*")) {
+            send(ex, 400, "application/json; charset=utf-8",
+                    "{\"error\":\"시스템명은 영소문자·숫자·하이픈만 (예: cloud-cmp)\"}".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        String display = b.path("displayName").asText(name);
+        String type = b.path("type").asText("spa");
+        SitesConfig.Site site = new SitesConfig.Site(name, display, type, "http://TODO",
+                new SitesConfig.Auth("none", null, null, null, null),
+                List.of(new SitesConfig.Url("/", null)));
+        configStore.addSite(site);
+        sendJson(ex, Map.of("ok", true));
+    }
+
+    /** 시스템 삭제 — 저장된 계정도 함께 정리. */
+    private void deleteSystem(HttpExchange ex, String name) throws IOException {
+        configStore.removeSite(name);
+        credentials.remove(name);
+        sendJson(ex, Map.of("ok", true));
+    }
+
+    /** 로그인 필드 셀렉터 자동 감지 — 저장 전에도 폼의 baseUrl/loginPath 로 시도. */
+    private void detectSelectors(HttpExchange ex) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        String baseUrl = b.path("baseUrl").asText("").trim();
+        if (baseUrl.isEmpty() || baseUrl.contains("TODO")) {
+            send(ex, 400, "application/json; charset=utf-8",
+                    "{\"error\":\"baseUrl 을 먼저 입력하세요\"}".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        CheckService.DetectedSelectors d = CheckService.detectSelectors(baseUrl, b.path("loginPath").asText("/login"));
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("idSelector", d.idSelector());
+        m.put("pwSelector", d.pwSelector());
+        m.put("submitSelector", d.submitSelector());
+        sendJson(ex, m);
     }
 
     private void run(HttpExchange ex, String name) throws IOException {

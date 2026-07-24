@@ -38,4 +38,15 @@ class CredentialStoreTest {
         store.save("cloud-cmp", "a", "b");
         org.junit.jupiter.api.Assertions.assertTrue(store.has("cloud-cmp"));
     }
+
+    @Test
+    void 삭제하면_계정이_사라지고_파일에_반영된다(@TempDir Path dir) {
+        Path file = dir.resolve("credentials.properties");
+        CredentialStore store = new CredentialStore(file);
+        store.save("cloud-cmp", "a", "b");
+        store.remove("cloud-cmp");
+        org.junit.jupiter.api.Assertions.assertFalse(store.has("cloud-cmp"));
+        // 새 인스턴스로도 사라진 상태
+        org.junit.jupiter.api.Assertions.assertFalse(new CredentialStore(file).has("cloud-cmp"));
+    }
 }
