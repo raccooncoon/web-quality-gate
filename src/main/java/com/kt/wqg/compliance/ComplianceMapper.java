@@ -9,7 +9,8 @@ import java.util.Map;
 
 /**
  * 기존 검사 결과(List<CheckResult>)를 카탈로그 37항목의 판정 맵으로 변환한다(순수).
- * axe 항목은 RuleResolver, markup 항목은 전용 로직, 그 외(probe/none)는 수동확인필요.
+ * axe·probe 항목은 RuleResolver로 규칙 매칭, markup 항목은 전용 로직.
+ * 그 외(none)는 수동확인필요.
  */
 public final class ComplianceMapper {
 

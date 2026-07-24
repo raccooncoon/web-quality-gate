@@ -27,4 +27,10 @@ class RuleResolverProbeTest {
         List<Finding> f = List.of(new Finding("u", "some-probe", "h", null));
         assertEquals(ItemVerdict.부적합, RuleResolver.resolve(p, f).verdict());
     }
+
+    @Test
+    void probe_manual_은_매칭없어도_수동확인필요() {
+        CatalogItem p = probe("1.3.2", "manual", "linear-order");
+        assertEquals(ItemVerdict.수동확인필요, RuleResolver.resolve(p, List.of()).verdict());
+    }
 }
