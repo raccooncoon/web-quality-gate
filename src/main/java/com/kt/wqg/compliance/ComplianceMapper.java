@@ -9,7 +9,8 @@ import java.util.Map;
 
 /**
  * 기존 검사 결과(List<CheckResult>)를 카탈로그 37항목의 판정 맵으로 변환한다(순수).
- * axe 항목은 RuleResolver, markup 항목은 전용 로직, 그 외(probe/none)는 수동확인필요.
+ * axe·probe 항목은 RuleResolver로 규칙 매칭, markup 항목은 전용 로직.
+ * 그 외(none)는 수동확인필요.
  */
 public final class ComplianceMapper {
 
@@ -18,11 +19,17 @@ public final class ComplianceMapper {
     public ComplianceMapper(KwcagCatalog catalog) { this.catalog = catalog; }
 
     public Map<String, ItemResult> map(List<CheckResult> results) {
+        return map(results, List.of());
+    }
+
+    public Map<String, ItemResult> map(List<CheckResult> results, List<Finding> probeFindings) {
         List<Finding> axeFindings = results.stream()
                 .filter(r -> "accessibility".equals(r.checkType()))
                 .flatMap(r -> r.violations().stream()
                         .map(v -> new Finding(r.url(), v.id(), v.help(), firstTarget(v))))
                 .toList();
+        List<Finding> pool = new java.util.ArrayList<>(axeFindings);
+        pool.addAll(probeFindings);
         List<Finding> markupErrors = results.stream()
                 .filter(r -> "markup".equals(r.checkType()))
                 .flatMap(r -> r.violations().stream()
@@ -31,9 +38,14 @@ public final class ComplianceMapper {
 
         Map<String, ItemResult> out = new LinkedHashMap<>();
         for (CatalogItem item : catalog.items()) {
-            ItemResult res = "markup".equals(item.resolver().type())
-                    ? resolveMarkup(item, markupErrors)
-                    : RuleResolver.resolve(item, axeFindings);
+            ItemResult res;
+            if ("markup".equals(item.resolver().type())) {
+                res = resolveMarkup(item, markupErrors);
+            } else if ("compat".equals(item.resolver().type())) {
+                res = resolveCompat(item, results);
+            } else {
+                res = RuleResolver.resolve(item, pool);
+            }
             out.put(item.code(), res);
         }
         return out;
@@ -56,6 +68,17 @@ public final class ComplianceMapper {
     private static boolean isObsolete(String help) {
         String h = help == null ? "" : help.toLowerCase(Locale.ROOT);
         return h.contains("obsolete") || h.contains("deprecated");
+    }
+
+    private static ItemResult resolveCompat(CatalogItem item, List<CheckResult> results) {
+        List<ItemResult.Evidence> failed = results.stream()
+                .filter(r -> "compatibility".equals(r.checkType()) && !r.passed())
+                .map(r -> new ItemResult.Evidence(r.url(), "cross-browser-diff",
+                        r.engine() + " 렌더링 차이" + (r.diffRatio() == null ? "" :
+                                String.format(" %.2f%%", r.diffRatio() * 100))))
+                .toList();
+        ItemVerdict v = failed.isEmpty() ? ItemVerdict.적합 : ItemVerdict.부적합;
+        return new ItemResult(item.code(), v, "auto", failed, null);
     }
 
     private static String firstTarget(CheckResult.Violation v) {

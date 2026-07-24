@@ -531,7 +531,7 @@ items:
     automation: auto
     title: "브라우저 호환성"
     criteria: "Chromium·Firefox·WebKit 등 주요 엔진에서 동일하게 렌더링·동작"
-    resolver: { type: probe, rules: [cross-browser-diff] }
+    resolver: { type: compat, rules: [] }
     guide:
       what: "3개 브라우저 엔진(chromium/firefox/webkit)에서 동일 URL 스크린샷을 캡처해 픽셀 diff로 렌더링 차이를 검사합니다."
       why: "브라우저별 렌더링 차이는 특정 브라우저 사용자에게 레이아웃 깨짐·기능 오작동을 유발합니다."

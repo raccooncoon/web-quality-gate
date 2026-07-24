@@ -4,8 +4,9 @@ import java.util.List;
 
 /**
  * 카탈로그 항목 하나를 finding 목록으로 판정한다(순수).
- * axe 타입만 rule 매칭으로 판정하며, markup/probe/none 은 상위(ComplianceMapper)나
- * 이후 계획에서 처리하도록 수동확인필요로 둔다.
+ * axe·probe 타입을 rule 매칭으로 판정한다.
+ * automation=auto 일 때만 매칭 결과로 적합/부적합 결정; screen·manual 은 자동 확정 없이 수동확인필요.
+ * 그 외(markup/none) 은 상위(ComplianceMapper)에서 처리한다.
  */
 public final class RuleResolver {
 
@@ -15,7 +16,7 @@ public final class RuleResolver {
         if ("na".equals(item.automation())) {
             return new ItemResult(item.code(), ItemVerdict.해당없음, "auto", List.of(), null);
         }
-        if (!"axe".equals(item.resolver().type())) {
+        if (!"axe".equals(item.resolver().type()) && !"probe".equals(item.resolver().type())) {
             return new ItemResult(item.code(), ItemVerdict.수동확인필요, "auto", List.of(), null);
         }
         List<String> rules = item.resolver().rules();
@@ -24,10 +25,11 @@ public final class RuleResolver {
                 .map(f -> new ItemResult.Evidence(f.url(), f.rule(), f.help()))
                 .toList();
         ItemVerdict verdict;
-        if ("screen".equals(item.automation())) {
-            verdict = ItemVerdict.수동확인필요;
-        } else {
+        if ("auto".equals(item.automation())) {
             verdict = matched.isEmpty() ? ItemVerdict.적합 : ItemVerdict.부적합;
+        } else {
+            // screen·manual 등은 자동 확정하지 않고 스크리닝 증거만 남긴다
+            verdict = ItemVerdict.수동확인필요;
         }
         return new ItemResult(item.code(), verdict, "auto", matched, null);
     }

@@ -52,6 +52,7 @@ public final class CheckService {
         int total = site.urls().size();
         try (Playwright playwright = Playwright.create()) {
             List<CheckResult> results = new ArrayList<>();
+            List<com.kt.wqg.compliance.Finding> probeFindings = new ArrayList<>();
             String storageState = null;
 
             progress.accept("브라우저 기동…");
@@ -75,6 +76,9 @@ public final class CheckService {
                     if (config.checks().markup().enabled()) {
                         results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config)));
                     }
+                    probeFindings.addAll(com.kt.wqg.check.probe.ProbeCheck.run(
+                            page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
+                            com.kt.wqg.check.probe.ProbeCheck.defaults()));
                 }
             } finally {
                 chromium.close();
@@ -96,7 +100,7 @@ public final class CheckService {
             com.kt.wqg.compliance.KwcagCatalog catalog = com.kt.wqg.compliance.KwcagCatalog.load();
             com.kt.wqg.compliance.ComplianceEvaluator.Compliance compliance =
                     new com.kt.wqg.compliance.ComplianceEvaluator(catalog).evaluate(
-                            new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results));
+                            new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results, probeFindings));
             progress.accept("컴플라이언스: " + compliance.status()
                     + " (미확정 " + compliance.pendingTotal() + "건)");
 
