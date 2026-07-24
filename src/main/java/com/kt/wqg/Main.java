@@ -2,6 +2,7 @@ package com.kt.wqg;
 
 import com.kt.wqg.check.AccessibilityCheck;
 import com.kt.wqg.check.CheckRunner;
+import com.kt.wqg.check.MarkupCheck;
 import com.kt.wqg.config.SitesConfig;
 import com.kt.wqg.config.SitesConfigLoader;
 import com.kt.wqg.report.CheckResult;
@@ -68,6 +69,10 @@ public class Main {
                 if (config.checks().accessibility().enabled()) {
                     results.add(AccessibilityCheck.run(page, site, url, timestamp,
                             config.checks().accessibility().tags()));
+                }
+                if (config.checks().markup().enabled()) {
+                    results.add(MarkupCheck.run(page, site, url, timestamp,
+                            config.checks().markup().vnuJarPath()));
                 }
             }
         } finally {
