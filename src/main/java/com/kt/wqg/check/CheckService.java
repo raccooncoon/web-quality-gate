@@ -25,7 +25,7 @@ public final class CheckService {
 
     /** 산출물에 표기하는 검사 기준. */
     public static final String STANDARD =
-            "웹접근성 WCAG 2.1 AA (KWCAG 2.1 병기) · 웹호환성 3개 엔진 렌더링 비교";
+            "웹접근성 KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 웹호환성 3개 엔진 렌더링 비교";
 
     private CheckService() {}
 
@@ -113,6 +113,9 @@ public final class CheckService {
                     .toList();
             ReportWriter.write(config.output().dir(), site.name(), site.label(), timestamp,
                     STANDARD, engines, results);
+            // report.html 을 SI 검수결과표로 최종 생성(기존 URL 중심 리포트 대체).
+            com.kt.wqg.report.ComplianceReportWriter.write(reportDir,
+                    com.kt.wqg.compliance.AssessmentView.build(reportDir, catalog));
             return reportDir.resolve("report.html");
         }
     }
