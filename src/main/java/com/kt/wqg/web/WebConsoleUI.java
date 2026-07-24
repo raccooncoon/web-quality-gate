@@ -74,6 +74,15 @@ final class WebConsoleUI {
             .ovbtns button{flex:1}
             .hd2{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
             #assessview .body{max-width:920px;margin:0 auto}
+            .item.needs{border-color:var(--warn);border-left:4px solid var(--warn)}
+            .item.done{opacity:.72}
+            .filterbar{display:flex;align-items:center;gap:14px;margin:16px 0 4px;flex-wrap:wrap}
+            .filterbar label{display:flex;align-items:center;gap:6px;margin:0;color:var(--fg);font-weight:600;cursor:pointer}
+            .filterbar input{width:auto}
+            .prog{font-size:12px;color:var(--muted)}
+            .prog b{color:var(--fg)}
+            .grouphd{font-size:12px;color:var(--muted);font-weight:700;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.03em}
+            td .pill{margin-right:6px}
             </style></head><body>
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
@@ -95,8 +104,13 @@ final class WebConsoleUI {
               if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult()});
 
             // ── 설정 탭 ──
+            const isTest=s=>s.name==='defect-kwater'||(s.displayName||'').includes('테스트');
             async function loadConfig(){const {systems}=await api('/api/systems');
-              $('#config').innerHTML=systems.map(sysCard).join('');
+              const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
+              let html='';
+              if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
+              if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
+              $('#config').innerHTML=html;
               systems.forEach(s=>{const el=document.getElementById('sys-'+s.name);
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
                 if(s.authType==='form')el.querySelector('.body').classList.add('auth-form');
@@ -156,8 +170,11 @@ final class WebConsoleUI {
 
             // ── 실행 탭 ──
             let poll;
+            let runConfigured=[];
             async function loadRun(){const {systems}=await api('/api/systems');
-              $('#run').innerHTML='<table><thead><tr><th>시스템</th><th>설정</th><th>상태</th><th></th></tr></thead><tbody>'+
+              runConfigured=systems.filter(s=>s.configured).map(s=>s.name);
+              $('#run').innerHTML=`<div class=filterbar><button class="act run" onclick="runAll()" ${runConfigured.length?'':'disabled'}>설정된 시스템 전체 검사 (${runConfigured.length})</button></div>`+
+                '<table><thead><tr><th>시스템</th><th>설정</th><th>상태</th><th></th></tr></thead><tbody>'+
                 systems.map(s=>`<tr><td>${esc(s.displayName)}<br><small class=st>${s.name}</small></td>
                   <td>${s.configured?'<span class=pill ok>준비</span>':'<span class=pill no>미설정</span>'}
                     ${s.authType==='form'&&!s.hasCredentials?'<span class=pill wait>계정 필요</span>':''}</td>
@@ -166,17 +183,32 @@ final class WebConsoleUI {
                 '</tbody></table>';refreshStatus();
               clearInterval(poll);poll=setInterval(refreshStatus,2000)}
             async function runSys(name){await api('/api/run/'+name,'POST',{});toast('검사 시작: '+name);refreshStatus()}
+            async function runAll(){for(const n of runConfigured){await api('/api/run/'+n,'POST',{})}
+              toast('전체 검사 시작 ('+runConfigured.length+')');refreshStatus()}
             async function refreshStatus(){const {status}=await api('/api/status');
               Object.entries(status).forEach(([site,st])=>{const el=document.getElementById('stat-'+site);if(!el)return;
                 if(st.state==='RUNNING')el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
-                else if(st.state==='DONE')el.innerHTML='<span class=pill ok>완료</span> <a href="/'+st.message.replace(/^\\.?\\//,'')+'" target="_blank">리포트 열기 ↗</a>';
+                else if(st.state==='DONE'){const rel=st.message.replace(/^\\.?\\//,'');const ts=rel.split('/')[2];
+                  el.innerHTML='<span class=pill ok>완료</span> <a href="/'+rel+'" target="_blank">리포트 ↗</a> '+
+                    '<button class="linkbtn" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">검수</button> <span id="verdict-'+site+'" class=st></span>';
+                  loadVerdict(site,ts)}
                 else if(st.state==='ERROR')el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>'})}
+            async function loadVerdict(site,ts){try{
+              const d=await api('/api/assessment?site='+encodeURIComponent(site)+'&ts='+encodeURIComponent(ts));
+              const el=document.getElementById('verdict-'+site);if(!el)return;
+              const sc=d.compliance.status==='적합'?'ok':(d.compliance.status==='부적합'?'no':'wait');
+              el.innerHTML='· <span class="pill '+sc+'">'+esc(d.compliance.status)+'</span> 미확정 '+d.compliance.pendingTotal;
+            }catch(e){}}
 
             // ── 결과 탭 ──
+            function statusPill(r){if(!r.status)return '';
+              const sc=r.status==='적합'?'ok':(r.status==='부적합'?'no':'wait');
+              return `<span class="pill ${sc}">${esc(r.status)}</span> <span class=st>미확정 ${r.pendingTotal}</span>`}
             async function loadResult(){const {reports}=await api('/api/reports');
-              $('#result').innerHTML=reports.length?'<table><thead><tr><th>시스템</th><th>검사일시</th><th></th></tr></thead><tbody>'+
+              $('#result').innerHTML=reports.length?'<table><thead><tr><th>시스템</th><th>검사일시</th><th>판정</th><th></th></tr></thead><tbody>'+
                 reports.map(r=>`<tr><td>${esc(r.site)}</td><td>${esc(r.timestamp)}</td>
-                  <td><a href="${esc(r.path)}" target="_blank">리포트 열기 ↗</a>
+                  <td>${statusPill(r)}</td>
+                  <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a>
                   <button class="act ghost" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수</button></td></tr>`).join('')+'</tbody></table>'
                 :'<p class=st>아직 생성된 리포트가 없습니다. ② 실행 탭에서 검사를 돌려보세요.</p>'}
 
@@ -197,12 +229,12 @@ final class WebConsoleUI {
             function verdictClass(v){return v==='적합'?'ok':v==='부적합'?'no':v==='수동확인필요'?'wait':'na'}
             function itemCard(it){const vc=verdictClass(it.verdict);
               const id=it.code.replace(/\\W/g,'_');const memoId='memo-'+id;
-              const g=it.guide||{};
+              const g=it.guide||{};const needs=it.verdict==='수동확인필요';
               const ev=(it.evidence||[]).map(e=>`<div class=ev>${esc(e.rule)} — ${esc(e.detail)}${e.url?' <span class=st>'+esc(e.url)+'</span>':''}</div>`).join('');
-              return `<div class="item">
+              return `<div class="item ${needs?'needs':'done'}">
                 <div class="it-hd"><span class=st>${it.no}.</span><b>${esc(it.title)}</b><small class=st>${esc(it.code)}</small>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>
-                <button class="linkbtn" onclick="toggleOverride('${id}')">오버라이드</button></div>
+                <button class="linkbtn" onclick="toggleOverride('${id}')">${needs?'판정하기':'수정'}</button></div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
                 <details class=guide><summary>상세 설명</summary>
@@ -216,20 +248,31 @@ final class WebConsoleUI {
                     <button class="act ghost" onclick="confirmItem('${esc(it.code)}','부적합','${memoId}')">부적합</button>
                     <button class="act ghost" onclick="confirmItem('${esc(it.code)}','해당없음','${memoId}')">해당없음</button>
                   </div></div></div>`}
-            function renderAssessment(data){
-              const sc=data.compliance.status==='적합'?'ok':(data.compliance.status==='부적합'?'no':'wait');
+            let assessFilter=false,curData=null;
+            function toggleFilter(){assessFilter=!assessFilter;renderAssessment(curData)}
+            function renderAssessment(data){curData=data;
+              const comp=data.compliance;
+              const sc=comp.status==='적합'?'ok':(comp.status==='부적합'?'no':'wait');
+              const confirmed=data.items.filter(it=>it.source==='assessor').length;
               let html=`<div class="hd2"><button class="act ghost" onclick="closeAssessment()">← 결과로</button>
                 <div><b>${esc(data.displayName||data.site)}</b> <small class=st>${esc(data.timestamp)}</small></div>
-                <span class="pill ${sc}">종합판정: ${esc(data.compliance.status)}</span>
-                <span class=st>미확정 ${data.compliance.pendingTotal}건</span></div>`;
-              html+=data.compliance.categories.map(c=>{
+                <span class="pill ${sc}">종합판정: ${esc(comp.status)}</span></div>`;
+              html+=`<div class="filterbar">
+                <label><input type=checkbox ${assessFilter?'checked':''} onclick="toggleFilter()"> 판정 필요한 항목만 보기</label>
+                <span class="prog">평가자 확정 <b>${confirmed}</b> · 미확정 <b>${comp.pendingTotal}</b> / 전체 ${data.items.length}</span></div>`;
+              html+=comp.categories.map(c=>{
                 const pct=Math.max(0,Math.min(100,c.rate));
+                const col=c.pending>0?'var(--warn)':(c.pass?'var(--ok)':'var(--bad)');
+                const tag=c.pending>0?'<span class="pill wait">대기 '+c.pending+'</span>':(c.pass?'<span class="pill ok">충족</span>':'<span class="pill no">미달</span>');
                 return `<div class="catbar"><div class="cb-top"><b>${esc(c.label)}</b>
-                  <span class=st>적합 ${c.적합}/${c.적합+c.부적합} · 기준 ${c.threshold}% · 대기 ${c.pending}</span></div>
-                  <div class="bar"><i style="width:${pct}%;background:${c.pass?'var(--ok)':'var(--bad)'}"></i></div></div>`}).join('');
-              html+=data.compliance.categories.map(cat=>{
-                const items=data.items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
+                  <span>${tag} <span class=st>적합 ${c.적합}/${c.적합+c.부적합} · 기준 ${c.threshold}%</span></span></div>
+                  <div class="bar"><i style="width:${pct}%;background:${col}"></i></div></div>`}).join('');
+              html+=comp.categories.map(cat=>{
+                let items=data.items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
+                if(assessFilter)items=items.filter(it=>it.verdict==='수동확인필요');
+                if(!items.length)return '';
                 return `<h3 class=grp>${esc(cat.label)}</h3>`+items.map(itemCard).join('')}).join('');
+              if(assessFilter&&comp.pendingTotal===0)html+='<p class=st style="text-align:center;padding:20px">판정할 항목이 없습니다. 모두 확정되었습니다.</p>';
               $('#assessview .body').innerHTML=html}
 
             loadConfig();

@@ -166,14 +166,24 @@ public final class WebConsole {
     private Object reportsPayload() throws IOException {
         Path root = Path.of("reports");
         List<Map<String, Object>> reports = new ArrayList<>();
+        KwcagCatalog catalog = KwcagCatalog.load();
         if (Files.isDirectory(root)) {
             try (Stream<Path> w = Files.walk(root, 3)) {
                 w.filter(p -> p.getFileName().toString().equals("report.html")).forEach(p -> {
+                    Path dir = p.getParent();
                     Path rel = root.getParent() == null ? p : Path.of("reports").resolve(root.relativize(p));
                     Map<String, Object> m = new LinkedHashMap<>();
-                    m.put("site", p.getParent().getParent().getFileName().toString());
-                    m.put("timestamp", p.getParent().getFileName().toString());
+                    m.put("site", dir.getParent().getFileName().toString());
+                    m.put("timestamp", dir.getFileName().toString());
                     m.put("path", "/" + rel.toString().replace('\\', '/'));
+                    // 컴플라이언스 판정(있으면) — 목록에서 한눈에 상태 파악
+                    if (Files.isRegularFile(dir.resolve("compliance.json"))) {
+                        try {
+                            var c = AssessmentView.evaluateMerged(dir, catalog);
+                            m.put("status", c.status());
+                            m.put("pendingTotal", c.pendingTotal());
+                        } catch (RuntimeException ignored) { /* 손상된 리포트는 상태 생략 */ }
+                    }
                     reports.add(m);
                 });
             }
