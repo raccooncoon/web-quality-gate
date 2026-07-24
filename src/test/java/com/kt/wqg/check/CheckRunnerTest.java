@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -90,5 +92,58 @@ class CheckRunnerTest {
         assertEquals(1, results.size());
         assertTrue(results.get(0).error().contains("타임아웃"),
                 "실패 원인이 결과에 남아야 한다: " + results.get(0).error());
+    }
+
+    @Test
+    void 로그인_후_여전히_로그인페이지면_실패로_본다() {
+        assertFalse(CheckRunner.loginSucceeded(
+                "https://defect.example.com/login", "https://defect.example.com/login"));
+    }
+
+    @Test
+    void 로그인_후_로그인페이지를_벗어나면_성공으로_본다() {
+        assertTrue(CheckRunner.loginSucceeded(
+                "https://defect.example.com/login", "https://defect.example.com/dashboard"));
+    }
+
+    @Test
+    void 로그인_실패로_쿼리파라미터가_붙어도_실패로_본다() {
+        assertFalse(CheckRunner.loginSucceeded(
+                "https://defect.example.com/login", "https://defect.example.com/login?error"));
+    }
+
+    @Test
+    void 절대경로_내부링크는_경로로_수집한다() {
+        assertEquals("/defects",
+                CheckRunner.internalPath("https://defect.example.com", "https://defect.example.com/defects"));
+    }
+
+    @Test
+    void 상대경로_내부링크도_경로로_수집한다() {
+        assertEquals("/defects",
+                CheckRunner.internalPath("https://defect.example.com", "/defects"));
+    }
+
+    @Test
+    void 외부도메인_링크는_수집하지_않는다() {
+        assertNull(CheckRunner.internalPath("https://defect.example.com", "https://google.com/"));
+    }
+
+    @Test
+    void 로그아웃_링크는_수집하지_않는다() {
+        assertNull(CheckRunner.internalPath("https://defect.example.com", "/logout"));
+    }
+
+    @Test
+    void 앵커_mailto_javascript_링크는_수집하지_않는다() {
+        assertNull(CheckRunner.internalPath("https://defect.example.com", "#top"));
+        assertNull(CheckRunner.internalPath("https://defect.example.com", "mailto:a@b.com"));
+        assertNull(CheckRunner.internalPath("https://defect.example.com", "javascript:void(0)"));
+    }
+
+    @Test
+    void 쿼리와_프래그먼트를_떼고_경로만_남긴다() {
+        assertEquals("/defects",
+                CheckRunner.internalPath("https://defect.example.com", "/defects?page=2#list"));
     }
 }
