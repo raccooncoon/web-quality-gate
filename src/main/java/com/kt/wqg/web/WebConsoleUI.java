@@ -205,7 +205,7 @@ final class WebConsoleUI {
                 <button class="linkbtn" onclick="toggleOverride('${id}')">오버라이드</button></div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
-                <details class=guide><summary>친절설명</summary>
+                <details class=guide><summary>상세 설명</summary>
                   <div><b>무엇</b> ${esc(g.what)}</div><div><b>왜</b> ${esc(g.why)}</div>
                   <div><b>근거</b> ${esc(g.basis)}</div><div><b>해결</b> ${esc(g.fix)}</div>
                   ${g.limit?'<div><b>한계</b> '+esc(g.limit)+'</div>':''}</details>
