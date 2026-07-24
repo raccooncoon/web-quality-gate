@@ -16,6 +16,7 @@
         <playwright.version>1.49.0</playwright.version>
         <axe.version>4.10.1</axe.version>
         <jackson.version>2.17.2</jackson.version>
+        <junit.version>5.10.3</junit.version>
     </properties>
 
     <dependencies>
@@ -51,10 +52,24 @@
             <artifactId>slf4j-simple</artifactId>
             <version>2.0.13</version>
         </dependency>
+
+        <!-- 테스트 (test scope — shaded jar에 포함되지 않음) -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.2.5</version>
+            </plugin>
+
             <!-- 단일 실행 jar (의존성 포함) — 폐쇄망 서버에서 java -jar 로 실행 -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
