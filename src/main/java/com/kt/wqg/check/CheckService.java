@@ -98,11 +98,15 @@ public final class CheckService {
 
             // 컴플라이언스 스코어링(계획 2) — 기존 결과를 37항목 판정으로 변환·집계
             com.kt.wqg.compliance.KwcagCatalog catalog = com.kt.wqg.compliance.KwcagCatalog.load();
+            var itemMap = new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results, probeFindings);
             com.kt.wqg.compliance.ComplianceEvaluator.Compliance compliance =
-                    new com.kt.wqg.compliance.ComplianceEvaluator(catalog).evaluate(
-                            new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results, probeFindings));
+                    new com.kt.wqg.compliance.ComplianceEvaluator(catalog).evaluate(itemMap);
             progress.accept("컴플라이언스: " + compliance.status()
                     + " (미확정 " + compliance.pendingTotal() + "건)");
+            java.util.List<com.kt.wqg.compliance.ItemResult> ordered = catalog.items().stream()
+                    .map(it -> itemMap.get(it.code())).toList();
+            com.kt.wqg.compliance.ComplianceStore.write(reportDir,
+                    new com.kt.wqg.compliance.ComplianceDoc(site.name(), site.label(), timestamp, ordered));
 
             List<ReportWriter.EngineInfo> engines = engineVersions.entrySet().stream()
                     .map(en -> new ReportWriter.EngineInfo(en.getKey(), en.getValue()))
