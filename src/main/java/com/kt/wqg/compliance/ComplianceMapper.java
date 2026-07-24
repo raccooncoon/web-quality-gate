@@ -38,9 +38,14 @@ public final class ComplianceMapper {
 
         Map<String, ItemResult> out = new LinkedHashMap<>();
         for (CatalogItem item : catalog.items()) {
-            ItemResult res = "markup".equals(item.resolver().type())
-                    ? resolveMarkup(item, markupErrors)
-                    : RuleResolver.resolve(item, pool);
+            ItemResult res;
+            if ("markup".equals(item.resolver().type())) {
+                res = resolveMarkup(item, markupErrors);
+            } else if ("compat".equals(item.resolver().type())) {
+                res = resolveCompat(item, results);
+            } else {
+                res = RuleResolver.resolve(item, pool);
+            }
             out.put(item.code(), res);
         }
         return out;
@@ -63,6 +68,17 @@ public final class ComplianceMapper {
     private static boolean isObsolete(String help) {
         String h = help == null ? "" : help.toLowerCase(Locale.ROOT);
         return h.contains("obsolete") || h.contains("deprecated");
+    }
+
+    private static ItemResult resolveCompat(CatalogItem item, List<CheckResult> results) {
+        List<ItemResult.Evidence> failed = results.stream()
+                .filter(r -> "compatibility".equals(r.checkType()) && !r.passed())
+                .map(r -> new ItemResult.Evidence(r.url(), "cross-browser-diff",
+                        r.engine() + " 렌더링 차이" + (r.diffRatio() == null ? "" :
+                                String.format(" %.2f%%", r.diffRatio() * 100))))
+                .toList();
+        ItemVerdict v = failed.isEmpty() ? ItemVerdict.적합 : ItemVerdict.부적합;
+        return new ItemResult(item.code(), v, "auto", failed, null);
     }
 
     private static String firstTarget(CheckResult.Violation v) {

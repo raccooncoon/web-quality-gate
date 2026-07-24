@@ -22,6 +22,11 @@ class ComplianceMapperTest {
         return new CheckResult.Violation(id, "serious", id + " 위반", 1);
     }
 
+    private CheckResult compat(String url, String engine, boolean passed, double ratio) {
+        return new CheckResult("s", url, "compatibility", "t", engine, passed,
+                List.of(), null, ratio);
+    }
+
     @Test
     void 결과맵은_37항목을_모두_채운다() {
         assertEquals(37, mapper.map(List.of()).size());
@@ -71,5 +76,27 @@ class ComplianceMapperTest {
         ItemResult r = m.get("c-reflow");
         assertEquals(ItemVerdict.수동확인필요, r.verdict());
         assertFalse(r.evidence().isEmpty());
+    }
+
+    @Test
+    void 호환성_실패가_있으면_c_browser_부적합() {
+        Map<String, ItemResult> m = mapper.map(List.of(
+                compat("https://x/a", "firefox", false, 0.08)));
+        assertEquals(ItemVerdict.부적합, m.get("c-browser").verdict());
+        assertFalse(m.get("c-browser").evidence().isEmpty());
+    }
+
+    @Test
+    void 호환성_전부통과면_c_browser_적합() {
+        Map<String, ItemResult> m = mapper.map(List.of(
+                compat("https://x/a", "firefox", true, 0.0),
+                compat("https://x/a", "webkit", true, 0.0)));
+        assertEquals(ItemVerdict.적합, m.get("c-browser").verdict());
+    }
+
+    @Test
+    void 호환성_결과없으면_c_browser_적합_처리() {
+        // 호환성 미실행 시 위반 근거 없음 → 적합(자동)
+        assertEquals(ItemVerdict.적합, mapper.map(List.of()).get("c-browser").verdict());
     }
 }
