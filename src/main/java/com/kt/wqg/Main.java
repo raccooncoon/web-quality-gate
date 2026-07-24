@@ -7,6 +7,7 @@ import com.kt.wqg.check.MarkupCheck;
 import com.kt.wqg.config.SitesConfig;
 import com.kt.wqg.config.SitesConfigLoader;
 import com.kt.wqg.report.CheckResult;
+import com.kt.wqg.report.ReportWriter;
 import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.BrowserType;
@@ -38,11 +39,14 @@ public class Main {
 
         try (Playwright playwright = Playwright.create()) {
             for (SitesConfig.Site site : targets) {
+                String timestamp = timestamp();
                 try {
-                    List<CheckResult> results = checkSite(playwright, site, config);
-                    System.out.printf("[%s] 검사 완료 — 결과 %d건%n", site.name(), results.size());
-                    results.forEach(r -> System.out.printf("  %-14s %s passed=%s violations=%d%n",
-                            r.checkType(), r.url(), r.passed(), r.violations().size()));
+                    List<CheckResult> results = checkSite(playwright, site, config, timestamp);
+                    Path index = ReportWriter.write(config.output().dir(), site.name(),
+                            timestamp, results);
+                    ReportWriter.Summary s = ReportWriter.summarize(results);
+                    System.out.printf("[%s] 검사 완료 — 전체 %d건 (통과 %d / 실패 %d) → %s%n",
+                            site.name(), s.total(), s.passed(), s.failed(), index);
                 } catch (RuntimeException e) {
                     // 사이트 단위 실패 격리 — 한 사이트가 죽어도 나머지는 계속
                     System.err.printf("[%s] 검사 실패: %s%n", site.name(), e.getMessage());
@@ -52,8 +56,7 @@ public class Main {
     }
 
     private static List<CheckResult> checkSite(Playwright playwright, SitesConfig.Site site,
-                                               SitesConfig config) {
-        String timestamp = timestamp();
+                                               SitesConfig config, String timestamp) {
         List<CheckResult> results = new ArrayList<>();
 
         Browser chromium = playwright.chromium()
