@@ -18,11 +18,17 @@ public final class ComplianceMapper {
     public ComplianceMapper(KwcagCatalog catalog) { this.catalog = catalog; }
 
     public Map<String, ItemResult> map(List<CheckResult> results) {
+        return map(results, List.of());
+    }
+
+    public Map<String, ItemResult> map(List<CheckResult> results, List<Finding> probeFindings) {
         List<Finding> axeFindings = results.stream()
                 .filter(r -> "accessibility".equals(r.checkType()))
                 .flatMap(r -> r.violations().stream()
                         .map(v -> new Finding(r.url(), v.id(), v.help(), firstTarget(v))))
                 .toList();
+        List<Finding> pool = new java.util.ArrayList<>(axeFindings);
+        pool.addAll(probeFindings);
         List<Finding> markupErrors = results.stream()
                 .filter(r -> "markup".equals(r.checkType()))
                 .flatMap(r -> r.violations().stream()
@@ -33,7 +39,7 @@ public final class ComplianceMapper {
         for (CatalogItem item : catalog.items()) {
             ItemResult res = "markup".equals(item.resolver().type())
                     ? resolveMarkup(item, markupErrors)
-                    : RuleResolver.resolve(item, axeFindings);
+                    : RuleResolver.resolve(item, pool);
             out.put(item.code(), res);
         }
         return out;

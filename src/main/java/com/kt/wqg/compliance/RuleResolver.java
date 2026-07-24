@@ -15,7 +15,7 @@ public final class RuleResolver {
         if ("na".equals(item.automation())) {
             return new ItemResult(item.code(), ItemVerdict.해당없음, "auto", List.of(), null);
         }
-        if (!"axe".equals(item.resolver().type())) {
+        if (!"axe".equals(item.resolver().type()) && !"probe".equals(item.resolver().type())) {
             return new ItemResult(item.code(), ItemVerdict.수동확인필요, "auto", List.of(), null);
         }
         List<String> rules = item.resolver().rules();

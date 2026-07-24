@@ -57,9 +57,19 @@ class ComplianceMapperTest {
     }
 
     @Test
-    void na_항목은_해당없음_probe항목은_수동확인필요() {
+    void na_항목은_해당없음_probe의_auto는_매칭없으면_적합() {
         Map<String, ItemResult> m = mapper.map(List.of());
         assertEquals(ItemVerdict.해당없음, m.get("2.4.4").verdict());
-        assertEquals(ItemVerdict.수동확인필요, m.get("c-browser").verdict()); // probe → 계획 3
+        assertEquals(ItemVerdict.적합, m.get("c-browser").verdict()); // probe auto → no findings = 적합
+    }
+
+    @Test
+    void probe_finding_이_probe항목에_반영된다() {
+        // c-reflow(probe, screen) 는 probeFindings 로 수동확인필요+증거
+        java.util.List<Finding> pf = java.util.List.of(new Finding("https://x/a", "reflow-zoom", "가로 오버플로", null));
+        Map<String, ItemResult> m = mapper.map(List.of(), pf);
+        ItemResult r = m.get("c-reflow");
+        assertEquals(ItemVerdict.수동확인필요, r.verdict());
+        assertFalse(r.evidence().isEmpty());
     }
 }
