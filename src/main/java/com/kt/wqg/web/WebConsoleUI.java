@@ -173,9 +173,9 @@ final class WebConsoleUI {
                   <button class="act ghost detect">🔍 로그인 필드 자동 감지</button>
                   <div class="hint">baseUrl·로그인 경로를 채운 뒤 누르면 로그인 페이지를 열어 셀렉터를 채웁니다.</div>
                   <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
-                    <input name="cid" placeholder="${s.hasCredentials?'●●●●●●●● (변경 시에만 입력)':'아이디'}"></div>
+                    <input name="cid" value="${esc(s.credId||'')}" placeholder="아이디"></div>
                     <div><label>계정 PW ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
-                    <input name="cpw" type="password" placeholder="${s.hasCredentials?'●●●●●●●● (변경 시에만 입력)':'비밀번호'}"></div></div>
+                    <input name="cpw" type="password" value="${esc(s.credPw||'')}" placeholder="비밀번호"></div></div>
                   <button class="act ghost savecred">계정만 저장</button>
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>
                 </div>

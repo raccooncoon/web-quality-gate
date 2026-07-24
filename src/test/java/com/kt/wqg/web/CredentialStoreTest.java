@@ -40,6 +40,15 @@ class CredentialStoreTest {
     }
 
     @Test
+    void 저장된_아이디_비번을_되읽는다(@TempDir Path dir) {
+        CredentialStore store = new CredentialStore(dir.resolve("credentials.properties"));
+        org.junit.jupiter.api.Assertions.assertNull(store.savedId("main-portal"));
+        store.save("main-portal", "tester01", "secret123");
+        assertEquals("tester01", store.savedId("main-portal"));
+        assertEquals("secret123", store.savedPw("main-portal"));
+    }
+
+    @Test
     void 삭제하면_계정이_사라지고_파일에_반영된다(@TempDir Path dir) {
         Path file = dir.resolve("credentials.properties");
         CredentialStore store = new CredentialStore(file);

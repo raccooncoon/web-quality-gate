@@ -57,6 +57,16 @@ public final class CredentialStore {
         return props.getProperty(prefix + "_ID") != null && props.getProperty(prefix + "_PW") != null;
     }
 
+    /** 저장된 아이디 (없으면 null). 로컬 콘솔 편집 화면 표시용. */
+    public String savedId(String siteName) {
+        return props.getProperty(keyPrefix(siteName) + "_ID");
+    }
+
+    /** 저장된 비밀번호 (없으면 null). password 필드에 채워 마스킹 표시하는 용도. */
+    public String savedPw(String siteName) {
+        return props.getProperty(keyPrefix(siteName) + "_PW");
+    }
+
     /** 시스템 삭제 시 계정도 정리한다. 없으면 아무것도 하지 않는다. */
     public void remove(String siteName) {
         String prefix = keyPrefix(siteName);
