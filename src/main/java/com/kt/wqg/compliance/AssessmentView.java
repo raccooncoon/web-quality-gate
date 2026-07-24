@@ -67,7 +67,7 @@ public final class AssessmentView {
 
         return Map.of("items", items,
                 "compliance", Map.of("status", c.status(), "pendingTotal", c.pendingTotal(), "categories", cats),
-                "site", doc.site(), "displayName", n(doc.displayName()), "timestamp", doc.timestamp());
+                "site", n(doc.site()), "displayName", n(doc.displayName()), "timestamp", n(doc.timestamp()));
     }
 
     private static String n(String s) { return s == null ? "" : s; }

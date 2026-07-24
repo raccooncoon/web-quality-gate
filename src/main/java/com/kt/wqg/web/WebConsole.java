@@ -252,17 +252,26 @@ public final class WebConsole {
         KwcagCatalog catalog = KwcagCatalog.load();
         if ("POST".equalsIgnoreCase(ex.getRequestMethod())) {
             JsonNode b = JSON.readTree(ex.getRequestBody());
-            AssessmentView.confirm(dir, b.path("code").asText(),
-                    com.kt.wqg.compliance.ItemVerdict.valueOf(b.path("verdict").asText()),
-                    b.path("memo").asText(""));
+            com.kt.wqg.compliance.ItemVerdict v;
+            try {
+                v = com.kt.wqg.compliance.ItemVerdict.valueOf(b.path("verdict").asText());
+            } catch (IllegalArgumentException badVerdict) {
+                send(ex, 400, "application/json; charset=utf-8",
+                        "{\"error\":\"허용되지 않은 판정값\"}".getBytes(StandardCharsets.UTF_8));
+                return;
+            }
+            AssessmentView.confirm(dir, b.path("code").asText(), v, b.path("memo").asText(""));
+            // 정적 리포트 최신화(페이로드를 만들어 report 로 넘김)
+            com.kt.wqg.report.ComplianceReportWriter.write(dir, AssessmentView.build(dir, catalog));
         }
         sendJson(ex, AssessmentView.build(dir, catalog));
     }
 
     /** site/ts 파라미터로부터 reports 하위 안전 경로를 만든다(경로 탈출 차단). */
     static Path reportDirOf(String site, String ts) {
-        if (site == null || ts == null || site.contains("/") || site.contains("\\")
-                || site.contains("..") || ts.contains("/") || ts.contains("\\") || ts.contains("..")) {
+        if (site == null || ts == null || site.isEmpty() || ts.isEmpty()
+                || site.contains("/") || site.contains("\\") || site.contains("..")
+                || ts.contains("/") || ts.contains("\\") || ts.contains("..")) {
             throw new IllegalArgumentException("잘못된 site/ts");
         }
         return Path.of("reports", site, ts);

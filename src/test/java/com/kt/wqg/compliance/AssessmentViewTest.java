@@ -34,5 +34,16 @@ class AssessmentViewTest {
         Map<String,Object> compliance = (Map<String,Object>) view.get("compliance");
         assertNotNull(compliance.get("status"));
         assertTrue(((Number) compliance.get("pendingTotal")).intValue() >= 1);
+
+        // 확정이 재평가에 반영됐는지 — 확정 전/후 적합 수 비교
+        Map<String,Object> view2 = AssessmentView.build(dir, catalog);
+        @SuppressWarnings("unchecked")
+        Map<String,Object> comp = (Map<String,Object>) view2.get("compliance");
+        @SuppressWarnings("unchecked")
+        List<Map<String,Object>> cats = (List<Map<String,Object>>) comp.get("categories");
+        Map<String,Object> a11yManual = cats.stream()
+                .filter(s -> s.get("category").equals("accessibility") && Boolean.FALSE.equals(s.get("siAuto")))
+                .findFirst().orElseThrow();
+        assertTrue(((Number) a11yManual.get("적합")).intValue() >= 1, "확정된 1.4.3 이 적합으로 집계");
     }
 }
