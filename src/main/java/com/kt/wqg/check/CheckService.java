@@ -25,7 +25,7 @@ public final class CheckService {
 
     /** 산출물에 표기하는 검사 기준. */
     public static final String STANDARD =
-            "웹접근성 WCAG 2.1 AA (KWCAG 2.1 병기) · 웹호환성 3개 엔진 렌더링 비교";
+            "웹접근성 KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 웹호환성 3개 엔진 렌더링 비교";
 
     private CheckService() {}
 
@@ -113,6 +113,9 @@ public final class CheckService {
                     .toList();
             ReportWriter.write(config.output().dir(), site.name(), site.label(), timestamp,
                     STANDARD, engines, results);
+            // report.html 을 SI 검수결과표로 최종 생성(기존 URL 중심 리포트 대체).
+            com.kt.wqg.report.ComplianceReportWriter.write(reportDir,
+                    com.kt.wqg.compliance.AssessmentView.build(reportDir, catalog));
             return reportDir.resolve("report.html");
         }
     }
@@ -185,6 +188,55 @@ public final class CheckService {
         if (m == null) m = e.toString();
         return m.length() > 200 ? m.substring(0, 200) + "…" : m;
     }
+
+    /** 로그인 폼에서 자동 감지한 셀렉터. 못 찾으면 해당 값은 null. */
+    public record DetectedSelectors(String idSelector, String pwSelector, String submitSelector) {}
+
+    /** 로그인 페이지의 필드를 여는 페이지에서 휴리스틱으로 찾는 JS. name>id>type 순으로 셀렉터 생성. */
+    private static final String DETECT_JS = """
+            () => {
+              const sel = el => { if(!el) return null;
+                const t = el.tagName.toLowerCase();
+                if (el.name) return t + '[name="' + el.name + '"]';
+                if (el.id && /^[A-Za-z][\\w-]*$/.test(el.id)) return '#' + el.id;
+                if (el.type) return t + '[type=' + el.type + ']';
+                return t; };
+              const pw = document.querySelector('input[type=password]');
+              const form = pw ? pw.closest('form') : null;
+              const scope = form || document;
+              const all = [...scope.querySelectorAll('input')];
+              const texts = all.filter(i => ['text','email','tel',''].includes((i.type||'').toLowerCase()));
+              let id = null;
+              if (pw) { const pi = all.indexOf(pw);
+                id = [...texts].reverse().find(t => all.indexOf(t) < pi) || texts[0]; }
+              else id = texts[0];
+              const submit = scope.querySelector('button[type=submit], input[type=submit]')
+                          || scope.querySelector('button');
+              return { id: sel(id), pw: sel(pw), submit: sel(submit) };
+            }""";
+
+    /**
+     * baseUrl + loginPath 로 로그인 페이지를 열어 아이디·비번·제출 버튼 셀렉터를 자동 감지한다.
+     * 폐쇄망에서 페이지 소스를 뜯어보지 않고 셀렉터를 채우기 위함(로그인은 하지 않는다).
+     */
+    public static DetectedSelectors detectSelectors(String baseUrl, String loginPath) {
+        String path = (loginPath == null || loginPath.isBlank()) ? "/login" : loginPath;
+        try (Playwright playwright = Playwright.create()) {
+            Browser browser = playwright.chromium()
+                    .launch(new BrowserType.LaunchOptions().setHeadless(true));
+            try (BrowserContext context = browser.newContext()) {
+                Page page = context.newPage();
+                page.navigate(CheckRunner.resolveUrl(baseUrl, path));
+                Object r = page.evaluate(DETECT_JS);
+                Map<?, ?> m = (Map<?, ?>) r;
+                return new DetectedSelectors(str(m.get("id")), str(m.get("pw")), str(m.get("submit")));
+            } finally {
+                browser.close();
+            }
+        }
+    }
+
+    private static String str(Object o) { return o == null ? null : o.toString(); }
 
     /**
      * vnu.jar 경로. 환경변수 WQG_VNU_JAR 이 있으면 우선(패키지마다 위치가 달라

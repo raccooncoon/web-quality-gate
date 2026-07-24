@@ -18,4 +18,10 @@ class AssessmentPathTest {
         assertThrows(IllegalArgumentException.class,
                 () -> WebConsole.reportDirOf("s", "../../x"));
     }
+
+    @Test
+    void 빈_문자열_site_ts_는_거부() {
+        assertThrows(IllegalArgumentException.class, () -> WebConsole.reportDirOf("", "x"));
+        assertThrows(IllegalArgumentException.class, () -> WebConsole.reportDirOf("s", ""));
+    }
 }
