@@ -35,6 +35,15 @@ class KwcagCatalogTest {
             assertNotNull(c.guide(), "guide 누락: " + c.code());
             assertFalse(c.guide().what().isBlank(), "what 누락: " + c.code());
             assertFalse(c.guide().fix().isBlank(), "fix 누락: " + c.code());
+            assertFalse(c.guide().why().isBlank(), "why 누락: " + c.code());
+            assertFalse(c.guide().basis().isBlank(), "basis 누락: " + c.code());
+            assertFalse(c.guide().limit().isBlank(), "limit 누락: " + c.code());
         }
+    }
+
+    @Test
+    void 항목_코드는_중복되지_않는다() {
+        long distinct = cat.items().stream().map(CatalogItem::code).distinct().count();
+        assertEquals(cat.items().size(), distinct);
     }
 }

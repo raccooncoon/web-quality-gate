@@ -1,6 +1,5 @@
 package com.kt.wqg.compliance;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.junit.jupiter.api.Test;
 import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
