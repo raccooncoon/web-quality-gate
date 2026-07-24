@@ -43,13 +43,44 @@ class ReportWriterTest {
         assertEquals(0, s.failed());
     }
 
+    private CheckResult a11y(String impact) {
+        return new CheckResult("s", "https://x/u", "accessibility", "t", null, false,
+                List.of(new CheckResult.Violation("rule", impact, "help", 1)));
+    }
+
+    @Test
+    void 심각_위반이_있으면_부적합() {
+        ReportWriter.Verdict v = ReportWriter.verdict(List.of(
+                a11y("critical"),
+                new CheckResult("s", "https://x/u", "markup", "t", null, false,
+                        List.of(new CheckResult.Violation("markup-error", "error", "e", 1)))));
+
+        assertEquals("부적합", v.status());
+        assertEquals(1, v.a11yCritical());
+        assertEquals(1, v.markupErrors());
+        assertTrue(v.summary().contains("1"), v.summary());
+    }
+
+    @Test
+    void 위반이_전혀_없으면_적합() {
+        CheckResult ok = new CheckResult("s", "https://x/u", "accessibility", "t", null, true, List.of());
+        assertEquals("적합", ReportWriter.verdict(List.of(ok)).status());
+    }
+
+    @Test
+    void 심각도_낮은_위반만_있으면_개선_권고() {
+        assertEquals("개선 권고", ReportWriter.verdict(List.of(a11y("minor"))).status());
+    }
+
     @Test
     void HTML_대시보드는_자기완결형이며_핵심_데이터를_담는다() {
         CheckResult a = new CheckResult("defect-kwater", "https://x/defects", "accessibility",
                 "20260724-1500", null, false,
                 List.of(new CheckResult.Violation("image-alt", "critical", "대체텍스트 필요", 3)));
         ReportWriter.Report report = new ReportWriter.Report(
-                "defect-kwater", "20260724-1500", ReportWriter.summarize(List.of(a)), List.of(a));
+                "defect-kwater", "20260724-1500", "WCAG 2.1 AA (KWCAG 2.1 병기)",
+                List.of(new ReportWriter.EngineInfo("chromium", "130.0")),
+                ReportWriter.verdict(List.of(a)), ReportWriter.summarize(List.of(a)), List.of(a));
 
         String html = ReportWriter.toHtml(report);
 

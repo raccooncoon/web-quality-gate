@@ -26,8 +26,48 @@ public final class ReportWriter {
     /** 전체 및 타입별 집계. */
     public record Summary(int total, int passed, int failed, Map<String, TypeSummary> byType) {}
 
+    /** 검사에 사용한 브라우저 엔진과 버전. */
+    public record EngineInfo(String name, String version) {}
+
+    /** 종합 게이트 판정과 총평. */
+    public record Verdict(String status, String summary,
+                          int a11yCritical, int a11ySerious, int markupErrors, int compatDiffs) {}
+
     /** 리포트 최상위 스키마 (index.json). */
-    public record Report(String site, String timestamp, Summary summary, List<CheckResult> results) {}
+    public record Report(String site, String timestamp, String standard,
+                         List<EngineInfo> engines, Verdict verdict,
+                         Summary summary, List<CheckResult> results) {}
+
+    /** 결과로부터 종합 게이트 판정을 산출한다. */
+    public static Verdict verdict(List<CheckResult> results) {
+        int critical = countImpact(results, "accessibility", "critical");
+        int serious = countImpact(results, "accessibility", "serious");
+        int markup = results.stream().filter(r -> r.checkType().equals("markup"))
+                .mapToInt(r -> r.violations().size()).sum();
+        int compat = (int) results.stream()
+                .filter(r -> r.checkType().equals("compatibility") && !r.passed()).count();
+
+        String status;
+        if (critical > 0 || serious > 0 || markup > 0) {
+            status = "부적합";
+        } else if (results.stream().allMatch(CheckResult::passed)) {
+            status = "적합";
+        } else {
+            status = "개선 권고";
+        }
+        String summary = String.format(
+                "접근성 위반 심각 %d · 중대 %d, 마크업 오류 %d, 호환성 차이 %d 검출",
+                critical, serious, markup, compat);
+        return new Verdict(status, summary, critical, serious, markup, compat);
+    }
+
+    private static int countImpact(List<CheckResult> results, String type, String impact) {
+        return (int) results.stream()
+                .filter(r -> r.checkType().equals(type))
+                .flatMap(r -> r.violations().stream())
+                .filter(v -> impact.equals(v.impact()))
+                .count();
+    }
 
     /** 결과 목록을 전체·타입별로 집계한다. */
     public static Summary summarize(List<CheckResult> results) {
@@ -50,9 +90,10 @@ public final class ReportWriter {
      *
      * @param outputDir 최상위 출력 디렉터리 (sites.yaml output.dir)
      */
-    public static Path write(String outputDir, String site, String timestamp,
-                             List<CheckResult> results) {
-        Report report = new Report(site, timestamp, summarize(results), results);
+    public static Path write(String outputDir, String site, String timestamp, String standard,
+                             List<EngineInfo> engines, List<CheckResult> results) {
+        Report report = new Report(site, timestamp, standard, engines, verdict(results),
+                summarize(results), results);
         Path dir = Path.of(outputDir, site, timestamp);
         Path index = dir.resolve("index.json");
         try {

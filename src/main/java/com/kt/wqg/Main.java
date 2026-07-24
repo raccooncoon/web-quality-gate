@@ -28,6 +28,13 @@ import java.util.List;
  */
 public class Main {
 
+    /** 산출물에 표기하는 검사 기준. */
+    private static final String STANDARD =
+            "웹접근성 WCAG 2.1 AA (KWCAG 2.1 병기) · 웹호환성 3개 엔진 렌더링 비교";
+
+    /** 한 사이트 검사 산출물: 결과 + 사용한 엔진 버전. */
+    private record SiteOutput(List<CheckResult> results, java.util.Map<String, String> engineVersions) {}
+
     public static void main(String[] args) throws Exception {
         Path configPath = Path.of(args.length > 0 ? args[0] : "config/sites.yaml");
         String onlySite = args.length > 1 ? args[1] : null;
@@ -36,17 +43,25 @@ public class Main {
         List<SitesConfig.Site> targets = config.sites().stream()
                 .filter(s -> onlySite == null || s.name().equals(onlySite))
                 .toList();
+        if (targets.isEmpty()) {
+            System.err.printf("대상 사이트 없음%s%n", onlySite == null ? "" : ": " + onlySite);
+            return;
+        }
 
         try (Playwright playwright = Playwright.create()) {
             for (SitesConfig.Site site : targets) {
                 String timestamp = timestamp();
+                Path reportDir = Path.of(config.output().dir(), site.name(), timestamp);
                 try {
-                    List<CheckResult> results = checkSite(playwright, site, config, timestamp);
+                    SiteOutput out = checkSite(playwright, site, config, timestamp, reportDir);
+                    List<ReportWriter.EngineInfo> engines = out.engineVersions().entrySet().stream()
+                            .map(en -> new ReportWriter.EngineInfo(en.getKey(), en.getValue()))
+                            .toList();
                     Path index = ReportWriter.write(config.output().dir(), site.name(),
-                            timestamp, results);
-                    ReportWriter.Summary s = ReportWriter.summarize(results);
-                    System.out.printf("[%s] 검사 완료 — 전체 %d건 (통과 %d / 실패 %d) → %s%n",
-                            site.name(), s.total(), s.passed(), s.failed(), index);
+                            timestamp, STANDARD, engines, out.results());
+                    ReportWriter.Verdict v = ReportWriter.verdict(out.results());
+                    System.out.printf("[%s] 검사 완료 — %s · %s → %s%n",
+                            site.name(), v.status(), v.summary(), index);
                 } catch (RuntimeException e) {
                     // 사이트 단위 실패 격리 — 한 사이트가 죽어도 나머지는 계속
                     System.err.printf("[%s] 검사 실패: %s%n", site.name(), e.getMessage());
@@ -55,8 +70,8 @@ public class Main {
         }
     }
 
-    private static List<CheckResult> checkSite(Playwright playwright, SitesConfig.Site site,
-                                               SitesConfig config, String timestamp) {
+    private static SiteOutput checkSite(Playwright playwright, SitesConfig.Site site,
+                                        SitesConfig config, String timestamp, Path reportDir) {
         List<CheckResult> results = new ArrayList<>();
 
         Browser chromium = playwright.chromium()
@@ -86,12 +101,15 @@ public class Main {
             chromium.close();
         }
 
+        java.util.Map<String, String> engineVersions = java.util.Map.of();
         if (config.checks().compatibility().enabled()) {
             SitesConfig.Compatibility compat = config.checks().compatibility();
-            results.addAll(CompatibilityCheck.run(playwright, site, timestamp,
-                    compat.engines(), compat.pixelDiffThreshold(), storageState));
+            CompatibilityCheck.CompatOutput co = CompatibilityCheck.run(playwright, site, timestamp,
+                    compat.engines(), compat.pixelDiffThreshold(), storageState, reportDir);
+            results.addAll(co.results());
+            engineVersions = co.engineVersions();
         }
-        return results;
+        return new SiteOutput(results, engineVersions);
     }
 
     /** reports 디렉터리 명명에 쓰는 yyyyMMdd-HHmm. */
