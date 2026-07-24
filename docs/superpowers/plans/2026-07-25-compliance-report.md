@@ -63,9 +63,9 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
 
 **Interfaces:**
 - Produces:
-  - `class ComplianceReportWriter`:
+  - `class ComplianceReportWriter` (report 는 sink 유지 — compliance 를 import 하지 않는다):
     - static `String toHtml(Map<String,Object> payload)` — AssessmentView.build 페이로드 → 자기완결 report.html 문자열.
-    - static `Path write(Path reportDir, KwcagCatalog catalog)` — `AssessmentView.build(reportDir, catalog)` 로 페이로드를 만들고 `toHtml` 결과를 `reportDir/report.html` 에 저장, 경로 반환.
+    - static `Path write(Path reportDir, Map<String,Object> payload)` — `toHtml(payload)` 를 `reportDir/report.html` 에 저장, 경로 반환. (페이로드는 호출자가 AssessmentView.build 로 만들어 전달)
 
 - [ ] **Step 1: Write the failing test**
 
@@ -133,8 +133,6 @@ Expected: FAIL — `cannot find symbol: class ComplianceReportWriter`
 package com.kt.wqg.report;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kt.wqg.compliance.AssessmentView;
-import com.kt.wqg.compliance.KwcagCatalog;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -145,6 +143,7 @@ import java.util.Map;
 /**
  * SI 검수결과표 report.html 생성기. AssessmentView.build 페이로드(37항목 판정·증거·상세설명 +
  * 4카테고리 준수율)를 자기완결·인쇄최적화 HTML 로 렌더한다.
+ * report 는 sink 패키지 — compliance 를 import 하지 않는다. 페이로드는 호출자가 만들어 넘긴다.
  */
 public final class ComplianceReportWriter {
 
@@ -152,9 +151,8 @@ public final class ComplianceReportWriter {
 
     private ComplianceReportWriter() {}
 
-    /** AssessmentView.build 로 페이로드를 만들어 reportDir/report.html 저장. */
-    public static Path write(Path reportDir, KwcagCatalog catalog) {
-        Map<String, Object> payload = AssessmentView.build(reportDir, catalog);
+    /** 페이로드로 reportDir/report.html 저장. */
+    public static Path write(Path reportDir, Map<String, Object> payload) {
         Path out = reportDir.resolve("report.html");
         try {
             Files.writeString(out, toHtml(payload));
@@ -295,8 +293,10 @@ Co-Authored-By: Claude Opus 4.8 (1M context) <noreply@anthropic.com>"
             // index.json (기존) 유지
             ReportWriter.write(config.output().dir(), site.name(), site.label(), timestamp,
                     STANDARD, engines, results);
-            // report.html 을 SI 검수결과표로 최종 생성(기존 URL 중심 리포트 대체)
-            com.kt.wqg.report.ComplianceReportWriter.write(reportDir, catalog);
+            // report.html 을 SI 검수결과표로 최종 생성(기존 URL 중심 리포트 대체).
+            // 페이로드는 compliance.AssessmentView 로 만들어 report 로 넘긴다(report 는 sink).
+            com.kt.wqg.report.ComplianceReportWriter.write(reportDir,
+                    com.kt.wqg.compliance.AssessmentView.build(reportDir, catalog));
             return reportDir.resolve("report.html");
 ```
 
@@ -383,7 +383,8 @@ Expected: `빈_문자열_site_ts_는_거부` FAIL(현재 빈 문자열 미거부
                 return;
             }
             AssessmentView.confirm(dir, b.path("code").asText(), v, b.path("memo").asText(""));
-            com.kt.wqg.report.ComplianceReportWriter.write(dir, catalog); // 정적 리포트 최신화
+            // 정적 리포트 최신화(페이로드를 만들어 report 로 넘김)
+            com.kt.wqg.report.ComplianceReportWriter.write(dir, AssessmentView.build(dir, catalog));
         }
         sendJson(ex, AssessmentView.build(dir, catalog));
 ```
