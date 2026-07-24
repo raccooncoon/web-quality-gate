@@ -44,12 +44,29 @@ public final class CheckRunner {
     }
 
     /**
+     * url 을 열고 검사 가능한 상태까지 기다린 뒤 최종 URL 을 반환한다.
+     * SPA: readySelector 대기 + NETWORKIDLE — 빈 화면 검사로 위반 0건이 나오는 오탐 방지.
+     * MPA: navigate 의 기본 load 대기로 충분.
+     */
+    public static String navigateAndWait(Page page, SitesConfig.Site site, SitesConfig.Url url) {
+        String fullUrl = resolveUrl(site.baseUrl(), url.path());
+        page.navigate(fullUrl);
+        if (site.isSpa()) {
+            if (url.readySelector() != null && !url.readySelector().isBlank()) {
+                page.waitForSelector(url.readySelector());
+            }
+            page.waitForLoadState(LoadState.NETWORKIDLE);
+        }
+        return fullUrl;
+    }
+
+    /**
      * form 로그인을 수행한다. 폼을 실제로 채워 submit 하므로 hidden _csrf 등도 함께 전송된다.
      * submit 후에도 로그인 페이지에 머물러 있으면(loginSucceeded=false) 실패로 보고 예외.
      *
      * @return 로그인 성공 후의 최종 URL
      */
-    static String login(Page page, SitesConfig.Site site, Credentials creds) {
+    public static String login(Page page, SitesConfig.Site site, Credentials creds) {
         SitesConfig.Auth auth = site.auth();
         String loginUrl = resolveUrl(site.baseUrl(), auth.loginPath());
         page.navigate(loginUrl);
@@ -74,7 +91,7 @@ public final class CheckRunner {
      * 현재 페이지의 앵커(&lt;a href&gt;)에서 점검 대상 내부 경로를 수집한다.
      * internalPath 필터를 거쳐 외부·로그아웃·앵커 등을 제외하고 중복 제거 후 정렬한다.
      */
-    static List<String> harvestPaths(Page page, String baseUrl) {
+    public static List<String> harvestPaths(Page page, String baseUrl) {
         List<ElementHandle> anchors = page.querySelectorAll("a[href]");
         return anchors.stream()
                 .map(a -> a.getAttribute("href"))
@@ -89,7 +106,7 @@ public final class CheckRunner {
      * 사이트명으로 WQG_&lt;대문자&gt;_ID / _PW 환경변수를 조회한다.
      * 조회 함수를 주입받아 테스트에서 실제 환경변수 없이 검증 가능하게 둔다.
      */
-    static Credentials credentialsOf(String siteName, UnaryOperator<String> env) {
+    public static Credentials credentialsOf(String siteName, UnaryOperator<String> env) {
         String prefix = "WQG_" + siteName.toUpperCase(Locale.ROOT).replace('-', '_');
         return new Credentials(require(env, prefix + "_ID"), require(env, prefix + "_PW"));
     }
