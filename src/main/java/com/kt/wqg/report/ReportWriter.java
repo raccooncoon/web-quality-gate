@@ -34,7 +34,7 @@ public final class ReportWriter {
                           int a11yCritical, int a11ySerious, int markupErrors, int compatDiffs) {}
 
     /** 리포트 최상위 스키마 (index.json). */
-    public record Report(String site, String timestamp, String standard,
+    public record Report(String site, String displayName, String timestamp, String standard,
                          List<EngineInfo> engines, Verdict verdict,
                          Summary summary, List<CheckResult> results) {}
 
@@ -90,9 +90,9 @@ public final class ReportWriter {
      *
      * @param outputDir 최상위 출력 디렉터리 (sites.yaml output.dir)
      */
-    public static Path write(String outputDir, String site, String timestamp, String standard,
-                             List<EngineInfo> engines, List<CheckResult> results) {
-        Report report = new Report(site, timestamp, standard, engines, verdict(results),
+    public static Path write(String outputDir, String site, String displayName, String timestamp,
+                             String standard, List<EngineInfo> engines, List<CheckResult> results) {
+        Report report = new Report(site, displayName, timestamp, standard, engines, verdict(results),
                 summarize(results), results);
         Path dir = Path.of(outputDir, site, timestamp);
         Path index = dir.resolve("index.json");
@@ -128,86 +128,163 @@ public final class ReportWriter {
             <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
-            <title>web-quality-gate 리포트</title>
+            <title>웹 접근성·호환성 검사 리포트</title>
             <style>
             :root{--bg:#f6f7f9;--card:#fff;--fg:#1a1d21;--muted:#6b7280;--line:#e5e7eb;
-              --pass:#16a34a;--fail:#dc2626;--passbg:#eafbf0;--failbg:#fdecec;--accent:#2563eb;}
+              --pass:#16a34a;--fail:#dc2626;--warn:#d97706;--passbg:#eafbf0;--failbg:#fdecec;--warnbg:#fdf4e7;--accent:#2563eb;}
             @media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--fg:#e6e8eb;
-              --muted:#9099a5;--line:#262c36;--passbg:#0f2a1a;--failbg:#2a1414;}}
+              --muted:#9099a5;--line:#262c36;--passbg:#0f2a1a;--failbg:#2a1414;--warnbg:#2a2110;}}
             *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
               font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
-              line-height:1.5;padding:24px;max-width:1100px;margin:0 auto}
-            h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);font-size:13px;margin-bottom:20px}
-            .gate{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:13px}
-            .gate.fail{background:var(--failbg);color:var(--fail)}.gate.pass{background:var(--passbg);color:var(--pass)}
-            .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+              line-height:1.55;padding:32px 24px;max-width:1080px;margin:0 auto}
+            h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 12px;padding-top:8px}
+            h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:16px 0 8px}
+            .sub{color:var(--muted);font-size:13px}
+            .meta-line{color:var(--muted);font-size:12.5px;margin-top:6px}
+            .meta-line b{color:var(--fg);font-weight:600}
+            .verdict{border-radius:14px;padding:18px 20px;margin:18px 0 8px;border:1px solid var(--line)}
+            .verdict.부적합{background:var(--failbg);border-color:var(--fail)}
+            .verdict.개선{background:var(--warnbg);border-color:var(--warn)}
+            .verdict.적합{background:var(--passbg);border-color:var(--pass)}
+            .verdict .status{font-size:20px;font-weight:800}
+            .verdict.부적합 .status{color:var(--fail)}.verdict.개선 .status{color:var(--warn)}.verdict.적합 .status{color:var(--pass)}
+            .verdict .desc{font-size:13.5px;margin-top:4px}
+            .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:16px 0 8px}
             .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
-            .card .t{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-            .card .n{font-size:26px;font-weight:700;margin-top:4px}
-            .card .n small{font-size:14px;font-weight:500;color:var(--muted)}
+            .card .t{font-size:12px;color:var(--muted)}
+            .card .n{font-size:24px;font-weight:700;margin-top:4px}
+            .card .n small{font-size:13px;font-weight:500;color:var(--muted)}
             .bar{height:6px;border-radius:3px;background:var(--line);margin-top:10px;overflow:hidden}
             .bar>i{display:block;height:100%;background:var(--pass)}
             table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);
-              border-radius:12px;overflow:hidden;margin-bottom:24px}
-            th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:14px}
-            th{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-            tr:last-child td{border-bottom:none}
+              border-radius:12px;overflow:hidden;margin:8px 0 8px}
+            th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);font-size:13.5px}
+            th{font-size:12px;color:var(--muted)}tr:last-child td{border-bottom:none}
             .badge{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600}
             .badge.pass{background:var(--passbg);color:var(--pass)}.badge.fail{background:var(--failbg);color:var(--fail)}
-            details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:10px;padding:0 16px}
-            summary{cursor:pointer;padding:12px 0;font-weight:600;display:flex;justify-content:space-between;gap:12px}
-            summary::-webkit-details-marker{display:none}
+            .kwcag{display:inline-block;background:var(--accent);color:#fff;padding:0 6px;border-radius:5px;font-size:11px;font-weight:600}
+            .sec{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+            .sec>summary{cursor:pointer;padding:12px 16px;font-weight:600;display:flex;justify-content:space-between;
+              align-items:center;gap:12px;list-style:none}
+            .sec>summary::-webkit-details-marker{display:none}
+            .sec .body{padding:4px 16px 14px}
             .vio{border-top:1px solid var(--line);padding:10px 0;font-size:13px}
-            .vio .id{font-family:ui-monospace,monospace;color:var(--accent);font-size:12px}
-            .vio .meta{color:var(--muted);font-size:12px;margin-left:6px}
+            .vio:first-child{border-top:none}
+            .vio .id{font-family:ui-monospace,monospace;color:var(--accent);font-size:12px;font-weight:600}
+            .vio .impact{font-size:11px;font-weight:700;text-transform:uppercase;margin-left:6px}
+            .impact.critical,.impact.error{color:var(--fail)}.impact.serious{color:var(--warn)}
+            .impact.moderate,.impact.minor,.impact.visual{color:var(--muted)}
+            .vio .help{margin-top:3px}
+            .el{margin-top:6px;padding:6px 8px;background:var(--bg);border-radius:6px;font-size:11.5px;overflow-x:auto}
+            .el .tgt{color:var(--accent);font-family:ui-monospace,monospace}
+            .el pre{margin:3px 0 0;white-space:pre-wrap;word-break:break-all;font-family:ui-monospace,monospace;color:var(--muted)}
+            .shots{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}
+            .shot{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg)}
+            .shot .cap{font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line);font-weight:600}
+            .shot img{display:block;width:100%;height:auto}
             code{font-family:ui-monospace,monospace;font-size:12px}
+            footer{margin-top:32px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11.5px}
+            @media print{
+              body{padding:0;max-width:none;font-size:12px}
+              .sec,.card,.verdict,table{break-inside:avoid;box-shadow:none}
+              .sec>summary{list-style:none}details.sec{border-color:#ccc}
+              h2{break-after:avoid}.shot img{max-height:420px;object-fit:contain;object-position:top}
+              a{color:inherit;text-decoration:none}
+            }
             </style></head><body>
             <div id="app"></div>
             <script id="data" type="application/json">/*__DATA__*/</script>
             <script>
             const R=JSON.parse(document.getElementById('data').textContent);
             const TYPES=[['accessibility','접근성'],['markup','마크업'],['compatibility','호환성']];
-            const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+            const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
             const pct=(p,t)=>t?Math.round(p/t*100):100;
-            // url -> {type -> [results]}
+            const path=u=>{try{return new URL(u).pathname}catch(e){return u}};
+            const typeKo=k=>({accessibility:'접근성',markup:'마크업',compatibility:'호환성'}[k]||k);
+            const baseline=R.engines&&R.engines.length?R.engines[0].name:null;
             const byUrl={};
             R.results.forEach(r=>{(byUrl[r.url]=byUrl[r.url]||{});(byUrl[r.url][r.checkType]=byUrl[r.url][r.checkType]||[]).push(r)});
-            const s=R.summary;
-            let h=`<h1>web-quality-gate 리포트 · ${esc(R.site)}</h1>
-              <div class="sub">${esc(R.timestamp)} · 전체 ${s.total}건
-              <span class="gate ${s.failed?'fail':'pass'}">${s.failed?'실패 '+s.failed:'전체 통과'}</span></div>`;
-            h+='<div class="cards">';
-            h+=card('전체',s.passed,s.total);
+
+            const s=R.summary,v=R.verdict;
+            const vClass=v.status==='적합'?'적합':v.status==='부적합'?'부적합':'개선';
+            let h=`<h1>웹 접근성·호환성 검사 리포트</h1>
+              <div class="sub">${esc(R.displayName||R.site)} <code>(${esc(R.site)})</code></div>
+              <div class="meta-line">검사일시 <b>${esc(R.timestamp)}</b> · 기준 <b>${esc(R.standard)}</b></div>
+              <div class="meta-line">검사 브라우저 ${(R.engines||[]).map(e=>`<b>${esc(e.name)} ${esc(e.version)}</b>`).join(' · ')||'-'}</div>
+              <div class="verdict ${vClass}"><div class="status">종합 판정 · ${esc(v.status)}</div>
+                <div class="desc">${esc(v.summary)}</div></div>`;
+
+            h+='<div class="cards">'+card('전체',s.passed,s.total);
             TYPES.forEach(([k,ko])=>{const b=s.byType[k];if(b)h+=card(ko,b.passed,b.total)});
             h+='</div>';
-            // matrix
-            h+='<table><thead><tr><th>URL</th>'+TYPES.map(t=>`<th>${t[1]}</th>`).join('')+'</tr></thead><tbody>';
+
+            h+='<h2>검사 매트릭스</h2><table><thead><tr><th>URL</th>'
+              +TYPES.map(t=>`<th>${t[1]}</th>`).join('')+'</tr></thead><tbody>';
             Object.keys(byUrl).forEach(u=>{
-              h+=`<tr><td><code>${esc(new URL(u).pathname)}</code></td>`;
+              h+=`<tr><td><code>${esc(path(u))}</code></td>`;
               TYPES.forEach(([k])=>{h+='<td>'+cell(byUrl[u][k])+'</td>'});
               h+='</tr>';
             });
             h+='</tbody></table>';
-            // details per failing result
-            const fails=R.results.filter(r=>!r.passed);
-            if(fails.length){h+='<h1 style="font-size:16px">위반 상세 ('+fails.length+')</h1>';
-              fails.forEach(r=>{
-                h+=`<details><summary><span>${esc(new URL(r.url).pathname)} · ${typeKo(r.checkType)}${r.engine?' · '+esc(r.engine):''}</span>
-                  <span class="badge fail">${r.violations.length}건</span></summary>`;
-                r.violations.forEach(v=>{h+=`<div class="vio"><span class="id">${esc(v.id)}</span>
-                  <span class="meta">${esc(v.impact||'')}${v.nodes?' · '+v.nodes+'개':''}</span><br>${esc(v.help||'')}</div>`});
-                h+='</details>';
-              });
-            }
+
+            h+='<h2>URL별 상세</h2>';
+            Object.keys(byUrl).forEach(u=>{
+              const g=byUrl[u];
+              const nfail=Object.values(g).flat().filter(r=>!r.passed).length;
+              h+=`<details class="sec" ${nfail?'open':''}><summary><span><code>${esc(path(u))}</code></span>
+                <span class="badge ${nfail?'fail':'pass'}">${nfail?nfail+' 항목 실패':'통과'}</span></summary><div class="body">`;
+              // accessibility
+              (g.accessibility||[]).forEach(r=>{h+=a11yBlock(r)});
+              // markup
+              (g.markup||[]).forEach(r=>{h+=markupBlock(r)});
+              // compatibility
+              const comp=g.compatibility||[];
+              if(comp.length)h+=compatBlock(u,comp);
+              h+='</div></details>';
+            });
+
+            h+=`<footer>web-quality-gate · axe-core + vnu.jar + Playwright(3-engine).
+              KWCAG 2.1 항목은 WCAG 결과를 참고용으로 자동 매핑한 것으로, 공식 인증 판정이 아닙니다.</footer>`;
             document.getElementById('app').innerHTML=h;
+
             function card(t,p,tot){return `<div class="card"><div class="t">${t}</div>
               <div class="n">${tot-p}<small> / ${tot} 실패</small></div>
               <div class="bar"><i style="width:${pct(p,tot)}%"></i></div></div>`}
-            function cell(rs){if(!rs)return '<span class="meta">-</span>';
+            function cell(rs){if(!rs)return '<span class="sub">-</span>';
               const bad=rs.filter(r=>!r.passed);
               if(!bad.length)return '<span class="badge pass">✓</span>';
               const n=bad.reduce((a,r)=>a+r.violations.length,0);
               return `<span class="badge fail">✗ ${n}</span>`}
-            function typeKo(k){const m={accessibility:'접근성',markup:'마크업',compatibility:'호환성'};return m[k]||k}
+            function a11yBlock(r){let x='<h3>접근성 (WCAG 2.1 AA / KWCAG 2.1)</h3>';
+              if(r.passed)return x+'<div class="vio">위반 없음 ✓</div>';
+              r.violations.forEach(v=>{
+                x+=`<div class="vio"><span class="id">${esc(v.id)}</span>
+                  <span class="impact ${esc(v.impact)}">${esc(v.impact||'')}</span>
+                  ${v.kwcag?`<span class="kwcag">KWCAG ${esc(v.kwcag)}</span>`:''}
+                  <span class="sub"> · ${v.nodes}개 요소</span>
+                  <div class="help">${esc(v.help)}</div>`;
+                (v.elements||[]).forEach(el=>{x+=`<div class="el"><span class="tgt">${esc(el.target||'')}</span>
+                  ${el.html?`<pre>${esc(el.html)}</pre>`:''}</div>`});
+                x+='</div>';
+              });
+              return x}
+            function markupBlock(r){let x='<h3>마크업 유효성 (vnu.jar)</h3>';
+              if(r.passed)return x+'<div class="vio">오류 없음 ✓</div>';
+              r.violations.forEach(v=>{x+=`<div class="vio"><span class="impact error">error</span>
+                <div class="help">${esc(v.help)}</div></div>`});
+              return x}
+            function compatBlock(u,comp){let x='<h3>브라우저 호환성 (엔진 렌더링 비교)</h3>';
+              const base=comp[0].screenshots?comp[0].screenshots[baseline]:null;
+              comp.forEach(r=>{
+                const eng=r.engine, other=r.screenshots?r.screenshots[eng]:null;
+                const dp=(r.diffRatio*100).toFixed(2);
+                x+=`<div class="vio"><b>${esc(baseline)} ↔ ${esc(eng)}</b>
+                  <span class="badge ${r.passed?'pass':'fail'}">${r.passed?'차이 허용범위':'차이 '+dp+'%'}</span>
+                  <div class="shots">
+                    <div class="shot"><div class="cap">${esc(baseline)} (기준)</div>${base?`<img loading="lazy" src="${esc(base)}">`:''}</div>
+                    <div class="shot"><div class="cap">${esc(eng)}</div>${other?`<img loading="lazy" src="${esc(other)}">`:''}</div>
+                  </div></div>`;
+              });
+              return x}
             </script></body></html>""";
 }

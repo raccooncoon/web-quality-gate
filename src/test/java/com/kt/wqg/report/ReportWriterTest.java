@@ -78,7 +78,7 @@ class ReportWriterTest {
                 "20260724-1500", null, false,
                 List.of(new CheckResult.Violation("image-alt", "critical", "대체텍스트 필요", 3)));
         ReportWriter.Report report = new ReportWriter.Report(
-                "defect-kwater", "20260724-1500", "WCAG 2.1 AA (KWCAG 2.1 병기)",
+                "defect-kwater", "결함관리시스템", "20260724-1500", "WCAG 2.1 AA (KWCAG 2.1 병기)",
                 List.of(new ReportWriter.EngineInfo("chromium", "130.0")),
                 ReportWriter.verdict(List.of(a)), ReportWriter.summarize(List.of(a)), List.of(a));
 

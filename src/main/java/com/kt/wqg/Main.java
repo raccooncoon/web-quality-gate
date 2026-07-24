@@ -58,7 +58,7 @@ public class Main {
                             .map(en -> new ReportWriter.EngineInfo(en.getKey(), en.getValue()))
                             .toList();
                     Path index = ReportWriter.write(config.output().dir(), site.name(),
-                            timestamp, STANDARD, engines, out.results());
+                            site.label(), timestamp, STANDARD, engines, out.results());
                     ReportWriter.Verdict v = ReportWriter.verdict(out.results());
                     System.out.printf("[%s] 검사 완료 — %s · %s → %s%n",
                             site.name(), v.status(), v.summary(), index);
