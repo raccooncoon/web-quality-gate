@@ -19,10 +19,20 @@ public final class ReflowProbe implements PageProbe {
 
     @Override
     public List<Finding> run(Page page, String url) {
+        com.microsoft.playwright.options.ViewportSize orig = page.viewportSize();
         List<Viewport> measured = new ArrayList<>();
-        measured.add(measure(page, url, "1920x1080", 1920, 1080, false));
-        measured.add(measure(page, url, "1366x768", 1366, 768, false));
-        measured.add(measure(page, url, "확대200%", 1366, 768, true));
+        try {
+            measured.add(measure(page, url, "1920x1080", 1920, 1080, false));
+            measured.add(measure(page, url, "1366x768", 1366, 768, false));
+            measured.add(measure(page, url, "확대200%", 1366, 768, true));
+        } finally {
+            // 측정용으로 바꾼 뷰포트를 원복해 이후 URL 검사 일관성을 유지
+            if (orig != null) {
+                page.setViewportSize(orig.width, orig.height);
+            } else {
+                page.setViewportSize(1280, 720); // Playwright 기본 뷰포트
+            }
+        }
         return evaluate(url, measured);
     }
 
