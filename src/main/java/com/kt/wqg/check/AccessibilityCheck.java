@@ -30,9 +30,19 @@ public final class AccessibilityCheck {
 
         AxeResults results = new AxeBuilder(page).withTags(tags).analyze();
         List<CheckResult.Violation> violations = toViolations(results.getViolations());
+        List<CheckResult.Pass> passes = toPasses(results.getPasses());
 
         return new CheckResult(site.name(), fullUrl, "accessibility", timestamp, null,
-                violations.isEmpty(), violations);
+                violations.isEmpty(), violations, passes);
+    }
+
+    /** axe 통과 규칙(Rule)을 규칙 id + 검사(통과) 요소 수로 매핑한다(적합 근거용). */
+    static List<CheckResult.Pass> toPasses(List<Rule> rules) {
+        if (rules == null) return List.of();
+        return rules.stream()
+                .map(r -> new CheckResult.Pass(r.getId(), r.getNodes() == null ? 0 : r.getNodes().size()))
+                .filter(p -> p.nodes() > 0)
+                .toList();
     }
 
     /**

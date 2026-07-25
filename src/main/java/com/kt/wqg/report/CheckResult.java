@@ -20,12 +20,29 @@ public record CheckResult(
         boolean passed,
         List<Violation> violations,
         Map<String, String> screenshots,   // 호환성: engine → report.html 기준 상대 png 경로
-        Double diffRatio) {                 // 호환성: 기준 엔진 대비 픽셀 차이 비율
+        Double diffRatio,                   // 호환성: 기준 엔진 대비 픽셀 차이 비율
+        List<Pass> passes) {                // 접근성: 통과한 규칙과 검사 요소 수(적합 근거)
 
-    /** 스크린샷·diff 가 없는 검사(접근성·마크업)용 생성자. */
+    /** 통과 규칙 하나 — 검사해서 정상이었던 요소 수. */
+    public record Pass(String rule, int nodes) {}
+
+    /** 스크린샷·diff 가 없는 검사(마크업)용 생성자. */
     public CheckResult(String site, String url, String checkType, String timestamp,
                        String engine, boolean passed, List<Violation> violations) {
-        this(site, url, checkType, timestamp, engine, passed, violations, null, null);
+        this(site, url, checkType, timestamp, engine, passed, violations, null, null, null);
+    }
+
+    /** 접근성용(통과 내역 포함) 생성자. */
+    public CheckResult(String site, String url, String checkType, String timestamp,
+                       String engine, boolean passed, List<Violation> violations, List<Pass> passes) {
+        this(site, url, checkType, timestamp, engine, passed, violations, null, null, passes);
+    }
+
+    /** 호환성용(스크린샷·diff) 생성자. */
+    public CheckResult(String site, String url, String checkType, String timestamp,
+                       String engine, boolean passed, List<Violation> violations,
+                       Map<String, String> screenshots, Double diffRatio) {
+        this(site, url, checkType, timestamp, engine, passed, violations, screenshots, diffRatio, null);
     }
 
     /** 접근성 위반의 문제 요소 샘플. */

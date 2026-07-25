@@ -36,6 +36,11 @@ public final class ComplianceMapper {
                         .map(v -> new Finding(r.url(), "markup", v.help(), null)))
                 .toList();
 
+        // 규칙별 통과(검사) 요소 수 집계 — 적합 항목의 '무엇을 검사해 정상인지' 근거로 사용
+        Map<String, Integer> passByRule = new java.util.HashMap<>();
+        results.stream().filter(r -> "accessibility".equals(r.checkType()) && r.passes() != null)
+                .forEach(r -> r.passes().forEach(p -> passByRule.merge(p.rule(), p.nodes(), Integer::sum)));
+
         Map<String, ItemResult> out = new LinkedHashMap<>();
         for (CatalogItem item : catalog.items()) {
             ItemResult res;
@@ -46,9 +51,25 @@ public final class ComplianceMapper {
             } else {
                 res = RuleResolver.resolve(item, pool);
             }
-            out.put(item.code(), res);
+            out.put(item.code(), withPassEvidence(item, res, passByRule));
         }
         return out;
+    }
+
+    /** 적합 판정(axe·markup·compat)에 '무엇을 검사해 정상이었는지' 근거를 채운다. */
+    private static ItemResult withPassEvidence(CatalogItem item, ItemResult res, Map<String, Integer> passByRule) {
+        if (res.verdict() != ItemVerdict.적합 || !res.evidence().isEmpty()) return res;
+        List<ItemResult.Evidence> ev = new java.util.ArrayList<>();
+        if ("axe".equals(item.resolver().type()) && item.resolver().rules() != null) {
+            item.resolver().rules().stream().filter(passByRule::containsKey)
+                    .forEach(rule -> ev.add(new ItemResult.Evidence("전체 화면", rule,
+                            passByRule.get(rule) + "개 요소 검사 · 위반 0 · 통과")));
+        } else if ("markup".equals(item.resolver().type())) {
+            ev.add(new ItemResult.Evidence("전체 화면", "markup", "마크업 표준 검사 · 오류 0건 · 통과"));
+        } else if ("compat".equals(item.resolver().type())) {
+            ev.add(new ItemResult.Evidence("전체 화면", "cross-browser", "3개 엔진 렌더링 차이 임계값 이내 · 통과"));
+        }
+        return ev.isEmpty() ? res : new ItemResult(res.code(), res.verdict(), res.source(), ev, res.memo());
     }
 
     private static ItemResult resolveMarkup(CatalogItem item, List<Finding> markupErrors) {
