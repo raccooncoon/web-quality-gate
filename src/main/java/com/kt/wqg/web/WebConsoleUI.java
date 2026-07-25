@@ -173,9 +173,30 @@ final class WebConsoleUI {
                 <div><label>유형</label><select id="ns-type"><option value="spa">SPA</option><option value="mpa">MPA</option></select></div></div>
               <button class="act" onclick="addSystem()">＋ 추가</button>
               <div class="hint">추가 후 baseUrl·계정·경로를 채우세요. 이름은 영소문자·숫자·하이픈만.</div></div></div>`;
-            async function loadConfig(){const {systems}=await api('/api/systems');
+            function llmCard(c){return `<div class="sys" style="border-color:var(--gov)"><div class="body" style="display:block;border:none">
+                <div class="grouphd" style="margin-top:0"><span class="sparkle">✦</span> AI(LLM) 설정 <small class=st style="font-weight:400">수동확인 항목 AI 초안 판정용 (OpenAI 호환)</small></div>
+                <div class="row3">
+                  <div><label>Base URL</label><input id="llm-url" value="${esc(c.baseUrl||'')}" placeholder="http://localhost:11434/v1 또는 GenOS 주소"></div>
+                  <div><label>모델</label><input id="llm-model" value="${esc(c.model||'')}" placeholder="gemma4:latest"></div>
+                  <div><label>API 키 ${c.hasKey?'<span class="pill ok">저장됨</span>':'<span class=st>(무인증이면 비움)</span>'}</label>
+                    <input id="llm-key" type="password" placeholder="${c.hasKey?'변경 시에만 입력':'선택'}"></div></div>
+                <button class="act" onclick="saveLlm()">저장</button>
+                <button class="act ghost" onclick="testLlm()">연결 테스트</button>
+                <div class="hint">GenOS 서빙 LLM 또는 로컬 올라마(localhost:11434/v1) 등 OpenAI 호환 엔드포인트. 키는 이 PC 로컬에만 저장(git 제외). 비전 모델이면 스크린샷도 근거로 사용.</div>
+                <div id="llm-result"></div></div></div>`}
+            async function saveLlm(){const key=$('#llm-key').value;
+              const body={baseUrl:$('#llm-url').value.trim(),model:$('#llm-model').value.trim()};if(key)body.apiKey=key;
+              const r=await api('/api/llm/save','POST',body);toast(r.configured?'AI 설정 저장됨':'저장됨(Base URL 비어있음)')}
+            async function testLlm(){const box=$('#llm-result');box.innerHTML='<div class="hbox"><span class=st>설정 저장 후 연결 테스트 중…</span></div>';
+              const key=$('#llm-key').value;const body={baseUrl:$('#llm-url').value.trim(),model:$('#llm-model').value.trim()};if(key)body.apiKey=key;
+              await api('/api/llm/save','POST',body);
+              let r;try{r=await api('/api/llm/test')}catch(e){r={error:String(e)}}
+              if(r.configured===false){box.innerHTML='<div class="hbox no">Base URL 을 입력하세요</div>';return}
+              if(r.error){box.innerHTML='<div class="hbox no">✗ 연결 실패: '+esc(r.error)+'</div>';return}
+              box.innerHTML='<div class="hbox ok">✓ 연결 성공 · 모델 '+esc(r.model)+' · 응답 "'+esc(r.reply)+'"</div>'}
+            async function loadConfig(){const [{systems},llm]=await Promise.all([api('/api/systems'),api('/api/llm')]);
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
-              let html='<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
+              let html=llmCard(llm)+'<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
                 +'새 시스템은 아래 <b>시스템 추가</b>에서 만듭니다.</div>'+addForm;
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');

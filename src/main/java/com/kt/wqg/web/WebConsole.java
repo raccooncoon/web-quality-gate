@@ -43,7 +43,10 @@ public final class WebConsole {
         this.configStore = new ConfigStore(configPath);
         this.credentials = new CredentialStore(configPath.resolveSibling("credentials.properties"));
         this.exclusions = new ItemExclusionStore(configPath.resolveSibling("excluded-items.txt"));
+        this.llmStore = new LlmConfigStore(configPath.resolveSibling("llm.properties"));
     }
+
+    private final LlmConfigStore llmStore;
 
     public void start() throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
@@ -65,6 +68,8 @@ public final class WebConsole {
             if (path.startsWith("/api/systems/delete/")) { deleteSystem(ex, path.substring("/api/systems/delete/".length())); return; }
             if (path.equals("/api/detect-selectors")) { detectSelectors(ex); return; }
             if (path.equals("/api/detect-type")) { detectType(ex); return; }
+            if (path.equals("/api/llm")) { sendJson(ex, llmConfigPayload()); return; }
+            if (path.equals("/api/llm/save")) { llmSave(ex); return; }
             if (path.equals("/api/llm/test")) { llmTest(ex); return; }
             if (path.equals("/api/ai-judge")) { aiJudge(ex); return; }
             if (path.startsWith("/api/discover-paths/")) { discoverPaths(ex, path.substring("/api/discover-paths/".length())); return; }
@@ -190,12 +195,28 @@ public final class WebConsole {
         sendJson(ex, m);
     }
 
-    /** LLM 연결 테스트 — WQG_LLM_BASE_URL/MODEL/API_KEY 로 간단 호출. */
+    /** LLM 설정 조회(키는 저장 여부만). */
+    private Object llmConfigPayload() {
+        return Map.of("baseUrl", llmStore.baseUrl(), "model", llmStore.model(),
+                "hasKey", !llmStore.apiKey().isBlank(), "configured", llmStore.configured());
+    }
+
+    /** LLM 설정 저장. body: {baseUrl, model, apiKey}. */
+    private void llmSave(HttpExchange ex) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        // apiKey 를 안 보내거나 비우면 기존 키 유지(마스킹된 상태에서 저장해도 키 안 지워짐)
+        String key = b.has("apiKey") ? b.path("apiKey").asText("") : "";
+        if (key.isBlank()) key = llmStore.apiKey();
+        llmStore.save(b.path("baseUrl").asText(""), b.path("model").asText(""), key);
+        sendJson(ex, Map.of("ok", true, "configured", llmStore.configured()));
+    }
+
+    /** LLM 연결 테스트 — 저장된 설정(파일 우선, 없으면 환경변수)으로 간단 호출. */
     private void llmTest(HttpExchange ex) throws IOException {
-        var llm = com.kt.wqg.llm.LlmClient.fromEnv();
+        var llm = llmStore.client();
         if (!llm.isConfigured()) {
             sendJson(ex, Map.of("configured", false,
-                    "hint", "환경변수 WQG_LLM_BASE_URL(예: http://genos.../v1), WQG_LLM_MODEL, WQG_LLM_API_KEY 설정 필요"));
+                    "hint", "설정 탭의 'AI(LLM) 설정'에서 base URL(예: http://localhost:11434/v1 또는 GenOS 주소)·모델을 입력하세요"));
             return;
         }
         try {
@@ -210,8 +231,8 @@ public final class WebConsole {
     /** 수동확인 항목 하나에 대한 LLM 초안 판정. query: site, ts, code. 동기 응답(수초~수십초). */
     @SuppressWarnings("unchecked")
     private void aiJudge(HttpExchange ex) throws IOException {
-        var llm = com.kt.wqg.llm.LlmClient.fromEnv();
-        if (!llm.isConfigured()) { sendJson(ex, Map.of("error", "LLM 미설정(WQG_LLM_BASE_URL)")); return; }
+        var llm = llmStore.client();
+        if (!llm.isConfigured()) { sendJson(ex, Map.of("error", "LLM 미설정 — 설정 탭의 'AI(LLM) 설정'에서 입력하세요")); return; }
         Map<String, String> q = queryParams(ex.getRequestURI().getRawQuery());
         Path dir = reportDirOf(q.get("site"), q.get("ts"));
         String code = q.get("code");
