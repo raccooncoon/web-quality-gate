@@ -227,8 +227,9 @@ public final class ComplianceReportWriter {
               background:rgba(0,0,0,.5);padding:5px 12px;border-radius:3px}
             .sub{color:var(--muted);font-size:12.5px}
             footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.75}
-            .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);opacity:.75;
+            .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);opacity:.75;cursor:pointer;
               background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:3px;padding:1px 5px;z-index:8;font-family:ui-monospace,monospace}
+            .verstamp:hover{opacity:1}
             .pbtn{position:fixed;top:14px;right:16px;background:var(--gov);color:#fff;border:none;border-radius:3px;
               padding:9px 15px;font-size:12.5px;font-weight:700;cursor:pointer;z-index:9;box-shadow:0 2px 8px rgba(0,0,0,.22)}
             .backbtn{position:fixed;top:14px;left:16px;background:var(--paper);color:var(--gov);border:1px solid var(--gov);
@@ -247,7 +248,7 @@ public final class ComplianceReportWriter {
             }
             </style></head><body>
             <a class="backbtn noprint" id="backbtn" href="/#result" style="display:none">← 결과 목록</a>
-            <div class="verstamp noprint">v__VERSION__ · __BUILD_TIME__</div>
+            <div class="verstamp noprint" title="클릭하면 복사" onclick="const t=this.textContent;navigator.clipboard.writeText(t).then(()=>{this.textContent='복사됨 ✓';setTimeout(()=>this.textContent=t,1000)})">v__VERSION__ · __BUILD_TIME__</div>
             <button class="pbtn noprint" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
             <div id="app"></div>
             <div id="lb" class="noprint"><div class="lbcap"></div><div class="lbwrap"><img alt=""><canvas></canvas></div></div>

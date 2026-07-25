@@ -121,8 +121,9 @@ final class WebConsoleUI {
             .statcell{width:340px;max-width:340px;font-size:12px;color:var(--muted);white-space:normal;word-break:break-word;overflow-wrap:anywhere}
             .statcell .pill{white-space:nowrap}
             .itemchk{width:auto;cursor:pointer}
-            .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);z-index:20;opacity:.75;
+            .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);z-index:20;opacity:.75;cursor:pointer;
               background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:ui-monospace,monospace}
+            .verstamp:hover{opacity:1}
             .pwwrap{position:relative}.pwwrap input{padding-right:40px}
             .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;
               cursor:pointer;font-size:16px;line-height:1;padding:4px;opacity:.65}.eye:hover{opacity:1}
@@ -137,7 +138,7 @@ final class WebConsoleUI {
               <div id="assessview" style="display:none"><div class="body"></div></div>
               <div id="compareview" style="display:none"><div class="body"></div></div></main>
             <div class="toast" id="toast"></div>
-            <div class="verstamp" title="도구 버전 · 빌드/배포 시각">v__WQG_VER__ · __WQG_BUILD__</div>
+            <div class="verstamp" title="클릭하면 복사" onclick="copyVer(this)">v__WQG_VER__ · __WQG_BUILD__</div>
             <script>
             const $=s=>document.querySelector(s);
             const api=(u,m,b)=>fetch(u,{method:m||'GET',headers:{'Content-Type':'application/json'},
@@ -145,6 +146,8 @@ final class WebConsoleUI {
             const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
             let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
               clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
+            function copyVer(el){const s=el.textContent.trim();
+              navigator.clipboard.writeText(s).then(()=>toast('복사됨: '+s),()=>toast('복사 실패'))}
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
               $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
