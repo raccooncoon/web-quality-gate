@@ -36,13 +36,14 @@ class RuleResolverTest {
     }
 
     @Test
-    void screen_axe_는_매칭유무와_무관하게_수동확인필요() {
+    void screen_axe_는_위반없으면_수동확인_위반있으면_부적합() {
+        // 안전 자동화: axe 위반이 없으면 판단 불가 → 수동확인, 위반이 있으면 → 부적합
         assertEquals(ItemVerdict.수동확인필요,
                 RuleResolver.resolve(axe("3.3.4", "screen", "autocomplete-valid"), List.of()).verdict());
         List<Finding> f = List.of(new Finding("u", "autocomplete-valid", "h", null));
         ItemResult r = RuleResolver.resolve(axe("3.3.4", "screen", "autocomplete-valid"), f);
-        assertEquals(ItemVerdict.수동확인필요, r.verdict());
-        assertEquals(1, r.evidence().size(), "스크리닝 증거 첨부");
+        assertEquals(ItemVerdict.부적합, r.verdict());
+        assertEquals(1, r.evidence().size(), "위반 증거 첨부");
     }
 
     @Test
@@ -53,9 +54,20 @@ class RuleResolverTest {
     }
 
     @Test
-    void probe_나_none_타입은_수동확인필요() {
+    void probe_는_대상없으면_해당없음() {
+        // 안전 자동화: 존재-검사 프로브가 대상을 못 찾으면(finding 없음) → 해당없음
         CatalogItem probe = new CatalogItem(0, "1.2.1", "accessibility", "manual", "screen", "t", "",
                 new CatalogItem.Resolver("probe", List.of("media-captions")), new CatalogItem.Guide("w","y","b","f","l"));
-        assertEquals(ItemVerdict.수동확인필요, RuleResolver.resolve(probe, List.of()).verdict());
+        assertEquals(ItemVerdict.해당없음, RuleResolver.resolve(probe, List.of()).verdict());
+    }
+
+    @Test
+    void probe_review_는_수동확인_violation_은_부적합() {
+        CatalogItem probe = new CatalogItem(0, "1.2.1", "accessibility", "manual", "screen", "t", "",
+                new CatalogItem.Resolver("probe", List.of("media-captions")), new CatalogItem.Guide("w","y","b","f","l"));
+        List<Finding> review = List.of(new Finding("u", "media-captions", "품질 확인", null, "review"));
+        assertEquals(ItemVerdict.수동확인필요, RuleResolver.resolve(probe, review).verdict());
+        List<Finding> viol = List.of(new Finding("u", "media-captions", "자막 없음", null, "violation"));
+        assertEquals(ItemVerdict.부적합, RuleResolver.resolve(probe, viol).verdict());
     }
 }

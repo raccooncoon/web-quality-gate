@@ -12,10 +12,11 @@ class RuleResolverProbeTest {
     }
 
     @Test
-    void probe_screen_은_매칭_증거와_함께_수동확인필요() {
+    void probe_screen_violation_은_부적합_증거포함() {
+        // 안전 자동화: 명백한 위반(violation) finding → 부적합
         List<Finding> f = List.of(new Finding("https://x/a", "reflow-zoom", "가로 오버플로 40px", null));
         ItemResult r = RuleResolver.resolve(probe("c-reflow", "screen", "reflow-zoom"), f);
-        assertEquals(ItemVerdict.수동확인필요, r.verdict());
+        assertEquals(ItemVerdict.부적합, r.verdict());
         assertEquals(1, r.evidence().size());
         assertEquals("reflow-zoom", r.evidence().get(0).rule());
     }
@@ -29,8 +30,10 @@ class RuleResolverProbeTest {
     }
 
     @Test
-    void probe_manual_은_매칭없어도_수동확인필요() {
+    void probe_manual_은_대상없으면_해당없음_review면_수동확인() {
         CatalogItem p = probe("1.3.2", "manual", "linear-order");
-        assertEquals(ItemVerdict.수동확인필요, RuleResolver.resolve(p, List.of()).verdict());
+        assertEquals(ItemVerdict.해당없음, RuleResolver.resolve(p, List.of()).verdict());
+        List<Finding> review = List.of(new Finding("u", "linear-order", "순서 확인", null, "review"));
+        assertEquals(ItemVerdict.수동확인필요, RuleResolver.resolve(p, review).verdict());
     }
 }

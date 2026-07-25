@@ -70,11 +70,11 @@ class ComplianceMapperTest {
 
     @Test
     void probe_finding_이_probe항목에_반영된다() {
-        // c-reflow(probe, screen) 는 probeFindings 로 수동확인필요+증거
+        // c-reflow(probe, auto) 는 reflow-zoom 위반이 있으면 부적합+증거
         java.util.List<Finding> pf = java.util.List.of(new Finding("https://x/a", "reflow-zoom", "가로 오버플로", null));
         Map<String, ItemResult> m = mapper.map(List.of(), pf);
         ItemResult r = m.get("c-reflow");
-        assertEquals(ItemVerdict.수동확인필요, r.verdict());
+        assertEquals(ItemVerdict.부적합, r.verdict());
         assertFalse(r.evidence().isEmpty());
     }
 

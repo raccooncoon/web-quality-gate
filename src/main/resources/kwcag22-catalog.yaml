@@ -366,7 +366,7 @@ items:
     automation: manual
     title: "단일 포인터 입력 지원"
     criteria: "다중 포인터(멀티터치) 또는 경로기반 동작 없이도 단일 포인터로 조작 가능해야 함"
-    resolver: { type: none }
+    resolver: { type: probe, rules: [pointer-gesture] }
     guide:
       what: "핀치줌·스와이프 등 복잡한 제스처가 필요한 UI인지 스크린샷과 상호작용 기록으로 확인합니다."
       why: "손 떨림·한 손 사용자는 멀티터치나 정교한 경로 기반 동작을 수행하기 어렵습니다."
@@ -381,7 +381,7 @@ items:
     automation: manual
     title: "포인터 입력 취소"
     criteria: "단일 포인터 입력으로 실행되는 기능은 완료 전 취소할 수 있어야 함"
-    resolver: { type: none }
+    resolver: { type: probe, rules: [pointer-gesture] }
     guide:
       what: "버튼 클릭이 mousedown/touchstart 시점에 즉시 실행되어 취소 여지가 없는지 스크린샷·동작 기록으로 확인합니다."
       why: "운동 조절이 어려운 사용자는 실수로 누른 입력을 취소할 기회가 필요합니다."
@@ -456,7 +456,7 @@ items:
     automation: manual
     title: "접근 가능한 인증"
     criteria: "인지 기능 테스트(퍼즐 풀이 등)에만 의존하지 않는 인증 수단을 제공"
-    resolver: { type: none }
+    resolver: { type: probe, rules: [auth] }
     guide:
       what: "로그인·본인확인 단계에서 이미지 퍼즐·계산 등 인지 테스트만 존재하는지 스크린샷으로 확인합니다."
       why: "인지장애·시각장애 사용자는 이미지 기반 캡차 등 인지 테스트를 수행하기 어렵습니다."
@@ -543,7 +543,7 @@ items:
     code: "c-reflow"
     category: compatibility
     siClassification: manual
-    automation: screen
+    automation: auto
     title: "해상도·확대 대응"
     criteria: "1920×1080, 1366×768, 확대 200%에서 UI 깨짐 없이 사용 가능"
     resolver: { type: probe, rules: [reflow-zoom] }

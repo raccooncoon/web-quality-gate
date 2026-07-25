@@ -13,7 +13,7 @@ public final class ProbeCheck {
     private ProbeCheck() {}
 
     public static List<PageProbe> defaults() {
-        return List.of(new ReflowProbe());
+        return List.of(new ReflowProbe(), new HeuristicProbe());
     }
 
     public static List<Finding> run(Page page, String url, List<PageProbe> probes) {
