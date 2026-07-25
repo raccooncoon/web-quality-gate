@@ -27,6 +27,25 @@ public class Main {
             return;
         }
 
+        // 폐쇄망 설치 검증용 스모크: chromium 헤드리스가 실제로 뜨고 네비게이션되는지 확인.
+        // OS 라이브러리가 빠졌으면 여기서 브라우저 기동 오류로 즉시 드러난다.
+        if (args.length > 0 && args[0].equals("--smoke")) {
+            String url = args.length > 1 ? args[1] : "about:blank";
+            try (var pw = com.microsoft.playwright.Playwright.create()) {
+                var browser = pw.chromium().launch(
+                        new com.microsoft.playwright.BrowserType.LaunchOptions().setHeadless(true));
+                try {
+                    var page = browser.newContext().newPage();
+                    var resp = page.navigate(url);
+                    System.out.printf("스모크 OK: chromium %s · %s → HTTP %d · title=\"%s\"%n",
+                            browser.version(), url, resp == null ? 0 : resp.status(), page.title());
+                } finally {
+                    browser.close();
+                }
+            }
+            return;
+        }
+
         Path configPath = Path.of(args.length > 0 ? args[0] : "config/sites.yaml");
         String onlySite = args.length > 1 ? args[1] : null;
         SitesConfig config = SitesConfigLoader.load(configPath);
