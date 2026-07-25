@@ -108,6 +108,7 @@ final class WebConsoleUI {
             .phd b{color:var(--navy)}.phd small{color:var(--muted);font-weight:400;font-family:ui-monospace,monospace;font-size:12px}
             .newtag{font-size:10px;font-weight:700;color:var(--gov);background:var(--govsoft);border:1px solid var(--gov);border-radius:3px;padding:0 6px;margin-left:6px}
             .runid{font-size:11px;color:var(--muted);margin-top:3px}.runid code{color:var(--gov);font-size:11px}
+            tr.flash td{animation:fl 1.8s ease}@keyframes fl{0%,45%{background:var(--govsoft)}100%{background:transparent}}
             .cmpbtn{margin-top:0;font-size:12px;padding:5px 12px}
             .cmphd{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);
               border-radius:6px;padding:14px 18px;margin-bottom:8px}
@@ -170,6 +171,7 @@ final class WebConsoleUI {
                 el.querySelector('.detect').onclick=()=>detectSel(s.name,el);
                 el.querySelector('.dtype').onclick=()=>detectType(s.name,el);
                 el.querySelector('.discover').onclick=()=>discoverUrls(s.name,el);
+                el.querySelector('.gorun').onclick=()=>goRun(s.name);
                 el.querySelector('.del').onclick=()=>delSystem(s.name,s.displayName);
               })}
             async function addSystem(){const name=$('#ns-name').value.trim();
@@ -241,7 +243,8 @@ final class WebConsoleUI {
                 <div class="hint">로그인(필요 시) 후 내부 링크를 훑어 후보 경로를 제시합니다. 원하는 항목만 골라 위 목록에 추가하세요.</div>
                 <div class="discovered" id="disc-${s.name}"></div>
                 <div class="actbar"><button class="act save">설정 저장</button>
-                <button class="act ghost health">설정 확인(헬스체크)</button></div>
+                <button class="act ghost health">설정 확인(헬스체크)</button>
+                <button class="act gorun" style="background:var(--ok)">② 실행으로 이동 ▶</button></div>
                 <div class="health" id="health-${s.name}"></div>
                 <div class="danger"><button class="act ghost del">시스템 삭제</button>
                   <span class="hint" style="margin-left:8px">설정과 저장된 계정이 삭제됩니다.</span></div></div></div>`}
@@ -281,6 +284,12 @@ final class WebConsoleUI {
               ta.value=merged.join('\\n');el.querySelector('.discovered').innerHTML='';
               toast(chosen.length+'개 추가됨 — [설정 저장]을 눌러 반영하세요')}
 
+            // 설정 카드 → 실행 탭으로 바로 이동(해당 시스템 행으로 스크롤·강조)
+            function goRun(name){document.querySelector('nav button[data-tab=run]').click();
+              let n=0;const iv=setInterval(()=>{const b=document.getElementById('runbtn-'+name);
+                if(b||n++>25){clearInterval(iv);if(b){const tr=b.closest('tr');
+                  tr.scrollIntoView({behavior:'smooth',block:'center'});
+                  tr.classList.remove('flash');void tr.offsetWidth;tr.classList.add('flash')}}},100)}
             // ── 실행 탭 ──
             let poll;
             let runConfigured=[];
