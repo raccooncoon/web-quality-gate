@@ -222,7 +222,23 @@ public final class WebConsole {
         try {
             String reply = llm.chat("You are a connectivity test. Answer briefly.",
                     "한국어로 'ok'라고만 답해.");
-            sendJson(ex, Map.of("configured", true, "model", llm.model(), "reply", reply.strip()));
+            // 비전 지원 확인 — 빨간 사각형 이미지를 주고 색을 맞히는지로 판별(수동확인 스크린샷 판정에 필요).
+            String vision, visionDetail = "";
+            try {
+                java.awt.image.BufferedImage img = new java.awt.image.BufferedImage(24, 24, java.awt.image.BufferedImage.TYPE_INT_RGB);
+                java.awt.Graphics2D g = img.createGraphics(); g.setColor(java.awt.Color.RED); g.fillRect(0, 0, 24, 24); g.dispose();
+                var baos = new java.io.ByteArrayOutputStream(); javax.imageio.ImageIO.write(img, "png", baos);
+                String uri = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(baos.toByteArray());
+                String vr = llm.chatVision("이미지를 보고 답하는 비전 테스트입니다.",
+                        "이 이미지는 무슨 색인가요? 색 이름 한 단어만 답하세요.", java.util.List.of(uri), false);
+                visionDetail = vr == null ? "" : vr.strip();
+                String v = visionDetail.toLowerCase();
+                vision = (v.contains("빨") || v.contains("red") || v.contains("적")) ? "yes" : "no";
+            } catch (RuntimeException ve) {
+                vision = "no"; visionDetail = "이미지 처리 오류: " + ve.getMessage();
+            }
+            sendJson(ex, Map.of("configured", true, "model", llm.model(), "reply", reply.strip(),
+                    "vision", vision, "visionDetail", visionDetail));
         } catch (RuntimeException e) {
             sendJson(ex, Map.of("configured", true, "model", llm.model(), "error", String.valueOf(e.getMessage())));
         }
@@ -245,8 +261,10 @@ public final class WebConsole {
         List<Map<String, Object>> ev = (List<Map<String, Object>>) it.getOrDefault("evidence", List.of());
         List<String> evStrings = ev.stream()
                 .map(e -> String.valueOf(e.get("rule")) + " — " + String.valueOf(e.get("detail"))).toList();
-        // 비전 근거로 chromium 스크린샷 첨부(최대 2장) — 모델이 화면을 직접 보고 판단
+        // 비전 근거로 chromium 스크린샷 첨부(최대 2장) — 모델이 화면을 직접 보고 판단.
+        // imageNames: 같은 스크린샷의 상대경로 — 응답에 담아 콘솔이 썸네일로 보여주게 한다(평가자도 근거 확인).
         List<String> images = new ArrayList<>();
+        List<String> imageNames = new ArrayList<>();
         Path shots = dir.resolve("screenshots");
         if (Files.isDirectory(shots)) {
             try (Stream<Path> s = Files.list(shots)) {
@@ -254,7 +272,8 @@ public final class WebConsole {
                             return n.startsWith("chromium-") && n.endsWith(".png"); })
                  .sorted().limit(2).forEach(p -> {
                     try { images.add("data:image/png;base64,"
-                            + java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(p))); }
+                            + java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(p)));
+                          imageNames.add("screenshots/" + p.getFileName()); }
                     catch (IOException ignore) { /* 한 장 실패 무시 */ }
                  });
             }
@@ -264,7 +283,8 @@ public final class WebConsole {
                     String.valueOf(it.get("criteria")), String.valueOf(guide.get("what")),
                     String.valueOf(guide.get("why")), evStrings, images);
             sendJson(ex, Map.of("code", code, "verdict", d.verdict(), "reason", d.reason(),
-                    "confidence", d.confidence(), "model", llm.model(), "vision", !images.isEmpty()));
+                    "confidence", d.confidence(), "model", llm.model(), "vision", !images.isEmpty(),
+                    "images", imageNames));
         } catch (RuntimeException e) {
             sendJson(ex, Map.of("error", String.valueOf(e.getMessage())));
         }

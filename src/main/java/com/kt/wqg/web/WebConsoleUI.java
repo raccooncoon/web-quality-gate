@@ -122,6 +122,9 @@ final class WebConsoleUI {
             .statcell .pill{white-space:nowrap}
             .itemchk{width:auto;cursor:pointer}
             .aidraft{margin-top:8px}.aidraft .hbox{background:var(--govsoft);border-color:var(--gov)}
+            .aithumbs{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 4px}
+            .aithumb{height:96px;max-width:220px;object-fit:cover;object-position:top;border:1px solid var(--gov);border-radius:6px;cursor:zoom-in;background:#fff}
+            .aithumb:hover{box-shadow:0 2px 8px rgba(20,40,80,.18)}
             .sparkle{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);-webkit-background-clip:text;background-clip:text;
               -webkit-text-fill-color:transparent;color:transparent;font-weight:800;animation:spk 2.4s ease-in-out infinite;display:inline-block}
             @keyframes spk{0%,100%{filter:drop-shadow(0 0 1px rgba(120,120,255,.4)) saturate(1)}
@@ -193,7 +196,9 @@ final class WebConsoleUI {
               let r;try{r=await api('/api/llm/test')}catch(e){r={error:String(e)}}
               if(r.configured===false){box.innerHTML='<div class="hbox no">Base URL 을 입력하세요</div>';return}
               if(r.error){box.innerHTML='<div class="hbox no">✗ 연결 실패: '+esc(r.error)+'</div>';return}
-              box.innerHTML='<div class="hbox ok">✓ 연결 성공 · 모델 '+esc(r.model)+' · 응답 "'+esc(r.reply)+'"</div>'}
+              const vok=r.vision==='yes';
+              const vline=r.vision?('<div class=st style="margin-top:4px">'+(vok?'👁️ <b style="color:#137333">비전 지원</b> — 스크린샷을 직접 보고 판정 가능':'⚠️ <b style="color:#b45309">비전 미지원</b> — 텍스트 증거만으로 판정(스크린샷 못 봄). 비전 모델 권장(예: gemma3, qwen2.5vl)')+(r.visionDetail?' <span class=st>· 색판별 응답: "'+esc(r.visionDetail)+'"</span>':'')+'</div>'):'';
+              box.innerHTML='<div class="hbox ok">✓ 연결 성공 · 모델 '+esc(r.model)+' · 응답 "'+esc(r.reply)+'"'+vline+'</div>'}
             async function loadConfig(){const [{systems},llm]=await Promise.all([api('/api/systems'),api('/api/llm')]);
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
               let html='<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
@@ -564,6 +569,8 @@ final class WebConsoleUI {
               const vc=verdictClass(r.verdict==='판단보류'?'수동확인필요':r.verdict);const conf=Math.round((r.confidence||0)*100);
               box.innerHTML=`<div class="hbox"><b><span class="sparkle">✦</span> AI 초안 <span class="pill ${vc}">${esc(r.verdict)}</span> <span class=st>신뢰도 ${conf}% · ${esc(r.model)}</span></b>
                 <div class=st style="margin:5px 0">${esc(r.reason)}</div>
+                ${(r.images&&r.images.length)?`<div class=st style="margin:6px 0 3px">✦ AI가 근거로 본 화면 ${r.vision?'(비전 입력됨)':'<b style="color:#b45309">(※ 비전 미지원 모델일 수 있음 — 텍스트 증거만 반영)</b>'} — 클릭하면 원본:</div>
+                  <div class="aithumbs">${r.images.map(fn=>`<a href="/reports/${encodeURIComponent(curSite)}/${encodeURIComponent(curTs)}/${fn}" target="_blank"><img class="aithumb" loading="lazy" src="/reports/${encodeURIComponent(curSite)}/${encodeURIComponent(curTs)}/${fn}" alt="근거 화면"></a>`).join('')}</div>`:''}
                 ${r.verdict==='판단보류'?'<span class=st>판단보류 — 평가자 확인 필요</span>':
                   `<input type=hidden id="ai-memo-${id}" value="${esc('[AI 초안] '+r.reason)}">
                    <button class="act" style="margin-top:0" onclick="confirmItem('${esc(code)}','${esc(r.verdict)}','ai-memo-${id}')">이 판정으로 확정 →</button>`}
