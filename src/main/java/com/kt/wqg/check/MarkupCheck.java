@@ -49,6 +49,11 @@ public final class MarkupCheck {
 
     /** HTML 을 임시파일로 저장해 vnu.jar 를 실행하고 결과를 파싱한다. */
     static List<CheckResult.Violation> validate(String html, String vnuJarPath) {
+        if (vnuJarPath == null || vnuJarPath.isBlank() || !Files.isRegularFile(Path.of(vnuJarPath))) {
+            throw new RuntimeException("vnu.jar 를 찾을 수 없습니다: " + vnuJarPath
+                    + " — sites.yaml checks.markup.vnuJarPath 또는 환경변수 WQG_VNU_JAR 로 실제 경로를 지정하세요."
+                    + " (폐쇄망 패키지는 jar 옆의 vnu.jar 를 WQG_VNU_JAR 로 사용)");
+        }
         Path tmp = null;
         try {
             tmp = Files.createTempFile("wqg-markup-", ".html");
@@ -92,7 +97,9 @@ public final class MarkupCheck {
             }
             return violations;
         } catch (IOException e) {
-            throw new RuntimeException("vnu 출력 파싱 실패", e);
+            String snip = json == null ? "" : json.strip();
+            if (snip.length() > 200) snip = snip.substring(0, 200) + "…";
+            throw new RuntimeException("vnu 출력 파싱 실패 — vnu.jar 실행 출력이 JSON 이 아닙니다: " + snip, e);
         }
     }
 }

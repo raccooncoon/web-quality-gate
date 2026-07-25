@@ -73,9 +73,12 @@ public final class CompatibilityCheck {
         for (SitesConfig.Url url : site.urls()) {
             String fullUrl = CheckRunner.resolveUrl(site.baseUrl(), url.path());
             byte[] base = captures.get(baseline).bytes().get(url.path());
+            if (base == null) continue;  // 기준 엔진 캡처 실패(로드 불가 등) → 이 URL 비교 생략
             for (String engine : engines) {
                 if (engine.equals(baseline)) continue;
-                double ratio = diffRatio(decode(base), decode(captures.get(engine).bytes().get(url.path())));
+                byte[] other = captures.get(engine).bytes().get(url.path());
+                if (other == null) continue;  // 해당 엔진 캡처 실패 → 생략
+                double ratio = diffRatio(decode(base), decode(other));
                 boolean passed = ratio <= threshold;
 
                 Map<String, String> shots = new LinkedHashMap<>();
@@ -106,13 +109,19 @@ public final class CompatibilityCheck {
         try (BrowserContext context = browser.newContext(opts)) {
             Page page = context.newPage();
             for (SitesConfig.Url url : site.urls()) {
-                CheckRunner.navigateAndWait(page, site, url);
-                page.addStyleTag(new Page.AddStyleTagOptions().setContent(FREEZE_CSS));
-                String file = engine + "-" + slug(url.path()) + ".png";
-                byte[] png = page.screenshot(new Page.ScreenshotOptions()
-                        .setFullPage(true).setPath(shotsDir.resolve(file)));
-                bytes.put(url.path(), png);
-                relPaths.put(url.path(), "screenshots/" + file);
+                // URL 단위 격리 — 로드 불가·다운로드 링크(net::ERR_ABORTED)는 스크린샷을 건너뛴다.
+                // 캡처 실패한 URL 은 bytes/relPaths 에 넣지 않아 아래 diff 루프에서 자연히 제외된다.
+                try {
+                    CheckRunner.navigateAndWait(page, site, url);
+                    page.addStyleTag(new Page.AddStyleTagOptions().setContent(FREEZE_CSS));
+                    String file = engine + "-" + slug(url.path()) + ".png";
+                    byte[] png = page.screenshot(new Page.ScreenshotOptions()
+                            .setFullPage(true).setPath(shotsDir.resolve(file)));
+                    bytes.put(url.path(), png);
+                    relPaths.put(url.path(), "screenshots/" + file);
+                } catch (RuntimeException e) {
+                    /* 이 URL 캡처 건너뜀 — 나머지 URL·엔진은 계속 */
+                }
             }
         } finally {
             browser.close();

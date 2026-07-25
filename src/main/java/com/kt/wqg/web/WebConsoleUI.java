@@ -11,85 +11,123 @@ final class WebConsoleUI {
             <meta name="viewport" content="width=device-width, initial-scale=1">
             <title>web-quality-gate 콘솔</title>
             <style>
-            :root{--bg:#f4f6f8;--card:#fff;--fg:#1a1d21;--muted:#6b7280;--line:#e2e6ea;--accent:#2563eb;
-              --ok:#16a34a;--bad:#dc2626;--warn:#d97706;--okbg:#eafbf0;--badbg:#fdecec}
-            @media(prefers-color-scheme:dark){:root{--bg:#0e1116;--card:#171b22;--fg:#e6e8eb;--muted:#9099a5;
-              --line:#262c36;--okbg:#0f2a1a;--badbg:#2a1414}}
-            *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);
-              font-family:system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;line-height:1.5}
-            header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 22px;position:sticky;top:0;z-index:5}
-            header h1{font-size:16px;margin:0;display:flex;align-items:center;gap:10px}
-            header .tag{font-size:11px;color:var(--muted);font-weight:400}
-            nav{display:flex;gap:4px;margin-top:10px}
-            nav button{background:none;border:none;color:var(--muted);font-size:14px;font-weight:600;
-              padding:6px 14px;border-radius:8px;cursor:pointer}
-            nav button.on{background:var(--accent);color:#fff}
+            /* 공공기관 문서 톤 — 밝은 단일 테마(다크모드 미사용), 리포트와 동일 팔레트 */
+            :root{--bg:#eceff4;--card:#fff;--fg:#17202e;--muted:#5a6573;--line:#d4dbe4;--line2:#b9c3d0;
+              --navy:#0f2340;--navy2:#1b3b63;--gov:#1f5aa6;--accent:#1f5aa6;--govsoft:#e9f1fb;--gold:#b0894a;
+              --ok:#1f7a44;--bad:#c02a2a;--warn:#a9781c;--okbg:#e7f4ec;--badbg:#fbeaea;--warnbg:#faf1df;color-scheme:light}
+            *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);word-break:keep-all;
+              font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;line-height:1.55}
+            .ev,input,textarea,code,small,.sys .nm small{word-break:break-all}
+            header{background:linear-gradient(180deg,var(--navy),var(--navy2));border-top:3px solid var(--gold);
+              padding:14px 22px;position:sticky;top:0;z-index:5}
+            header h1{font-size:16px;margin:0;display:flex;align-items:center;gap:10px;color:#fff}
+            header .tag{font-size:11px;color:#aebfd6;font-weight:400}
+            nav{display:flex;gap:6px;margin-top:12px}
+            nav button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#cbd8ea;font-size:13.5px;font-weight:700;
+              padding:7px 16px;border-radius:4px;cursor:pointer}
+            nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             main{max-width:920px;margin:0 auto;padding:22px}
-            .sys{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:14px;overflow:hidden}
+            .notice{background:var(--warnbg);border:1px solid var(--warn);border-radius:4px;
+              padding:11px 14px;font-size:13px;margin-bottom:16px}.notice b{color:var(--warn)}
+            .tabintro{background:var(--govsoft);border:1px solid var(--gov);border-radius:4px;
+              padding:10px 14px;font-size:12.5px;color:var(--fg);margin-bottom:16px;line-height:1.6}.tabintro b{color:var(--navy)}
+            .ok-note{background:var(--okbg);border:1px solid var(--ok);border-radius:4px;padding:11px 14px;font-size:13px;margin-bottom:16px}.ok-note b{color:var(--ok)}
+            .cardsteps{font-size:11.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);
+              border-radius:4px;padding:6px 10px;margin:2px 0 10px}.cardsteps b{color:var(--navy)}
+            .actbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+            .danger{margin-top:14px;padding-top:10px;border-top:1px dashed var(--line2)}
+            .danger .del{color:var(--bad);border-color:var(--bad)}
+            .sys{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;overflow:hidden}
             .sys>.hd{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:12px}
             .sys .nm{font-weight:700}.sys .nm small{color:var(--muted);font-weight:400;font-family:ui-monospace,monospace;margin-left:6px;font-size:12px}
             .sys .body{padding:6px 16px 16px;border-top:1px solid var(--line);display:none}
             .sys.open .body{display:block}
-            .pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px}
-            .pill.ok{background:var(--okbg);color:var(--ok)}.pill.no{background:var(--badbg);color:var(--bad)}
-            .pill.wait{background:var(--badbg);color:var(--warn)}
+            .pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:3px;border:1px solid transparent}
+            .pill.ok{background:var(--okbg);color:var(--ok);border-color:var(--ok)}
+            .pill.no{background:var(--badbg);color:var(--bad);border-color:var(--bad)}
+            .pill.wait{background:var(--warnbg);color:var(--warn);border-color:var(--warn)}
             label{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px;font-weight:600}
-            input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;
-              background:var(--bg);color:var(--fg);font-size:13px;font-family:inherit}
+            input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line2);border-radius:4px;
+              background:#fff;color:var(--fg);font-size:13px;font-family:inherit}
             textarea{min-height:90px;font-family:ui-monospace,monospace;font-size:12px;resize:vertical}
             .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
             .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
             .hint{font-size:11px;color:var(--muted);margin-top:3px}
-            button.act{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 16px;
-              font-size:13px;font-weight:600;cursor:pointer;margin-top:14px}
-            button.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
-            button.run{background:var(--ok)}
-            .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--fg);color:var(--bg);
-              padding:9px 18px;border-radius:999px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
+            button.act{background:var(--gov);color:#fff;border:none;border-radius:4px;padding:6px 13px;
+              font-size:12.5px;font-weight:700;cursor:pointer;margin-top:9px}
+            button.ghost{background:#fff;color:var(--gov);border:1px solid var(--gov)}
+            button.run{background:var(--ok);color:#fff;border:none}
+            button:disabled,button.act:disabled{cursor:not-allowed;opacity:.5;filter:grayscale(1)}
+            .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
+              padding:9px 18px;border-radius:4px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
             .toast.show{opacity:1}
             .st{font-size:12px;color:var(--muted)}
-            table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+            table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:6px;overflow:hidden}
             th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}
-            th{font-size:11px;color:var(--muted);text-transform:uppercase}tr:last-child td{border-bottom:none}
-            a{color:var(--accent)}.auth-only{display:none}.auth-form .auth-only{display:block}
-            .hbox{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:13px;border:1px solid var(--line)}
+            th{font-size:11px;color:var(--navy);background:var(--govsoft);font-weight:700}tr:last-child td{border-bottom:none}
+            a{color:var(--gov)}.auth-only{display:none}.auth-form .auth-only{display:block}
+            .hbox{margin-top:10px;padding:10px 12px;border-radius:4px;font-size:13px;border:1px solid var(--line)}
             .hbox.ok{background:var(--okbg);border-color:var(--ok)}.hbox.no{background:var(--badbg);border-color:var(--bad)}
             .hbox b{display:block;margin-bottom:5px}.hstep{padding:2px 0;font-size:12.5px}
-            .pill.na{background:var(--line);color:var(--muted)}
-            .catbar{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+            .pill.na{background:var(--line);color:var(--muted);border-color:var(--line2)}
+            .catbar{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 14px;margin-bottom:8px}
             .cb-top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:6px;flex-wrap:wrap}
-            .bar{background:var(--line);border-radius:999px;height:8px;overflow:hidden}
+            .bar{background:var(--line);border-radius:3px;height:8px;overflow:hidden}
             .bar>i{display:block;height:100%}
-            .grp{font-size:12px;color:var(--muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.03em}
-            .item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+            .grp{font-size:13px;color:var(--navy);font-weight:700;margin:18px 0 8px}
+            .item{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:8px}
             .it-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
             .it-hd b{flex:1}
-            .linkbtn{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;padding:0}
+            .linkbtn{background:none;border:none;color:var(--gov);font-size:12px;cursor:pointer;padding:0;font-weight:700}
             .ev{font-size:12px;color:var(--muted);margin:2px 0}
             .guide{margin-top:6px;font-size:12.5px;color:var(--muted)}
-            .guide summary{cursor:pointer;color:var(--accent);font-weight:600}
+            .guide summary{cursor:pointer;color:var(--gov);font-weight:700}
             .guide div{margin:4px 0}
-            .override{margin-top:10px;border-top:1px dashed var(--line);padding-top:10px}
+            .override{margin-top:10px;border-top:1px dashed var(--line2);padding-top:10px}
             .ovbtns{display:flex;gap:8px;margin-top:8px}
             .ovbtns button{flex:1}
             .hd2{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
             #assessview .body{max-width:920px;margin:0 auto}
-            .item.needs{border-color:var(--warn);border-left:4px solid var(--warn)}
+            .item.needs{border-color:var(--warn);background:var(--warnbg)}
             .item.done{opacity:.72}
             .filterbar{display:flex;align-items:center;gap:14px;margin:16px 0 4px;flex-wrap:wrap}
             .filterbar label{display:flex;align-items:center;gap:6px;margin:0;color:var(--fg);font-weight:600;cursor:pointer}
             .filterbar input{width:auto}
             .prog{font-size:12px;color:var(--muted)}
             .prog b{color:var(--fg)}
-            .grouphd{font-size:12px;color:var(--muted);font-weight:700;margin:20px 0 8px;padding-bottom:4px;border-bottom:1px solid var(--line);text-transform:uppercase;letter-spacing:.03em}
+            .grouphd{font-size:13px;color:var(--navy);font-weight:700;margin:20px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--navy)}
             td .pill{margin-right:6px}
+            .discovered{margin-top:8px}
+            .candtools{display:flex;gap:12px;margin:6px 0}
+            .candlist{max-height:220px;overflow:auto;margin:8px 0;border:1px solid var(--line2);border-radius:4px;padding:6px 8px;background:#fff}
+            .cand{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg);font-weight:400;margin:2px 0;font-family:ui-monospace,monospace;cursor:pointer}
+            .cand input{width:auto}
+            .platform{margin-bottom:20px}
+            .phd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;margin:0 0 6px;
+              padding-bottom:6px;border-bottom:2px solid var(--navy);color:var(--navy)}
+            .phd b{color:var(--navy)}.phd small{color:var(--muted);font-weight:400;font-family:ui-monospace,monospace;font-size:12px}
+            .newtag{font-size:10px;font-weight:700;color:var(--gov);background:var(--govsoft);border:1px solid var(--gov);border-radius:3px;padding:0 6px;margin-left:6px}
+            .runid{font-size:11px;color:var(--muted);margin-top:3px}.runid code{color:var(--gov);font-size:11px}
+            .cmpbtn{margin-top:0;font-size:12px;padding:5px 12px}
+            .cmphd{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);
+              border-radius:6px;padding:14px 18px;margin-bottom:8px}
+            .cmphd .cmpcol{flex:1}.cmphd .cmpcol b{font-size:15px}.cmphd .arrow{font-size:22px;color:var(--muted)}
+            #compareview .body{max-width:920px;margin:0 auto}
+            tr.improve td{background:var(--okbg)}tr.regress td{background:var(--badbg)}
+            .cmpchk{width:auto;cursor:pointer}
+            .statcell{width:340px;max-width:340px;font-size:12px;color:var(--muted);white-space:normal;word-break:break-word;overflow-wrap:anywhere}
+            .statcell .pill{white-space:nowrap}
+            .pwwrap{position:relative}.pwwrap input{padding-right:40px}
+            .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;
+              cursor:pointer;font-size:16px;line-height:1;padding:4px;opacity:.65}.eye:hover{opacity:1}
             </style></head><body>
-            <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·호환성 검사 콘솔</span></h1>
+            <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
-              <button data-tab="run">② 실행</button><button data-tab="result">③ 결과</button></nav></header>
+              <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="result" style="display:none"></div>
-              <div id="assessview" style="display:none"><div class="body"></div></div></main>
+              <div id="assessview" style="display:none"><div class="body"></div></div>
+              <div id="compareview" style="display:none"><div class="body"></div></div></main>
             <div class="toast" id="toast"></div>
             <script>
             const $=s=>document.querySelector(s);
@@ -100,6 +138,7 @@ final class WebConsoleUI {
               clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+              $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
               ['config','run','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
               if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult()});
 
@@ -114,7 +153,9 @@ final class WebConsoleUI {
               <div class="hint">추가 후 baseUrl·계정·경로를 채우세요. 이름은 영소문자·숫자·하이픈만.</div></div></div>`;
             async function loadConfig(){const {systems}=await api('/api/systems');
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
-              let html=addForm;
+              let html='<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
+                +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
+                +'새 시스템은 아래 <b>시스템 추가</b>에서 만듭니다.</div>'+addForm;
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
               $('#config').innerHTML=html;
@@ -127,6 +168,8 @@ final class WebConsoleUI {
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
                 el.querySelector('.detect').onclick=()=>detectSel(s.name,el);
+                el.querySelector('.dtype').onclick=()=>detectType(s.name,el);
+                el.querySelector('.discover').onclick=()=>discoverUrls(s.name,el);
                 el.querySelector('.del').onclick=()=>delSystem(s.name,s.displayName);
               })}
             async function addSystem(){const name=$('#ns-name').value.trim();
@@ -145,6 +188,14 @@ final class WebConsoleUI {
               if(r.submitSelector)g('submitSelector').value=r.submitSelector;
               const found=[r.idSelector&&'아이디',r.pwSelector&&'비번',r.submitSelector&&'제출'].filter(Boolean);
               box.innerHTML='<div class="hbox '+(found.length?'ok':'no')+'">'+(found.length?'✓ 감지: '+found.join('·')+' (확인 후 저장)':'✗ 로그인 필드를 못 찾음 — 수동 입력')+'</div>'}
+            async function detectType(name,el){const note=el.querySelector('.dtnote');
+              const baseUrl=el.querySelector('[name=baseUrl]').value.trim();
+              if(!baseUrl){toast('baseUrl 입력');return}
+              note.innerHTML='<div class=st>서버 응답으로 유형 확인 중…</div>';
+              let r;try{r=await api('/api/detect-type','POST',{baseUrl})}catch(e){r={error:String(e)}}
+              if(r.error){note.innerHTML='<div class="hbox no">✗ '+esc(r.error)+'</div>';return}
+              el.querySelector('[name=type]').value=r.type;
+              note.innerHTML='<div class="hbox ok">✓ <b>'+esc(r.type.toUpperCase())+'</b> 로 설정 — '+esc(r.reason)+'<div class=hint>확인 후 [설정 저장]</div></div>'}
             async function healthCheck(name){const box=document.getElementById('health-'+name);
               box.innerHTML='<div class=st>설정 확인 중… (브라우저 기동·로그인 점검, 최대 30초)</div>';
               try{const r=await api('/api/health/'+name,'POST',{});
@@ -158,6 +209,7 @@ final class WebConsoleUI {
                 <div>${s.hasCredentials?'<span class=pill ok>계정 저장됨</span>':(s.authType==='form'?'<span class=pill wait>계정 필요</span>':'')}
                   ${cfg?'<span class=pill ok>설정됨</span>':'<span class=pill no>미설정</span>'}</div></div>
                 <div class="body">
+                <div class="cardsteps"><b>진행 순서</b> ① 유형·baseUrl → ② 로그인 필드·계정 → ③ 검사 경로 → ④ 설정 저장 → ⑤ 설정 확인(헬스체크)</div>
                 <div class="row"><div><label>유형</label><select name="type">
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
@@ -165,6 +217,9 @@ final class WebConsoleUI {
                   <option value="none" ${s.authType!=='form'?'selected':''}>없음</option>
                   <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option></select></div></div>
                 <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
+                <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
+                <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
+                <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="auth-only">
                   <div class="row3"><div><label>로그인 경로</label><input name="loginPath" value="${esc(s.loginPath||'/login')}"></div>
                     <div><label>아이디 셀렉터</label><input name="idSelector" value="${esc(s.idSelector||'')}" placeholder="input[name=username]"></div>
@@ -175,17 +230,21 @@ final class WebConsoleUI {
                   <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
                     <input name="cid" value="${esc(s.credId||'')}" placeholder="아이디"></div>
                     <div><label>계정 PW ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
-                    <input name="cpw" type="password" value="${esc(s.credPw||'')}" placeholder="비밀번호"></div></div>
+                    <div class="pwwrap"><input name="cpw" type="password" value="${esc(s.credPw||'')}" placeholder="비밀번호">
+                      <button type="button" class="eye" onclick="togglePw(this)" aria-label="비밀번호 표시/숨김" title="표시/숨김">👁</button></div></div></div>
                   <button class="act ghost savecred">계정만 저장</button>
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>
                 </div>
                 <label>검사 경로 (한 줄에 하나, "경로 | readySelector" 형식 가능)</label>
                 <textarea name="urls">${esc((s.urls||[]).join('\\n'))}</textarea>
-                <div class="hint">로그인 후 경로 자동수집: 터미널에서 DiscoverMain 실행 (README 참고).</div>
-                <button class="act save">설정 저장</button>
-                <button class="act ghost health">설정 확인(헬스체크)</button>
-                <button class="act ghost del" style="color:var(--bad)">시스템 삭제</button>
-                <div class="health" id="health-${s.name}"></div></div></div>`}
+                <button class="act ghost discover">🧭 검사 경로 자동 수집</button>
+                <div class="hint">로그인(필요 시) 후 내부 링크를 훑어 후보 경로를 제시합니다. 원하는 항목만 골라 위 목록에 추가하세요.</div>
+                <div class="discovered" id="disc-${s.name}"></div>
+                <div class="actbar"><button class="act save">설정 저장</button>
+                <button class="act ghost health">설정 확인(헬스체크)</button></div>
+                <div class="health" id="health-${s.name}"></div>
+                <div class="danger"><button class="act ghost del">시스템 삭제</button>
+                  <span class="hint" style="margin-left:8px">설정과 저장된 계정이 삭제됩니다.</span></div></div></div>`}
             function parseUrls(t){return t.split('\\n').map(l=>l.trim()).filter(Boolean).map(l=>{
               const[p,rs]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||''}})}
             async function saveSys(name,el){const g=n=>el.querySelector('[name='+n+']').value;
@@ -197,26 +256,62 @@ final class WebConsoleUI {
             async function saveCred(name,el){const cid=el.querySelector('[name=cid]').value,
               cpw=el.querySelector('[name=cpw]').value;if(!cid||!cpw){toast('ID/PW 입력');return}
               await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});toast('계정 저장됨');loadConfig()}
+            // 검사 경로 자동 수집 — 로그인 후 내부 링크를 훑어 후보 제시 → 선택 → 검사 경로에 추가
+            async function discoverUrls(name,el){const box=el.querySelector('.discovered');
+              box.innerHTML='<div class=st>로그인(필요 시) 후 내부 경로 수집 중… (최대 30초)</div>';
+              let r;try{r=await api('/api/discover-paths/'+name,'POST',{})}catch(e){r={error:String(e)}}
+              if(r.error){box.innerHTML='<div class="hbox no">✗ 수집 실패 — '+esc(r.error)+'<div class=hint>baseUrl·로그인 설정을 먼저 저장했는지 확인하세요.</div></div>';return}
+              const cur=new Set(parseUrls(el.querySelector('[name=urls]').value).map(u=>u.path));
+              const cand=(r.paths||[]).filter(p=>!cur.has(p));
+              if(!cand.length){box.innerHTML='<div class="hbox ok">수집 '+(r.paths||[]).length+'건 — 새로 추가할 경로가 없습니다(이미 목록에 있음).</div>';return}
+              box.innerHTML=`<div class="hbox ok"><b>후보 경로 ${cand.length}건</b> — 추가할 항목을 선택하세요.
+                <div class="candtools"><button class="linkbtn" onclick="candAll('${name}',true)">전체 선택</button>
+                  <button class="linkbtn" onclick="candAll('${name}',false)">전체 해제</button></div>
+                <div class="candlist">${cand.map(p=>`<label class=cand><input type=checkbox checked value="${esc(p)}"> ${esc(p)}</label>`).join('')}</div>
+                <button class="act" onclick="addDiscovered('${name}')">선택 경로 추가</button>
+                <button class="act ghost" onclick="document.getElementById('disc-${name}').innerHTML=''">닫기</button></div>`}
+            function togglePw(btn){const inp=btn.parentNode.querySelector('input');
+              const show=inp.type==='password';inp.type=show?'text':'password';btn.textContent=show?'🙈':'👁'}
+            function candAll(name,v){document.querySelectorAll('#disc-'+name+' .cand input').forEach(c=>c.checked=v)}
+            function addDiscovered(name){const el=document.getElementById('sys-'+name);
+              const chosen=[...el.querySelectorAll('.discovered input:checked')].map(c=>c.value);
+              if(!chosen.length){toast('선택된 경로 없음');return}
+              const ta=el.querySelector('[name=urls]');const merged=parseUrls(ta.value).map(u=>u.path);
+              chosen.forEach(p=>{if(!merged.includes(p))merged.push(p)});
+              ta.value=merged.join('\\n');el.querySelector('.discovered').innerHTML='';
+              toast(chosen.length+'개 추가됨 — [설정 저장]을 눌러 반영하세요')}
 
             // ── 실행 탭 ──
             let poll;
             let runConfigured=[];
             async function loadRun(){const {systems}=await api('/api/systems');
               runConfigured=systems.filter(s=>s.configured).map(s=>s.name);
-              $('#run').innerHTML=`<div class=filterbar><button class="act run" onclick="runAll()" ${runConfigured.length?'':'disabled'}>설정된 시스템 전체 검사 (${runConfigured.length})</button></div>`+
+              $('#run').innerHTML=`<div class="tabintro">설정이 끝난 시스템을 검사합니다. 개별 <b>[검사]</b> 또는 <b>[전체 검사]</b>를 누르고,
+                  상태가 <b>완료</b>가 되면 <b>③ 결과·검수</b> 탭에서 리포트와 판정을 확인하세요. (검사에는 수 분이 걸릴 수 있습니다)</div>
+                <div class=filterbar><button class="act run" id="runall-btn" onclick="runAll()" ${runConfigured.length?'':'disabled'}>설정된 시스템 전체 검사 (${runConfigured.length})</button></div>`+
                 '<table><thead><tr><th>시스템</th><th>설정</th><th>상태</th><th></th></tr></thead><tbody>'+
                 systems.map(s=>`<tr><td>${esc(s.displayName)}<br><small class=st>${s.name}</small></td>
                   <td>${s.configured?'<span class=pill ok>준비</span>':'<span class=pill no>미설정</span>'}
                     ${s.authType==='form'&&!s.hasCredentials?'<span class=pill wait>계정 필요</span>':''}</td>
-                  <td class=st id="stat-${s.name}">-</td>
-                  <td><button class="act run" ${s.configured?'':'disabled'} onclick="runSys('${s.name}')">검사</button></td></tr>`).join('')+
+                  <td class="statcell" id="stat-${s.name}">-</td>
+                  <td><button class="act run" id="runbtn-${s.name}" ${s.configured?'':'disabled'} onclick="runSys('${s.name}')">${s.configured?'검사':'미설정'}</button></td></tr>`).join('')+
                 '</tbody></table>';refreshStatus();
               clearInterval(poll);poll=setInterval(refreshStatus,2000)}
-            async function runSys(name){await api('/api/run/'+name,'POST',{});toast('검사 시작: '+name);refreshStatus()}
-            async function runAll(){for(const n of runConfigured){await api('/api/run/'+n,'POST',{})}
+            function setRunBtn(name,running){const b=document.getElementById('runbtn-'+name);
+              if(!b)return;b.disabled=running;b.textContent=running?'검사 중…':'검사'}
+            async function runSys(name){setRunBtn(name,true);
+              await api('/api/run/'+name,'POST',{});toast('검사 시작: '+name);refreshStatus()}
+            async function runAll(){const rab=document.getElementById('runall-btn');if(rab)rab.disabled=true;
+              runConfigured.forEach(n=>setRunBtn(n,true));
+              for(const n of runConfigured){await api('/api/run/'+n,'POST',{})}
               toast('전체 검사 시작 ('+runConfigured.length+')');refreshStatus()}
             async function refreshStatus(){const {status}=await api('/api/status');
-              Object.entries(status).forEach(([site,st])=>{const el=document.getElementById('stat-'+site);if(!el)return;
+              const anyRunning=Object.values(status).some(st=>st.state==='RUNNING');
+              const rab=document.getElementById('runall-btn');
+              if(rab)rab.disabled=anyRunning||runConfigured.length===0;
+              Object.entries(status).forEach(([site,st])=>{
+                setRunBtn(site,st.state==='RUNNING');            // 실행 중인 시스템 검사 버튼 잠금
+                const el=document.getElementById('stat-'+site);if(!el)return;
                 if(st.state==='RUNNING')el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
                 else if(st.state==='DONE'){const rel=st.message.replace(/^\\.?\\//,'');const ts=rel.split('/')[2];
                   el.innerHTML='<span class=pill ok>완료</span> <a href="/'+rel+'" target="_blank">리포트 ↗</a> '+
@@ -230,23 +325,115 @@ final class WebConsoleUI {
               el.innerHTML='· <span class="pill '+sc+'">'+esc(d.compliance.status)+'</span> 미확정 '+d.compliance.pendingTotal;
             }catch(e){}}
 
-            // ── 결과 탭 ──
-            function statusPill(r){if(!r.status)return '';
+            // ── 결과 탭 (플랫폼별 그룹) ──
+            const WD=['일','월','화','수','목','금','토'];
+            function fmtTs(s){const m=/^(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})$/.exec(s||'');
+              if(!m)return esc(s);const d=new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]);
+              return `${m[1]}-${m[2]}-${m[3]} (${WD[d.getDay()]}) ${m[4]}:${m[5]}`}
+            function statusPill(r){if(!r||!r.status)return '<span class=st>-</span>';
               const sc=r.status==='적합'?'ok':(r.status==='부적합'?'no':'wait');
-              return `<span class="pill ${sc}">${esc(r.status)}</span> <span class=st>미확정 ${r.pendingTotal}</span>`}
-            async function loadResult(){const {reports}=await api('/api/reports');
-              $('#result').innerHTML=reports.length?'<table><thead><tr><th>시스템</th><th>검사일시</th><th>판정</th><th></th></tr></thead><tbody>'+
-                reports.map(r=>`<tr><td>${esc(r.site)}</td><td>${esc(r.timestamp)}</td>
-                  <td>${statusPill(r)}</td>
-                  <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a>
-                  <button class="act ghost" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수</button></td></tr>`).join('')+'</tbody></table>'
-                :'<p class=st>아직 생성된 리포트가 없습니다. ② 실행 탭에서 검사를 돌려보세요.</p>'}
+              return `<span class="pill ${sc}">${esc(r.status)}</span>${r.pendingTotal>0?' <span class=st>미확정 '+r.pendingTotal+'</span>':''}`}
+            function runRow(r,newest,gi,showChk){return `<tr>${showChk?`<td><input type=checkbox class=cmpchk data-g="${gi}" data-ts="${esc(r.timestamp)}" onchange="onCmpChange(${gi})"></td>`:''}<td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}<div class="runid">회차 ID <code>${esc(r.timestamp)}</code></div></td>
+              <td>${statusPill(r)}</td>
+              <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a>
+              <button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
+            function onCmpChange(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
+              const chk=all.filter(c=>c.checked);
+              all.forEach(c=>{c.disabled=!c.checked&&chk.length>=2});   // 2건 선택되면 나머지 잠금
+              const btn=document.getElementById('cmpbtn-'+gi);if(!btn)return;
+              btn.disabled=chk.length!==2;
+              btn.textContent=chk.length===2?'선택한 2건 비교 ▶':('비교할 2건 선택 ('+chk.length+'/2)')}
+            async function loadResult(){
+              const [{reports},{systems}]=await Promise.all([api('/api/reports'),api('/api/systems')]);
+              if(!reports.length){$('#result').innerHTML='<p class=st>아직 생성된 리포트가 없습니다. ② 실행 탭에서 검사를 돌려보세요.</p>';return}
+              const nameOf={};(systems||[]).forEach(s=>nameOf[s.name]=s.displayName||s.name);
+              // reports 는 검사일시 내림차순 — site 별로 등장 순서 유지해 묶으면 그룹=최신검사순, 그룹내=최신순
+              const groups=[],idx={};
+              reports.forEach(r=>{if(!(r.site in idx)){idx[r.site]=groups.length;groups.push({site:r.site,runs:[]})}
+                groups[idx[r.site]].runs.push(r)});
+              const pend=reports.filter(r=>r.pendingTotal>0);
+              const notice=pend.length?`<div class="notice">⚠ <b>수동확인(검수) 필요</b> — ${pend.length}건의 검사에 평가자 확정이 필요한 항목이 있습니다.
+                각 행의 <b>검수</b> 버튼을 눌러 <b>적합/부적합/해당없음</b>으로 확정하면 최종 판정이 확정됩니다.</div>`:'';
+              const body=groups.map((g,gi)=>{const cmp=g.runs.length>=2;
+                return `<div class="platform"><div class="phd">
+                  <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
+                  ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
+                  ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})" style="margin-left:auto">비교할 2건 선택 (0/2)</button>`:''}</div>
+                <table><thead><tr>${cmp?'<th>비교</th>':''}<th>검사일시</th><th>판정</th><th>리포트 · 검수</th></tr></thead><tbody>
+                ${g.runs.map((r,i)=>runRow(r,i===0,gi,cmp)).join('')}</tbody></table></div>`}).join('');
+              $('#result').innerHTML=notice+body}
+
+            // ── 리포트 비교(같은 시스템 두 회차) ──
+            function vpill(v){const sc=v==='적합'?'ok':v==='부적합'?'no':v==='수동확인필요'?'wait':'na';
+              return `<span class="pill ${sc}">${esc(v)}</span>`}
+            const vRank=v=>v==='적합'||v==='해당없음'?2:(v==='수동확인필요'?1:0); // 부적합=0
+            async function openCompare(gi){
+              const chk=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]:checked')];
+              if(chk.length!==2){toast('비교할 2건을 선택하세요');return}
+              const site=document.getElementById('cmpbtn-'+gi).dataset.site;
+              let [a,b]=chk.map(c=>c.dataset.ts).sort();  // 오래된 것=기준, 최신=대상
+              ['config','run','result'].forEach(t=>$('#'+t).style.display='none');
+              $('#compareview').style.display='';setNav('result');window.scrollTo(0,0);
+              $('#compareview .body').innerHTML='<p class=st>비교 데이터를 불러오는 중…</p>';
+              const q=(t)=>'/api/assessment?site='+encodeURIComponent(site)+'&ts='+encodeURIComponent(t);
+              try{const [A,B]=await Promise.all([api(q(a)),api(q(b))]);renderCompare(site,a,b,A,B)}
+              catch(e){$('#compareview .body').innerHTML='<div class="hbox no">비교 데이터를 불러오지 못했습니다: '+esc(e)+'</div>'}}
+            function closeCompare(){$('#compareview').style.display='none';setNav('result');loadResult();$('#result').style.display=''}
+            function renderCompare(site,tsA,tsB,A,B){
+              const name=A.displayName||B.displayName||site;
+              const fmtRate=c=>c?(c.pending>0?'<span class="st">산정 전</span>':'<b>'+c.rate+'%</b>'):'-';
+              let html=`<div class="hd2"><button class="act ghost" style="margin-top:0" onclick="closeCompare()">← 결과 목록</button>
+                <div><b>${esc(name)}</b> <small class=st>검사 회차 비교</small></div></div>
+                <div class="cmphd"><div class="cmpcol"><div class=st>기준(이전)</div><b>${fmtTs(tsA)}</b><div>${vpill(A.compliance.status)} <span class=st>미확정 ${A.compliance.pendingTotal}</span></div></div>
+                  <div class="arrow">→</div>
+                  <div class="cmpcol"><div class=st>대상(최신)</div><b>${fmtTs(tsB)}</b><div>${vpill(B.compliance.status)} <span class=st>미확정 ${B.compliance.pendingTotal}</span></div></div></div>`;
+              // 카테고리 준수율 변화
+              const catB={};(B.compliance.categories||[]).forEach(c=>catB[c.label]=c);
+              html+='<h3 class=grp>카테고리 준수율 변화</h3><table class="dt"><thead><tr><th>구분</th><th>기준</th><th>대상</th><th>변화</th></tr></thead><tbody>';
+              (A.compliance.categories||[]).forEach(c=>{const d=catB[c.label];
+                let delta='<span class=st>—</span>';
+                if(c&&d&&c.pending===0&&d.pending===0){const diff=+(d.rate-c.rate).toFixed(1);
+                  delta=diff>0?'<span style="color:var(--ok);font-weight:700">▲ +'+diff+'%p</span>'
+                    :(diff<0?'<span style="color:var(--bad);font-weight:700">▼ '+diff+'%p</span>':'<span class=st>변화 없음</span>')}
+                else if(c&&d&&(c.pending>0||d.pending>0))delta='<span class=st>산정 전</span>';
+                html+=`<tr><td>${esc(c.label)}</td><td>${fmtRate(c)}</td><td>${fmtRate(d)}</td><td>${delta}</td></tr>`});
+              html+='</tbody></table>';
+              // 판정이 바뀐 항목
+              const bByCode={};(B.items||[]).forEach(it=>bByCode[it.code]=it);
+              const changed=(A.items||[]).map(it=>({a:it,b:bByCode[it.code]}))
+                .filter(p=>p.b&&p.a.verdict!==p.b.verdict)
+                .sort((x,y)=>(vRank(y.b.verdict)-vRank(y.a.verdict))-(vRank(x.b.verdict)-vRank(x.a.verdict)));
+              const nImp=changed.filter(p=>vRank(p.b.verdict)>vRank(p.a.verdict)).length;
+              const nReg=changed.filter(p=>vRank(p.b.verdict)<vRank(p.a.verdict)).length;
+              html+=`<h3 class=grp>판정이 바뀐 항목 (${changed.length}건 · 개선 ${nImp} · 악화 ${nReg})</h3>`;
+              if(changed.length)html+='<table class="dt"><thead><tr><th>코드</th><th>검사 항목</th><th>기준</th><th></th><th>대상</th></tr></thead><tbody>'+
+                changed.map(p=>{const r=vRank(p.b.verdict)-vRank(p.a.verdict);const cls=r>0?'improve':(r<0?'regress':'');
+                  return `<tr class="${cls}"><td><code>${esc(p.a.code)}</code></td><td>${esc(p.a.title)}</td>
+                    <td>${vpill(p.a.verdict)}</td><td>→</td><td>${vpill(p.b.verdict)}</td></tr>`}).join('')+'</tbody></table>';
+              // 위반(증거) 건수 변화 — 판정은 그대로지만 사이트 수정이 반영된 부분
+              const evCount=it=>(it.evidence||[]).length;
+              const evChg=(A.items||[]).map(it=>({a:it,b:bByCode[it.code]}))
+                .filter(p=>p.b&&p.a.verdict===p.b.verdict&&evCount(p.a)!==evCount(p.b))
+                .sort((x,y)=>(evCount(y.a)-evCount(y.b))-(evCount(x.a)-evCount(x.b)));
+              if(evChg.length){
+                html+=`<h3 class=grp>위반 건수 변화 · 판정 동일 (${evChg.length}건)</h3>
+                  <p class=st>사이트 수정이 검사에 반영됐지만, 항목 판정(적합/부적합)을 바꿀 정도는 아닌 변화입니다.</p>
+                  <table class="dt"><thead><tr><th>코드</th><th>검사 항목</th><th>판정</th><th>기준</th><th></th><th>대상</th></tr></thead><tbody>`+
+                  evChg.map(p=>{const ca=evCount(p.a),cb=evCount(p.b);const cls=cb<ca?'improve':(cb>ca?'regress':'');
+                    return `<tr class="${cls}"><td><code>${esc(p.a.code)}</code></td><td>${esc(p.a.title)}</td>
+                      <td>${vpill(p.a.verdict)}</td><td>${ca}건</td><td>${cb<ca?'▼':'▲'}</td><td>${cb}건</td></tr>`}).join('')+'</tbody></table>';
+              }
+              if(!changed.length&&!evChg.length)html+='<p class=st style="margin-top:8px">두 검사 간 판정·위반 건수 변화가 모두 없습니다. (검사 대상 내용이 동일)</p>';
+              $('#compareview .body').innerHTML=html}
 
             // ── 검수 화면(37항목) ──
             let curSite=null,curTs=null;
+            function setNav(tab){document.querySelectorAll('nav button').forEach(x=>
+              x.classList.toggle('on',x.dataset.tab===tab))}
             function openAssessment(site,ts){curSite=site;curTs=ts;
-              $('#result').style.display='none';$('#assessview').style.display='';loadAssessment()}
-            function closeAssessment(){$('#assessview').style.display='none';$('#result').style.display=''}
+              ['config','run','result'].forEach(t=>$('#'+t).style.display='none');
+              $('#assessview').style.display='';setNav('result');window.scrollTo(0,0);loadAssessment()}
+            function closeAssessment(){$('#assessview').style.display='none';setNav('result');loadResult();$('#result').style.display=''}
             async function loadAssessment(){
               const data=await api('/api/assessment?site='+encodeURIComponent(curSite)+'&ts='+encodeURIComponent(curTs));
               renderAssessment(data)}
@@ -284,9 +471,12 @@ final class WebConsoleUI {
               const comp=data.compliance;
               const sc=comp.status==='적합'?'ok':(comp.status==='부적합'?'no':'wait');
               const confirmed=data.items.filter(it=>it.source==='assessor').length;
-              let html=`<div class="hd2"><button class="act ghost" onclick="closeAssessment()">← 결과로</button>
+              let html=`<div class="hd2"><button class="act ghost" style="margin-top:0" onclick="closeAssessment()">← 결과 목록</button>
                 <div><b>${esc(data.displayName||data.site)}</b> <small class=st>${esc(data.timestamp)}</small></div>
                 <span class="pill ${sc}">종합판정: ${esc(comp.status)}</span></div>`;
+              if(comp.pendingTotal>0)html+=`<div class="notice">⚠ <b>미확정 ${comp.pendingTotal}건</b> — 자동 검사가 판단할 수 없는 항목입니다.
+                각 항목의 <b>판정하기</b>를 눌러 <b>적합/부적합/해당없음</b>을 선택하세요. 아래 <b>판정 필요한 항목만 보기</b>로 걸러 볼 수 있습니다.</div>`;
+              else html+=`<div class="ok-note">✓ <b>검수 완료</b> — 모든 항목이 확정되었습니다. 종합판정 <b>${esc(comp.status)}</b>. 리포트에 최종 준수율이 반영됩니다.</div>`;
               html+=`<div class="filterbar">
                 <label><input type=checkbox ${assessFilter?'checked':''} onclick="toggleFilter()"> 판정 필요한 항목만 보기</label>
                 <span class="prog">평가자 확정 <b>${confirmed}</b> · 미확정 <b>${comp.pendingTotal}</b> / 전체 ${data.items.length}</span></div>`;
@@ -306,5 +496,7 @@ final class WebConsoleUI {
               $('#assessview .body').innerHTML=html}
 
             loadConfig();
+            // 리포트의 '결과 목록' 링크(/#result)로 진입 시 결과·검수 탭으로 이동
+            if(location.hash==='#result')document.querySelector('nav button[data-tab=result]').click();
             </script></body></html>""";
 }

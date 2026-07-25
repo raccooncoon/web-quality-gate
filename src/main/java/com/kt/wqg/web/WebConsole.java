@@ -62,6 +62,8 @@ public final class WebConsole {
             if (path.equals("/api/systems/add")) { addSystem(ex); return; }
             if (path.startsWith("/api/systems/delete/")) { deleteSystem(ex, path.substring("/api/systems/delete/".length())); return; }
             if (path.equals("/api/detect-selectors")) { detectSelectors(ex); return; }
+            if (path.equals("/api/detect-type")) { detectType(ex); return; }
+            if (path.startsWith("/api/discover-paths/")) { discoverPaths(ex, path.substring("/api/discover-paths/".length())); return; }
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
             if (path.equals("/api/reports")) { sendJson(ex, reportsPayload()); return; }
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
@@ -179,6 +181,29 @@ public final class WebConsole {
         m.put("pwSelector", d.pwSelector());
         m.put("submitSelector", d.submitSelector());
         sendJson(ex, m);
+    }
+
+    /** 유형(MPA/SPA) 자동 판별 — baseUrl 서버 응답으로 추정. 동기 응답. */
+    private void detectType(HttpExchange ex) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        String baseUrl = b.path("baseUrl").asText("").trim();
+        if (baseUrl.isEmpty() || baseUrl.contains("TODO")) {
+            send(ex, 400, "application/json; charset=utf-8",
+                    "{\"error\":\"baseUrl 을 먼저 입력하세요\"}".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        CheckService.DetectedType d = CheckService.detectType(baseUrl);
+        sendJson(ex, Map.of("type", d.type(), "reason", d.reason()));
+    }
+
+    /** 검사 경로 자동 수집 — 로그인(필요 시) 후 내부 링크에서 후보 경로를 뽑아 반환. 동기 응답. */
+    private void discoverPaths(HttpExchange ex, String name) throws IOException {
+        SitesConfig config = configStore.load();
+        SitesConfig.Site site = config.sites().stream()
+                .filter(s -> s.name().equals(name)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
+        List<String> paths = CheckService.discoverPaths(site, credentials.resolver());
+        sendJson(ex, Map.of("paths", paths));
     }
 
     private void run(HttpExchange ex, String name) throws IOException {

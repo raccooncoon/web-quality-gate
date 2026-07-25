@@ -66,19 +66,32 @@ public final class CheckService {
                     storageState = context.storageState();
                 }
                 int i = 0;
+                List<String> skipped = new ArrayList<>();
                 for (SitesConfig.Url url : site.urls()) {
                     i++;
-                    if (config.checks().accessibility().enabled()) {
-                        progress.accept(String.format("접근성·마크업 검사 (%d/%d): %s", i, total, url.path()));
-                        results.add(AccessibilityCheck.run(page, site, url, timestamp,
-                                config.checks().accessibility().tags()));
+                    // URL 단위 오류 격리 — 다운로드/내보내기 링크(net::ERR_ABORTED)나 일시적 실패
+                    // 하나가 사이트 검사 전체를 중단시키지 않도록 건너뛰고 나머지를 계속한다.
+                    try {
+                        if (config.checks().accessibility().enabled()) {
+                            progress.accept(String.format("접근성·마크업 검사 (%d/%d): %s", i, total, url.path()));
+                            results.add(AccessibilityCheck.run(page, site, url, timestamp,
+                                    config.checks().accessibility().tags()));
+                        }
+                        if (config.checks().markup().enabled()) {
+                            results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config)));
+                        }
+                        probeFindings.addAll(com.kt.wqg.check.probe.ProbeCheck.run(
+                                page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
+                                com.kt.wqg.check.probe.ProbeCheck.defaults()));
+                    } catch (RuntimeException e) {
+                        skipped.add(url.path());
+                        progress.accept(String.format("건너뜀 (%d/%d): %s — %s",
+                                i, total, url.path(), msg(e)));
                     }
-                    if (config.checks().markup().enabled()) {
-                        results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config)));
-                    }
-                    probeFindings.addAll(com.kt.wqg.check.probe.ProbeCheck.run(
-                            page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
-                            com.kt.wqg.check.probe.ProbeCheck.defaults()));
+                }
+                if (!skipped.isEmpty()) {
+                    progress.accept("건너뛴 경로 " + skipped.size() + "건(로드 불가·다운로드 링크 등): "
+                            + String.join(", ", skipped));
                 }
             } finally {
                 chromium.close();
@@ -190,7 +203,85 @@ public final class CheckService {
     }
 
     /** 로그인 폼에서 자동 감지한 셀렉터. 못 찾으면 해당 값은 null. */
+    /**
+     * 로그인(필요 시) 후 내부 네비게이션의 링크를 훑어 점검 후보 경로를 수집한다.
+     * 콘솔 설정 탭의 '검사 경로 자동 수집'에서 사용 — 사용자가 후보를 검토·선택해 urls 에 넣는다.
+     */
+    public static List<String> discoverPaths(SitesConfig.Site site, UnaryOperator<String> credResolver) {
+        try (Playwright playwright = Playwright.create()) {
+            Browser browser = playwright.chromium()
+                    .launch(new BrowserType.LaunchOptions().setHeadless(true));
+            try (BrowserContext context = browser.newContext()) {
+                Page page = context.newPage();
+                if (site.auth() != null && site.auth().required()) {
+                    CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
+                } else {
+                    page.navigate(CheckRunner.resolveUrl(site.baseUrl(), "/"));
+                }
+                return CheckRunner.harvestPaths(page, site.baseUrl());
+            } finally {
+                browser.close();
+            }
+        }
+    }
+
     public record DetectedSelectors(String idSelector, String pwSelector, String submitSelector) {}
+
+    public record DetectedType(String type, String reason) {}
+
+    /**
+     * MPA/SPA 판별: 브라우저로 baseUrl 을 열어 <b>서버 응답 HTML</b> 의 본문 텍스트와
+     * <b>JS 실행 후 렌더된 DOM</b> 의 본문 텍스트를 비교한다.
+     * SPA 는 서버가 빈 셸을 주고 JS 가 본문을 채우므로 렌더 후 텍스트가 급증한다.
+     */
+    public static DetectedType detectType(String baseUrl) {
+        String url = CheckRunner.resolveUrl(baseUrl, "/");
+        try (Playwright pw = Playwright.create()) {
+            Browser br = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+            try (BrowserContext ctx = br.newContext()) {
+                Page page = ctx.newPage();
+                var resp = page.navigate(url, new Page.NavigateOptions()
+                        .setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED)
+                        .setTimeout(20000));
+                String rawHtml = resp != null ? resp.text() : page.content();
+                int rawLen = visibleTextLen(rawHtml);
+                boolean rootDiv = java.util.regex.Pattern
+                        .compile("<(?:div|main)[^>]*id=[\"']?(?:root|app|__next)\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
+                        .matcher(rawHtml).find();
+                try {
+                    page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
+                            new Page.WaitForLoadStateOptions().setTimeout(6000));
+                } catch (RuntimeException ignore) { /* 타임아웃 무시 */ }
+                Object rt = page.evaluate(
+                        "() => document.body ? document.body.innerText.replace(/\\s+/g,' ').trim().length : 0");
+                int renderedLen = rt instanceof Number ? ((Number) rt).intValue() : 0;
+                return classifyType(rawLen, renderedLen, rootDiv);
+            } finally {
+                br.close();
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("유형 판별 실패: " + url + " — " + e.getMessage(), e);
+        }
+    }
+
+    private static int visibleTextLen(String html) {
+        if (html == null) return 0;
+        String s = html.replaceAll("(?is)<script.*?</script>", " ")
+                .replaceAll("(?is)<style.*?</style>", " ")
+                .replaceAll("(?is)<[^>]+>", " ").replaceAll("\\s+", " ").trim();
+        return s.length();
+    }
+
+    /** 서버 텍스트(raw) 대비 렌더 텍스트(rendered) 증가폭으로 판정. 애매하면 MPA(안전측). */
+    static DetectedType classifyType(int rawLen, int renderedLen, boolean rootDiv) {
+        // SPA: 서버가 준 본문은 빈약(<300자)한데 JS 실행 후 본문이 크게 늘어남(2배 이상 & +400자)
+        boolean spa = rawLen < 300 && renderedLen > rawLen * 2 + 400;
+        if (!spa && rawLen < 60 && rootDiv && renderedLen > 400) spa = true; // 완전 빈 셸 + 마운트 지점
+        String reason = String.format("서버 본문 %d자 → 렌더 후 %d자 · root/app 마운트 %s → %s",
+                rawLen, renderedLen, rootDiv ? "있음" : "없음",
+                spa ? "SPA(클라이언트 렌더링)" : "MPA(서버 렌더링)");
+        return new DetectedType(spa ? "spa" : "mpa", reason);
+    }
 
     /** 로그인 페이지의 필드를 여는 페이지에서 휴리스틱으로 찾는 JS. name>id>type 순으로 셀렉터 생성. */
     private static final String DETECT_JS = """
