@@ -17,6 +17,21 @@ public final class ComplianceReportWriter {
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
+    /** 빌드시 주입된 버전·빌드시각(build.properties, Maven 필터링). */
+    private static final String VERSION, BUILD_TIME;
+    static {
+        String v = "dev", b = "-";
+        try (var in = ComplianceReportWriter.class.getResourceAsStream("/build.properties")) {
+            if (in != null) {
+                var p = new java.util.Properties();
+                p.load(in);
+                v = p.getProperty("version", "dev");
+                b = p.getProperty("buildTime", "-").replace("T", " ").replace("Z", " UTC");
+            }
+        } catch (Exception ignore) { /* 없으면 기본값 */ }
+        VERSION = v; BUILD_TIME = b;
+    }
+
     private ComplianceReportWriter() {}
 
     /** 페이로드로 reportDir/report.html 저장. */
@@ -69,7 +84,9 @@ public final class ComplianceReportWriter {
         } catch (IOException e) {
             throw new RuntimeException("리포트 직렬화 실패", e);
         }
-        return TEMPLATE.replace("/*__DATA__*/", data);
+        return TEMPLATE.replace("/*__DATA__*/", data)
+                .replace("__VERSION__", VERSION.replace("\\", "").replace("\"", ""))
+                .replace("__BUILD_TIME__", BUILD_TIME.replace("\\", "").replace("\"", ""));
     }
 
     private static final String TEMPLATE = """
@@ -101,7 +118,7 @@ public final class ComplianceReportWriter {
               border-top:3px solid var(--gold);padding:26px 28px 22px;border-radius:3px 3px 0 0}
             .cover .ey{font-size:11px;letter-spacing:.22em;color:#c7d4e6;font-weight:600}
             .cover .eyk{font-size:12.5px;color:#aebfd6;margin-top:3px}
-            .cover h1{font-family:"Batang","Nanum Myeongjo",serif;font-size:26px;font-weight:700;
+            .cover h1{font-size:26px;font-weight:800;
               margin:12px 0 4px;letter-spacing:-.01em;line-height:1.28}
             .cover .site{font-size:12.5px;color:#b8c7dc;font-family:ui-monospace,monospace}
             .cover .basis{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.16);
@@ -137,6 +154,7 @@ public final class ComplianceReportWriter {
             .dt .num{text-align:right;font-variant-numeric:tabular-nums;font-family:ui-monospace,monospace;white-space:nowrap}
             .dt .r0{color:var(--muted)}
             .dt tr.main:hover{background:var(--govsoft)}
+            .dt tr.totrow td{background:var(--govsoft);border-top:2px solid var(--navy);border-bottom:none}
             /* 항목표 열 폭 — 코드/판정/근거는 줄바꿈 금지, 검사항목·세부기준에 넓게 배분 */
             .items td:nth-child(1),.items th:nth-child(1){width:34px}
             .items td:nth-child(2),.items th:nth-child(2){width:52px;white-space:nowrap}
@@ -195,11 +213,15 @@ public final class ComplianceReportWriter {
             /* 라이트박스 */
             #lb{position:fixed;inset:0;background:rgba(8,12,20,.92);display:none;z-index:50;
               align-items:flex-start;justify-content:center;overflow:auto;padding:24px;cursor:zoom-out}
-            #lb.on{display:flex}#lb img{max-width:100%;height:auto;box-shadow:0 6px 30px rgba(0,0,0,.5)}
+            #lb.on{display:flex}#lb .lbwrap{position:relative;max-width:100%;height:max-content;box-shadow:0 6px 30px rgba(0,0,0,.5)}
+            #lb .lbwrap img{display:block;max-width:100%;height:auto}
+            #lb .lbwrap canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
             #lb .lbcap{position:fixed;top:14px;left:50%;transform:translateX(-50%);color:#fff;font-size:12.5px;
               background:rgba(0,0,0,.5);padding:5px 12px;border-radius:3px}
             .sub{color:var(--muted);font-size:12.5px}
             footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.75}
+            .verstamp{position:fixed;right:12px;bottom:10px;font-size:10.5px;color:var(--muted);
+              background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:3px;padding:3px 8px;z-index:8;font-family:ui-monospace,monospace}
             .pbtn{position:fixed;top:14px;right:16px;background:var(--gov);color:#fff;border:none;border-radius:3px;
               padding:9px 15px;font-size:12.5px;font-weight:700;cursor:pointer;z-index:9;box-shadow:0 2px 8px rgba(0,0,0,.22)}
             .backbtn{position:fixed;top:14px;left:16px;background:var(--paper);color:var(--gov);border:1px solid var(--gov);
@@ -218,9 +240,10 @@ public final class ComplianceReportWriter {
             }
             </style></head><body>
             <a class="backbtn noprint" id="backbtn" href="/#result" style="display:none">← 결과 목록</a>
+            <div class="verstamp noprint">v__VERSION__ · __BUILD_TIME__</div>
             <button class="pbtn noprint" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
             <div id="app"></div>
-            <div id="lb" class="noprint"><div class="lbcap"></div><img alt=""></div>
+            <div id="lb" class="noprint"><div class="lbcap"></div><div class="lbwrap"><img alt=""><canvas></canvas></div></div>
             <script id="data" type="application/json">/*__DATA__*/</script>
             <script>
             // 콘솔(http)로 열람할 때만 '결과 목록' 돌아가기 버튼 노출 (배포 PDF/file:// 에선 숨김)
@@ -251,7 +274,7 @@ public final class ComplianceReportWriter {
             h+=`<h2>종합 판정</h2>
               <div class="verdict ${esc(vc)}">
                 <div><div class="lab">OVERALL VERDICT</div><div class="s">${esc(vc)}</div></div>
-                <div class="rt">적합 <b>${cnt('적합')}</b> · 부적합 <b>${cnt('부적합')}</b> · 수동확인 <b>${cnt('수동확인필요')}</b> · 해당없음 <b>${cnt('해당없음')}</b>${c.pendingTotal>0?'<br>미확정 <b>'+c.pendingTotal+'</b>건 — 평가자 확정 후 최종 판정':''}</div>
+                <div class="rt">전체 <b>${items.length}</b>건 중 · 적합 <b>${cnt('적합')}</b> · 부적합 <b>${cnt('부적합')}</b> · 수동확인 <b>${cnt('수동확인필요')}</b> · 해당없음 <b>${cnt('해당없음')}</b>${c.pendingTotal>0?'<br>미확정 <b>'+c.pendingTotal+'</b>건 — 평가자 확정 후 최종 판정':''}</div>
               </div>`;
             // 카테고리별 준수율
             h+='<h2>카테고리별 준수율</h2><table class="dt"><thead><tr><th>구분</th><th class="num">항목</th><th class="num">적합</th><th class="num">부적합</th><th class="num">해당없음</th><th class="num">대기</th><th>준수율</th><th class="num">기준</th><th>판정</th></tr></thead><tbody>';
@@ -260,6 +283,12 @@ public final class ComplianceReportWriter {
               const bc=s.pending>0?'':(s.pass?'ok':'no');const rate=Math.max(0,Math.min(100,+s.rate||0));
               h+=`<tr><td>${esc(s.label)}</td><td class="num">${s.total}</td><td class="num">${s.적합}</td><td class="num">${s.부적합}</td><td class="num r0">${s.naCount}</td><td class="num">${s.pending}</td>
                 <td>${s.pending>0?'<span class="prov">산정 전</span> <span class="r0" style="font-size:11px">대기 '+s.pending+'건</span>':'<b>'+s.rate+'%</b><div class="bar '+bc+'"><i style="width:'+rate+'%"></i></div>'}</td><td class="num r0">${s.threshold}%</td><td>${st}</td></tr>`});
+            // 합계 행 — 전체 항목 집계
+            const T={total:0,적합:0,부적합:0,na:0,pending:0};
+            (c.categories||[]).forEach(s=>{T.total+=s.total;T.적합+=s.적합;T.부적합+=s.부적합;T.na+=s.naCount;T.pending+=s.pending;});
+            const trate=(T.적합+T.부적합)>0?(T.적합/(T.적합+T.부적합)*100).toFixed(1):'0.0';
+            h+=`<tr class="totrow"><td><b>합계</b></td><td class="num"><b>${T.total}</b></td><td class="num"><b>${T.적합}</b></td><td class="num"><b>${T.부적합}</b></td><td class="num r0">${T.na}</td><td class="num">${T.pending}</td>
+              <td>${T.pending>0?'<span class="prov">산정 전</span> <span class="r0" style="font-size:11px">대기 '+T.pending+'건</span>':'<b>'+trate+'%</b>'}</td><td class="num r0">—</td><td></td></tr>`;
             h+='</tbody></table>';
             h+=`<div class="note">※ 준수율 = 적합 ÷ (적합 + 부적합) × 100. <b>해당없음·대기(미확정)는 분모에서 제외</b>합니다.
               <b>대기 항목이 남은 카테고리는 준수율을 산정하지 않고 '산정 전'으로 표기</b>하며 판정은 <b>대기</b>입니다 —
@@ -273,6 +302,11 @@ public final class ComplianceReportWriter {
                 h+=`<tr class="main" id="it-${esc(it.code)}"><td class="num r0">${it.no}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
                   <td><span class="badge ${esc(it.verdict)}">${esc(it.verdict)}</span></td><td class="sub">${it.source==='assessor'?'평가자 확정':'자동 판정'}</td></tr>`;
                 h+=`<tr class="drow"><td colspan="6"><details class="d"><summary>상세 설명 보기</summary>`;
+                const rmsg=it.verdict==='적합'?'✓ 자동 검사에서 위반이 발견되지 않아 <b>적합</b>입니다.'
+                  :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 <b>해당없음</b>으로 처리했습니다.'
+                  :it.verdict==='수동확인필요'?'대상은 있으나 자동 판정이 어려워 <b>평가자 확인</b>이 필요합니다.'
+                  :'자동 검사에서 <b>위반</b>이 발견되었습니다. 아래 증거를 확인하세요.';
+                h+=`<div class="g"><div><b>검사 결과</b> ${rmsg}</div></div>`;
                 if(it.memo)h+=`<div class="g"><div><b>평가자 메모</b>${esc(it.memo)}</div></div>`;
                 h+=`<div class="g"><div><b>무엇</b>${esc(g.what)}</div><div><b>왜</b>${esc(g.why)}</div>
                   <div><b>근거</b>${esc(g.basis)}</div><div><b>개선 방법</b>${esc(g.fix)}</div>
@@ -307,7 +341,8 @@ public final class ComplianceReportWriter {
               });
             }
             h+=`<footer>web-quality-gate · axe-core + vnu.jar + Playwright(3-engine) + 커스텀 프로브.
-              KWCAG 2.2 항목은 자동 검사 결과를 매핑·집계한 것이며, 수동확인 항목은 평가자 확정을 거칩니다. 공식 인증 판정이 아닙니다.</footer>`;
+              KWCAG 2.2 항목은 자동 검사 결과를 매핑·집계한 것이며, 수동확인 항목은 평가자 확정을 거칩니다. 공식 인증 판정이 아닙니다.
+              <div style="margin-top:6px">도구 버전 <b>__VERSION__</b> · 빌드/배포 <b>__BUILD_TIME__</b></div></footer>`;
             document.getElementById('app').innerHTML=h;
 
             // 개선 필요 요약 → 해당 항목 상세 펼치고 이동
@@ -318,9 +353,16 @@ public final class ComplianceReportWriter {
             document.querySelectorAll('.sumt tr[data-code]').forEach(tr=>tr.addEventListener('click',()=>jumpTo(tr.dataset.code)));
 
             // 라이트박스(화면 크게 보기)
-            const lb=document.getElementById('lb'),lbImg=lb.querySelector('img'),lbCap=lb.querySelector('.lbcap');
+            const lb=document.getElementById('lb'),lbImg=lb.querySelector('img'),lbCap=lb.querySelector('.lbcap'),lbCv=lb.querySelector('canvas');
             document.addEventListener('click',e=>{const img=e.target.closest('.imgwrap img');if(!img)return;
-              lbImg.src=img.src;lbCap.textContent=img.alt;lb.classList.add('on');});
+              lbImg.src=img.src;lbCap.textContent=img.alt;
+              // 썸네일의 차이(빨강) 오버레이를 라이트박스에도 복제 — 작은/큰 사진 일치
+              const srcCv=img.parentNode.querySelector('canvas');
+              if(srcCv&&srcCv.width){lbCv.width=srcCv.width;lbCv.height=srcCv.height;
+                lbCv.getContext('2d').clearRect(0,0,lbCv.width,lbCv.height);
+                lbCv.getContext('2d').drawImage(srcCv,0,0);lbCv.style.display='';}
+              else lbCv.style.display='none';
+              lb.classList.add('on');});
             lb.addEventListener('click',()=>{lb.classList.remove('on');lbImg.src='';});
             addEventListener('keydown',e=>{if(e.key==='Escape')lb.classList.remove('on');});
 

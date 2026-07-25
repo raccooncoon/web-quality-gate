@@ -17,6 +17,7 @@
         <axe.version>4.10.1</axe.version>
         <jackson.version>2.17.2</jackson.version>
         <junit.version>5.10.3</junit.version>
+        <maven.build.timestamp.format>yyyy-MM-dd HH:mm</maven.build.timestamp.format>
     </properties>
 
     <dependencies>
@@ -63,6 +64,19 @@
     </dependencies>
 
     <build>
+        <!-- build.properties 만 필터링해 버전·빌드시각 주입 (다른 리소스는 원본 유지) -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes><exclude>build.properties</exclude></excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes><include>build.properties</include></includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

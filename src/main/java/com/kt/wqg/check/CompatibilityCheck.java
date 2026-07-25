@@ -113,7 +113,17 @@ public final class CompatibilityCheck {
                 // 캡처 실패한 URL 은 bytes/relPaths 에 넣지 않아 아래 diff 루프에서 자연히 제외된다.
                 try {
                     CheckRunner.navigateAndWait(page, site, url);
+                    // 캡처 안정화 — 엔진 간 '같은 시점' 렌더 보장: 네트워크 유휴 + 웹폰트 로드 + 지연 렌더 정착.
+                    // (MPA 는 navigate 가 load 까지만 대기하므로 여기서 추가로 안정화한다)
+                    try {
+                        page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
+                                new Page.WaitForLoadStateOptions().setTimeout(5000));
+                    } catch (RuntimeException ignore) { /* 타임아웃이면 그대로 진행 */ }
+                    try {
+                        page.evaluate("() => (document.fonts ? document.fonts.ready.then(() => true) : true)");
+                    } catch (RuntimeException ignore) { /* 폰트 API 없으면 무시 */ }
                     page.addStyleTag(new Page.AddStyleTagOptions().setContent(FREEZE_CSS));
+                    page.waitForTimeout(350); // 지연 렌더·리플로우 정착
                     String file = engine + "-" + slug(url.path()) + ".png";
                     byte[] png = page.screenshot(new Page.ScreenshotOptions()
                             .setFullPage(true).setPath(shotsDir.resolve(file)));
