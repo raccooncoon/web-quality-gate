@@ -119,6 +119,8 @@ final class WebConsoleUI {
             .statcell{width:340px;max-width:340px;font-size:12px;color:var(--muted);white-space:normal;word-break:break-word;overflow-wrap:anywhere}
             .statcell .pill{white-space:nowrap}
             .itemchk{width:auto;cursor:pointer}
+            .verstamp{position:fixed;right:12px;bottom:10px;font-size:11px;color:var(--muted);z-index:20;
+              background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:4px;padding:3px 9px;font-family:ui-monospace,monospace}
             .pwwrap{position:relative}.pwwrap input{padding-right:40px}
             .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;
               cursor:pointer;font-size:16px;line-height:1;padding:4px;opacity:.65}.eye:hover{opacity:1}
@@ -133,6 +135,7 @@ final class WebConsoleUI {
               <div id="assessview" style="display:none"><div class="body"></div></div>
               <div id="compareview" style="display:none"><div class="body"></div></div></main>
             <div class="toast" id="toast"></div>
+            <div class="verstamp" title="도구 버전 · 빌드/배포 시각">v__WQG_VER__ · __WQG_BUILD__</div>
             <script>
             const $=s=>document.querySelector(s);
             const api=(u,m,b)=>fetch(u,{method:m||'GET',headers:{'Content-Type':'application/json'},
@@ -375,7 +378,12 @@ final class WebConsoleUI {
               <td>${statusPill(r)}</td>
               <td>${itemNums(r)}</td>
               <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a></td>
-              <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
+              <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td>
+              <td><button class="act ghost" style="margin-top:0;color:var(--bad);border-color:var(--bad)" title="이 회차 삭제" onclick="delReport('${esc(r.site)}','${esc(r.timestamp)}')">🗑</button></td></tr>`}
+            async function delReport(site,ts){
+              if(!confirm('이 검사 회차(리포트)를 삭제합니다.\\n\\n시스템: '+site+'\\n회차 ID: '+ts+'\\n\\n리포트·스크린샷·검수 확정이 영구 삭제되며 되돌릴 수 없습니다. 삭제할까요?'))return;
+              const r=await api('/api/reports/delete/'+encodeURIComponent(site)+'/'+encodeURIComponent(ts),'POST',{});
+              if(r&&r.ok){toast('삭제됨: '+ts);loadResult()}else{toast('삭제 실패: '+((r&&r.error)||''))}}
             function onCmpChange(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
               const chk=all.filter(c=>c.checked);
               all.forEach(c=>{c.disabled=!c.checked&&chk.length>=2});   // 2건 선택되면 나머지 잠금
@@ -398,7 +406,7 @@ final class WebConsoleUI {
                   <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
                   ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
                   ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})" style="margin-left:auto">비교할 2건 선택 (0/2)</button>`:''}</div>
-                <table><thead><tr>${cmp?'<th>비교</th>':''}<th>검사일시</th><th>종합</th><th>항목 요약</th><th>리포트</th><th>검수</th></tr></thead><tbody>
+                <table><thead><tr>${cmp?'<th>비교</th>':''}<th>검사일시</th><th>종합</th><th>항목 요약</th><th>리포트</th><th>검수</th><th>삭제</th></tr></thead><tbody>
                 ${g.runs.map((r,i)=>runRow(r,i===0,gi,cmp)).join('')}</tbody></table></div>`}).join('');
               $('#result').innerHTML=notice+body}
 

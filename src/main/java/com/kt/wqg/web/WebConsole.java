@@ -69,6 +69,7 @@ public final class WebConsole {
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
             if (path.equals("/api/items")) { sendJson(ex, itemsPayload()); return; }
             if (path.equals("/api/items/exclude")) { saveExclusions(ex); return; }
+            if (path.startsWith("/api/reports/delete/")) { deleteReport(ex, path.substring("/api/reports/delete/".length())); return; }
             if (path.equals("/api/reports")) { sendJson(ex, reportsPayload()); return; }
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
             if (path.startsWith("/api/credentials/")) { saveCredentials(ex, path.substring("/api/credentials/".length())); return; }
@@ -326,6 +327,24 @@ public final class WebConsole {
     }
 
     /** site/ts 파라미터로부터 reports 하위 안전 경로를 만든다(경로 탈출 차단). */
+    /** 리포트 회차 삭제 — reports/&lt;site&gt;/&lt;ts&gt; 디렉터리 통째로. 경로검증 후 재귀 삭제. */
+    private void deleteReport(HttpExchange ex, String siteTs) throws IOException {
+        int slash = siteTs.indexOf('/');
+        if (slash < 0) { send(ex, 400, "application/json; charset=utf-8",
+                "{\"error\":\"site/ts 형식이 아닙니다\"}".getBytes(StandardCharsets.UTF_8)); return; }
+        String site = java.net.URLDecoder.decode(siteTs.substring(0, slash), StandardCharsets.UTF_8);
+        String ts = java.net.URLDecoder.decode(siteTs.substring(slash + 1), StandardCharsets.UTF_8);
+        Path dir = reportDirOf(site, ts);   // ../ 등 거부
+        if (!Files.isDirectory(dir)) { send(ex, 404, "application/json; charset=utf-8",
+                "{\"error\":\"해당 회차 없음\"}".getBytes(StandardCharsets.UTF_8)); return; }
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try { Files.delete(p); } catch (IOException ignore) { /* 개별 파일 실패 무시 */ }
+            });
+        }
+        sendJson(ex, Map.of("ok", true, "deleted", site + "/" + ts));
+    }
+
     static Path reportDirOf(String site, String ts) {
         if (site == null || ts == null || site.isEmpty() || ts.isEmpty()
                 || site.contains("/") || site.contains("\\") || site.contains("..")
@@ -399,6 +418,8 @@ public final class WebConsole {
         }
     }
 
-    /** 콘솔 UI (인라인 자기완결). */
-    static final String UI = WebConsoleUI.HTML;
+    /** 콘솔 UI (인라인 자기완결). 버전·배포시각(KST) 주입. */
+    static final String UI = WebConsoleUI.HTML
+            .replace("__WQG_VER__", BuildInfo.VERSION)
+            .replace("__WQG_BUILD__", BuildInfo.BUILD_TIME);
 }
