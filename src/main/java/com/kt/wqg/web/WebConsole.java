@@ -65,6 +65,7 @@ public final class WebConsole {
             if (path.startsWith("/api/systems/delete/")) { deleteSystem(ex, path.substring("/api/systems/delete/".length())); return; }
             if (path.equals("/api/detect-selectors")) { detectSelectors(ex); return; }
             if (path.equals("/api/detect-type")) { detectType(ex); return; }
+            if (path.equals("/api/llm/test")) { llmTest(ex); return; }
             if (path.startsWith("/api/discover-paths/")) { discoverPaths(ex, path.substring("/api/discover-paths/".length())); return; }
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
             if (path.equals("/api/items")) { sendJson(ex, itemsPayload()); return; }
@@ -186,6 +187,23 @@ public final class WebConsole {
         m.put("pwSelector", d.pwSelector());
         m.put("submitSelector", d.submitSelector());
         sendJson(ex, m);
+    }
+
+    /** LLM 연결 테스트 — WQG_LLM_BASE_URL/MODEL/API_KEY 로 간단 호출. */
+    private void llmTest(HttpExchange ex) throws IOException {
+        var llm = com.kt.wqg.llm.LlmClient.fromEnv();
+        if (!llm.isConfigured()) {
+            sendJson(ex, Map.of("configured", false,
+                    "hint", "환경변수 WQG_LLM_BASE_URL(예: http://genos.../v1), WQG_LLM_MODEL, WQG_LLM_API_KEY 설정 필요"));
+            return;
+        }
+        try {
+            String reply = llm.chat("You are a connectivity test. Answer briefly.",
+                    "한국어로 'ok'라고만 답해.");
+            sendJson(ex, Map.of("configured", true, "model", llm.model(), "reply", reply.strip()));
+        } catch (RuntimeException e) {
+            sendJson(ex, Map.of("configured", true, "model", llm.model(), "error", String.valueOf(e.getMessage())));
+        }
     }
 
     /** 유형(MPA/SPA) 자동 판별 — baseUrl 서버 응답으로 추정. 동기 응답. */
