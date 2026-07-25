@@ -125,8 +125,11 @@ public final class CompatibilityCheck {
                     page.addStyleTag(new Page.AddStyleTagOptions().setContent(FREEZE_CSS));
                     page.waitForTimeout(350); // 지연 렌더·리플로우 정착
                     String file = engine + "-" + slug(url.path()) + ".png";
+                    // 뷰포트 캡처(fullPage 아님) — 전체페이지는 엔진별 폰트·줄바꿈 차이로 세로 높이가
+                    // 달라지면 그 아래 전체가 어긋나 diff 가 비현실적으로 폭증(전 페이지 ~88%)한다.
+                    // 크로스브라우징 판정은 첫 화면(뷰포트) 레이아웃 일치로 충분하다.
                     byte[] png = page.screenshot(new Page.ScreenshotOptions()
-                            .setFullPage(true).setPath(shotsDir.resolve(file)));
+                            .setFullPage(false).setPath(shotsDir.resolve(file)));
                     bytes.put(url.path(), png);
                     relPaths.put(url.path(), "screenshots/" + file);
                 } catch (RuntimeException e) {
