@@ -121,6 +121,11 @@ final class WebConsoleUI {
             .statcell{width:340px;max-width:340px;font-size:12px;color:var(--muted);white-space:normal;word-break:break-word;overflow-wrap:anywhere}
             .statcell .pill{white-space:nowrap}
             .itemchk{width:auto;cursor:pointer}
+            .aidraft{margin-top:8px}.aidraft .hbox{background:var(--govsoft);border-color:var(--gov)}
+            .sparkle{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);-webkit-background-clip:text;background-clip:text;
+              -webkit-text-fill-color:transparent;color:transparent;font-weight:800;animation:spk 2.4s ease-in-out infinite;display:inline-block}
+            @keyframes spk{0%,100%{filter:drop-shadow(0 0 1px rgba(120,120,255,.4)) saturate(1)}
+              50%{filter:drop-shadow(0 0 4px rgba(150,110,220,.85)) saturate(1.4);transform:scale(1.12)}}
             .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);z-index:20;opacity:.75;cursor:pointer;
               background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:ui-monospace,monospace}
             .verstamp:hover{opacity:1}
@@ -514,9 +519,11 @@ final class WebConsoleUI {
               return `<div class="item ${needs?'needs':'done'}">
                 <div class="it-hd"><span class=st>${it.no}.</span><b>${esc(it.title)}</b><small class=st>${esc(it.code)}</small>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>
-                <button class="linkbtn" onclick="toggleOverride('${id}')">${needs?'판정하기':'수정'}</button></div>
+                <button class="linkbtn" onclick="toggleOverride('${id}')">${needs?'판정하기':'수정'}</button>
+                ${needs?`<button class="linkbtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
+                <div id="ai-${id}" class="aidraft"></div>
                 <details class=guide><summary>상세 설명</summary>
                   <div><b>무엇</b> ${esc(g.what)}</div><div><b>왜</b> ${esc(g.why)}</div>
                   <div><b>근거</b> ${esc(g.basis)}</div><div><b>해결</b> ${esc(g.fix)}</div>
@@ -528,6 +535,17 @@ final class WebConsoleUI {
                     <button class="act ghost" onclick="confirmItem('${esc(it.code)}','부적합','${memoId}')">부적합</button>
                     <button class="act ghost" onclick="confirmItem('${esc(it.code)}','해당없음','${memoId}')">해당없음</button>
                   </div></div></div>`}
+            async function aiDraft(code,id){const box=document.getElementById('ai-'+id);
+              box.innerHTML='<div class="hbox"><span class=st><span class="sparkle">✦</span> AI 판정 중… (모델 응답 대기, 수초~수십초)</span></div>';
+              let r;try{r=await api('/api/ai-judge?site='+encodeURIComponent(curSite)+'&ts='+encodeURIComponent(curTs)+'&code='+encodeURIComponent(code))}catch(e){r={error:String(e)}}
+              if(r.error){box.innerHTML='<div class="hbox no">AI 초안 실패: '+esc(r.error)+'</div>';return}
+              const vc=verdictClass(r.verdict==='판단보류'?'수동확인필요':r.verdict);const conf=Math.round((r.confidence||0)*100);
+              box.innerHTML=`<div class="hbox"><b><span class="sparkle">✦</span> AI 초안 <span class="pill ${vc}">${esc(r.verdict)}</span> <span class=st>신뢰도 ${conf}% · ${esc(r.model)}</span></b>
+                <div class=st style="margin:5px 0">${esc(r.reason)}</div>
+                ${r.verdict==='판단보류'?'<span class=st>판단보류 — 평가자 확인 필요</span>':
+                  `<input type=hidden id="ai-memo-${id}" value="${esc('[AI 초안] '+r.reason)}">
+                   <button class="act" style="margin-top:0" onclick="confirmItem('${esc(code)}','${esc(r.verdict)}','ai-memo-${id}')">이 판정으로 확정 →</button>`}
+                <div class=hint>AI 초안은 참고용입니다. 최종 판정은 평가자가 확정합니다.</div></div>`}
             let assessFilter=false,curData=null;
             function toggleFilter(){assessFilter=!assessFilter;renderAssessment(curData)}
             function renderAssessment(data){curData=data;

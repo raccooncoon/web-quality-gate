@@ -66,6 +66,7 @@ public final class WebConsole {
             if (path.equals("/api/detect-selectors")) { detectSelectors(ex); return; }
             if (path.equals("/api/detect-type")) { detectType(ex); return; }
             if (path.equals("/api/llm/test")) { llmTest(ex); return; }
+            if (path.equals("/api/ai-judge")) { aiJudge(ex); return; }
             if (path.startsWith("/api/discover-paths/")) { discoverPaths(ex, path.substring("/api/discover-paths/".length())); return; }
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
             if (path.equals("/api/items")) { sendJson(ex, itemsPayload()); return; }
@@ -203,6 +204,34 @@ public final class WebConsole {
             sendJson(ex, Map.of("configured", true, "model", llm.model(), "reply", reply.strip()));
         } catch (RuntimeException e) {
             sendJson(ex, Map.of("configured", true, "model", llm.model(), "error", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 수동확인 항목 하나에 대한 LLM 초안 판정. query: site, ts, code. 동기 응답(수초~수십초). */
+    @SuppressWarnings("unchecked")
+    private void aiJudge(HttpExchange ex) throws IOException {
+        var llm = com.kt.wqg.llm.LlmClient.fromEnv();
+        if (!llm.isConfigured()) { sendJson(ex, Map.of("error", "LLM 미설정(WQG_LLM_BASE_URL)")); return; }
+        Map<String, String> q = queryParams(ex.getRequestURI().getRawQuery());
+        Path dir = reportDirOf(q.get("site"), q.get("ts"));
+        String code = q.get("code");
+        if (code == null || code.isEmpty()) { sendJson(ex, Map.of("error", "code 필요")); return; }
+        var payload = com.kt.wqg.compliance.AssessmentView.build(dir, KwcagCatalog.load());
+        List<Map<String, Object>> items = (List<Map<String, Object>>) payload.get("items");
+        Map<String, Object> it = items.stream().filter(m -> code.equals(m.get("code"))).findFirst().orElse(null);
+        if (it == null) { sendJson(ex, Map.of("error", "항목 없음: " + code)); return; }
+        Map<String, Object> guide = (Map<String, Object>) it.getOrDefault("guide", Map.of());
+        List<Map<String, Object>> ev = (List<Map<String, Object>>) it.getOrDefault("evidence", List.of());
+        List<String> evStrings = ev.stream()
+                .map(e -> String.valueOf(e.get("rule")) + " — " + String.valueOf(e.get("detail"))).toList();
+        try {
+            var d = com.kt.wqg.llm.AiJudge.judge(llm, code, String.valueOf(it.get("title")),
+                    String.valueOf(it.get("criteria")), String.valueOf(guide.get("what")),
+                    String.valueOf(guide.get("why")), evStrings);
+            sendJson(ex, Map.of("code", code, "verdict", d.verdict(), "reason", d.reason(),
+                    "confidence", d.confidence(), "model", llm.model()));
+        } catch (RuntimeException e) {
+            sendJson(ex, Map.of("error", String.valueOf(e.getMessage())));
         }
     }
 
