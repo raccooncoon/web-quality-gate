@@ -196,11 +196,12 @@ final class WebConsoleUI {
               box.innerHTML='<div class="hbox ok">✓ 연결 성공 · 모델 '+esc(r.model)+' · 응답 "'+esc(r.reply)+'"</div>'}
             async function loadConfig(){const [{systems},llm]=await Promise.all([api('/api/systems'),api('/api/llm')]);
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
-              let html=llmCard(llm)+'<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
+              let html='<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
                 +'새 시스템은 아래 <b>시스템 추가</b>에서 만듭니다.</div>'+addForm;
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
+              html+='<div class=grouphd>AI 설정</div>'+llmCard(llm);   // 맨 아래
               $('#config').innerHTML=html;
               systems.forEach(s=>{const el=document.getElementById('sys-'+s.name);
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
