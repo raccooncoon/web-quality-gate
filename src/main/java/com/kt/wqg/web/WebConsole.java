@@ -224,12 +224,26 @@ public final class WebConsole {
         List<Map<String, Object>> ev = (List<Map<String, Object>>) it.getOrDefault("evidence", List.of());
         List<String> evStrings = ev.stream()
                 .map(e -> String.valueOf(e.get("rule")) + " — " + String.valueOf(e.get("detail"))).toList();
+        // 비전 근거로 chromium 스크린샷 첨부(최대 2장) — 모델이 화면을 직접 보고 판단
+        List<String> images = new ArrayList<>();
+        Path shots = dir.resolve("screenshots");
+        if (Files.isDirectory(shots)) {
+            try (Stream<Path> s = Files.list(shots)) {
+                s.filter(p -> { String n = p.getFileName().toString();
+                            return n.startsWith("chromium-") && n.endsWith(".png"); })
+                 .sorted().limit(2).forEach(p -> {
+                    try { images.add("data:image/png;base64,"
+                            + java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(p))); }
+                    catch (IOException ignore) { /* 한 장 실패 무시 */ }
+                 });
+            }
+        }
         try {
             var d = com.kt.wqg.llm.AiJudge.judge(llm, code, String.valueOf(it.get("title")),
                     String.valueOf(it.get("criteria")), String.valueOf(guide.get("what")),
-                    String.valueOf(guide.get("why")), evStrings);
+                    String.valueOf(guide.get("why")), evStrings, images);
             sendJson(ex, Map.of("code", code, "verdict", d.verdict(), "reason", d.reason(),
-                    "confidence", d.confidence(), "model", llm.model()));
+                    "confidence", d.confidence(), "model", llm.model(), "vision", !images.isEmpty()));
         } catch (RuntimeException e) {
             sendJson(ex, Map.of("error", String.valueOf(e.getMessage())));
         }

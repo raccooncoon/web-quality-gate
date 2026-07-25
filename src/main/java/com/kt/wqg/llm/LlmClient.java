@@ -54,6 +54,25 @@ public final class LlmClient {
 
     /** jsonMode=true 면 response_format=json_object 로 강제(모델이 지원 시). */
     public String chat(String system, String user, boolean jsonMode) {
+        return complete(system, user, jsonMode);
+    }
+
+    /**
+     * 비전 호출 — user 메시지에 텍스트 + 이미지(data:image/...;base64) 를 함께 보낸다(OpenAI 비전 포맷).
+     * 이미지가 없으면 일반 chat 과 동일.
+     */
+    public String chatVision(String system, String userText, List<String> imageDataUris, boolean jsonMode) {
+        if (imageDataUris == null || imageDataUris.isEmpty()) return complete(system, userText, jsonMode);
+        List<Object> content = new java.util.ArrayList<>();
+        content.add(Map.of("type", "text", "text", userText));
+        for (String uri : imageDataUris) {
+            content.add(Map.of("type", "image_url", "image_url", Map.of("url", uri)));
+        }
+        return complete(system, content, jsonMode);
+    }
+
+    /** userContent 는 String(텍스트) 또는 List(비전 content 배열). */
+    private String complete(String system, Object userContent, boolean jsonMode) {
         if (!isConfigured()) throw new IllegalStateException("LLM 미설정(WQG_LLM_BASE_URL)");
         try {
             Map<String, Object> body = new java.util.LinkedHashMap<>();
@@ -61,7 +80,7 @@ public final class LlmClient {
             body.put("temperature", 0);
             body.put("messages", List.of(
                     Map.of("role", "system", "content", system),
-                    Map.of("role", "user", "content", user)));
+                    Map.of("role", "user", "content", userContent)));
             if (jsonMode) body.put("response_format", Map.of("type", "json_object"));
 
             HttpRequest.Builder req = HttpRequest.newBuilder(URI.create(baseUrl + "/chat/completions"))

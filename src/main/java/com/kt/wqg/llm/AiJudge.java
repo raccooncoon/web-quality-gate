@@ -27,13 +27,22 @@ public final class AiJudge {
 
     public static Draft judge(LlmClient llm, String code, String title, String criteria,
                               String what, String why, List<String> evidence) {
+        return judge(llm, code, title, criteria, what, why, evidence, List.of());
+    }
+
+    /** imageDataUris(스크린샷)가 있으면 비전으로 화면을 함께 보고 판단한다. */
+    public static Draft judge(LlmClient llm, String code, String title, String criteria,
+                              String what, String why, List<String> evidence, List<String> imageDataUris) {
+        boolean hasImg = imageDataUris != null && !imageDataUris.isEmpty();
         String user = "[항목] " + code + " " + title
                 + "\n[세부 기준] " + n(criteria)
                 + "\n[무엇을 검사] " + n(what)
                 + "\n[왜 필요] " + n(why)
                 + "\n[자동 수집 증거]\n" + (evidence == null || evidence.isEmpty()
-                        ? "(자동 증거 없음 — 존재/내용 확인이 필요할 수 있음)" : String.join("\n", evidence));
-        String reply = llm.chat(SYSTEM, user, true);
+                        ? "(자동 증거 없음)" : String.join("\n", evidence))
+                + (hasImg ? "\n[첨부 화면] 실제 렌더링된 페이지 스크린샷을 함께 제공합니다. 화면을 직접 근거로 삼아 판단하세요."
+                          : "");
+        String reply = llm.chatVision(SYSTEM, user, imageDataUris, true);
         return parse(reply);
     }
 
