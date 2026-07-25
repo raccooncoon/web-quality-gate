@@ -83,10 +83,21 @@ public final class AssessmentView {
             return m;
         }).toList();
 
+        // 근거 미리보기용 — chromium 스크린샷 상대경로 목록(콘솔이 썸네일/라이트박스로 보여준다).
+        List<String> screenshots = new ArrayList<>();
+        java.nio.file.Path shotsDir = reportDir.resolve("screenshots");
+        if (java.nio.file.Files.isDirectory(shotsDir)) {
+            try (java.util.stream.Stream<java.nio.file.Path> ss = java.nio.file.Files.list(shotsDir)) {
+                ss.map(p -> p.getFileName().toString())
+                  .filter(fn -> fn.startsWith("chromium-") && fn.endsWith(".png"))
+                  .sorted().forEach(fn -> screenshots.add("screenshots/" + fn));
+            } catch (java.io.IOException ignore) { /* 없으면 빈 목록 */ }
+        }
+
         return Map.of("items", items,
                 "compliance", Map.of("status", c.status(), "pendingTotal", c.pendingTotal(), "categories", cats),
                 "site", n(doc.site()), "displayName", n(doc.displayName()), "timestamp", n(doc.timestamp()),
-                "excluded", excluded);
+                "excluded", excluded, "screenshots", screenshots);
     }
 
     private static String n(String s) { return s == null ? "" : s; }

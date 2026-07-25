@@ -125,6 +125,8 @@ final class WebConsoleUI {
             .aithumbs{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 4px}
             .aithumb{height:96px;max-width:220px;object-fit:cover;object-position:top;border:1px solid var(--gov);border-radius:6px;cursor:zoom-in;background:#fff}
             .aithumb:hover{box-shadow:0 2px 8px rgba(20,40,80,.18)}
+            #lbov{position:fixed;inset:0;background:rgba(10,20,40,.82);display:none;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;padding:24px}
+            #lbov img{max-width:96vw;max-height:94vh;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:6px;background:#fff}
             .sparkle{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);-webkit-background-clip:text;background-clip:text;
               -webkit-text-fill-color:transparent;color:transparent;font-weight:800;animation:spk 2.4s ease-in-out infinite;display:inline-block}
             @keyframes spk{0%,100%{filter:drop-shadow(0 0 1px rgba(120,120,255,.4)) saturate(1)}
@@ -547,9 +549,10 @@ final class WebConsoleUI {
                 <div class="it-hd"><span class=st>${it.no}.</span><b>${esc(it.title)}</b><small class=st>${esc(it.code)}</small>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>
                 <button class="linkbtn" onclick="toggleOverride('${id}')">${needs?'판정하기':'수정'}</button>
-                ${needs?`<button class="linkbtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
+                ${needs?`<button class="linkbtn aibtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
+                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide open><summary>📷 근거 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
                 <div id="ai-${id}" class="aidraft"></div>
                 <details class=guide><summary>상세 설명</summary>
                   <div><b>무엇</b> ${esc(g.what)}</div><div><b>왜</b> ${esc(g.why)}</div>
@@ -562,15 +565,21 @@ final class WebConsoleUI {
                     <button class="act ghost" onclick="confirmItem('${esc(it.code)}','부적합','${memoId}')">부적합</button>
                     <button class="act ghost" onclick="confirmItem('${esc(it.code)}','해당없음','${memoId}')">해당없음</button>
                   </div></div></div>`}
+            let aiBusy=false;
+            function shotUrl(fn){return '/reports/'+encodeURIComponent(curData.site)+'/'+encodeURIComponent(curData.timestamp)+'/'+fn}
+            function thumbsRow(images){return (images&&images.length)?'<div class="aithumbs">'+images.map(fn=>'<img class="aithumb" loading="lazy" src="'+shotUrl(fn)+'" alt="근거 화면" onclick="showLb(this.src)">').join('')+'</div>':''}
+            function showLb(src){let o=document.getElementById('lbov');if(!o){o=document.createElement('div');o.id='lbov';o.onclick=function(){o.style.display='none'};document.body.appendChild(o)}o.innerHTML='<img src="'+src+'">';o.style.display='flex'}
             async function aiDraft(code,id){const box=document.getElementById('ai-'+id);
-              box.innerHTML='<div class="hbox"><span class=st><span class="sparkle">✦</span> AI 판정 중… (모델 응답 대기, 수초~수십초)</span></div>';
+              if(aiBusy)return; aiBusy=true; document.querySelectorAll('.aibtn').forEach(b=>{b.disabled=true;b.style.opacity=.45});
+              box.innerHTML='<div class="hbox"><span class=st><span class="sparkle">✦</span> AI 판정 중… (한 번에 하나씩 — 다른 항목은 대기)</span></div>';
               let r;try{r=await api('/api/ai-judge?site='+encodeURIComponent(curSite)+'&ts='+encodeURIComponent(curTs)+'&code='+encodeURIComponent(code))}catch(e){r={error:String(e)}}
+              finally{aiBusy=false; document.querySelectorAll('.aibtn').forEach(b=>{b.disabled=false;b.style.opacity=1})}
               if(r.error){box.innerHTML='<div class="hbox no">AI 초안 실패: '+esc(r.error)+'</div>';return}
               const vc=verdictClass(r.verdict==='판단보류'?'수동확인필요':r.verdict);const conf=Math.round((r.confidence||0)*100);
               box.innerHTML=`<div class="hbox"><b><span class="sparkle">✦</span> AI 초안 <span class="pill ${vc}">${esc(r.verdict)}</span> <span class=st>신뢰도 ${conf}% · ${esc(r.model)}</span></b>
                 <div class=st style="margin:5px 0">${esc(r.reason)}</div>
-                ${(r.images&&r.images.length)?`<div class=st style="margin:6px 0 3px">✦ AI가 근거로 본 화면 ${r.vision?'(비전 입력됨)':'<b style="color:#b45309">(※ 비전 미지원 모델일 수 있음 — 텍스트 증거만 반영)</b>'} — 클릭하면 원본:</div>
-                  <div class="aithumbs">${r.images.map(fn=>`<a href="/reports/${encodeURIComponent(curSite)}/${encodeURIComponent(curTs)}/${fn}" target="_blank"><img class="aithumb" loading="lazy" src="/reports/${encodeURIComponent(curSite)}/${encodeURIComponent(curTs)}/${fn}" alt="근거 화면"></a>`).join('')}</div>`:''}
+                ${(r.images&&r.images.length)?`<div class=st style="margin:6px 0 3px">✦ AI가 근거로 본 화면 ${r.vision?'(비전 입력됨)':'<b style="color:#b45309">(※ 비전 미지원 모델일 수 있음 — 텍스트 증거만 반영)</b>'} — 클릭하면 크게:</div>
+                  ${thumbsRow(r.images)}`:''}
                 ${r.verdict==='판단보류'?'<span class=st>판단보류 — 평가자 확인 필요</span>':
                   `<input type=hidden id="ai-memo-${id}" value="${esc('[AI 초안] '+r.reason)}">
                    <button class="act" style="margin-top:0" onclick="confirmItem('${esc(code)}','${esc(r.verdict)}','ai-memo-${id}')">이 판정으로 확정 →</button>`}
