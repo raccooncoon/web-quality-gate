@@ -37,7 +37,13 @@ public final class CheckService {
     /** 진행 보고 없이 실행 (CLI 기본 등). */
     public static Path runSite(SitesConfig config, SitesConfig.Site site,
                                UnaryOperator<String> credResolver) {
-        return runSite(config, site, credResolver, msg -> {});
+        return runSite(config, site, credResolver, msg -> {}, java.util.Set.of());
+    }
+
+    /** 검사 제외 항목 없이 실행. */
+    public static Path runSite(SitesConfig config, SitesConfig.Site site,
+                               UnaryOperator<String> credResolver, Consumer<String> progress) {
+        return runSite(config, site, credResolver, progress, java.util.Set.of());
     }
 
     /**
@@ -46,7 +52,8 @@ public final class CheckService {
      * @param progress 단계별 진행 메시지를 받는 콜백 (웹 콘솔 상태 표시·CLI 로그)
      */
     public static Path runSite(SitesConfig config, SitesConfig.Site site,
-                               UnaryOperator<String> credResolver, Consumer<String> progress) {
+                               UnaryOperator<String> credResolver, Consumer<String> progress,
+                               java.util.Set<String> excludedCodes) {
         String timestamp = timestamp();
         Path reportDir = Path.of(config.output().dir(), site.name(), timestamp);
         int total = site.urls().size();
@@ -109,8 +116,11 @@ public final class CheckService {
 
             progress.accept("리포트 생성…");
 
-            // 컴플라이언스 스코어링(계획 2) — 기존 결과를 37항목 판정으로 변환·집계
-            com.kt.wqg.compliance.KwcagCatalog catalog = com.kt.wqg.compliance.KwcagCatalog.load();
+            // 컴플라이언스 스코어링 — 관리자가 제외한 항목은 필터링된 카탈로그로 전 과정에서 빠진다
+            com.kt.wqg.compliance.KwcagCatalog fullCatalog = com.kt.wqg.compliance.KwcagCatalog.load();
+            java.util.Set<String> excluded = excludedCodes == null ? java.util.Set.of() : excludedCodes;
+            com.kt.wqg.compliance.KwcagCatalog catalog = fullCatalog.without(excluded);
+            if (!excluded.isEmpty()) progress.accept("검사 제외 항목 " + excluded.size() + "건 적용");
             var itemMap = new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results, probeFindings);
             com.kt.wqg.compliance.ComplianceEvaluator.Compliance compliance =
                     new com.kt.wqg.compliance.ComplianceEvaluator(catalog).evaluate(itemMap);
@@ -119,16 +129,18 @@ public final class CheckService {
             java.util.List<com.kt.wqg.compliance.ItemResult> ordered = catalog.items().stream()
                     .map(it -> itemMap.get(it.code())).toList();
             com.kt.wqg.compliance.ComplianceStore.write(reportDir,
-                    new com.kt.wqg.compliance.ComplianceDoc(site.name(), site.label(), timestamp, ordered));
+                    new com.kt.wqg.compliance.ComplianceDoc(site.name(), site.label(), timestamp,
+                            ordered, new java.util.ArrayList<>(excluded)));
 
             List<ReportWriter.EngineInfo> engines = engineVersions.entrySet().stream()
                     .map(en -> new ReportWriter.EngineInfo(en.getKey(), en.getValue()))
                     .toList();
             ReportWriter.write(config.output().dir(), site.name(), site.label(), timestamp,
                     STANDARD, engines, results);
-            // report.html 을 SI 검수결과표로 최종 생성(기존 URL 중심 리포트 대체).
+            // report.html 을 SI 검수결과표로 최종 생성. AssessmentView 가 compliance.json 의 excluded 로
+            // 스스로 필터링하므로 전체 카탈로그를 넘겨(제외 항목 제목 조회용) 일관성을 유지한다.
             com.kt.wqg.report.ComplianceReportWriter.write(reportDir,
-                    com.kt.wqg.compliance.AssessmentView.build(reportDir, catalog));
+                    com.kt.wqg.compliance.AssessmentView.build(reportDir, fullCatalog));
             return reportDir.resolve("report.html");
         }
     }

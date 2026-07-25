@@ -27,15 +27,23 @@ public final class AssessmentView {
 
     /** 병합 결과로 종합 판정을 재평가한다(결과 목록 배지·실행 요약용 경량 경로). */
     public static ComplianceEvaluator.Compliance evaluateMerged(Path reportDir, KwcagCatalog catalog) {
-        return new ComplianceEvaluator(catalog).evaluate(mergedByCode(reportDir));
+        ComplianceDoc doc = ComplianceStore.read(reportDir);
+        java.util.Set<String> ex = doc.excluded() == null
+                ? java.util.Set.of() : new java.util.HashSet<>(doc.excluded());
+        return new ComplianceEvaluator(catalog.without(ex)).evaluate(mergedByCode(reportDir));
     }
 
     public static Map<String, Object> build(Path reportDir, KwcagCatalog catalog) {
         ComplianceDoc doc = ComplianceStore.read(reportDir);
         Map<String, ItemResult> byCode = mergedByCode(reportDir);
 
+        // 관리자가 검사 제외한 항목은 목록·집계에서 빼고, 제외 목록은 별도로 표기한다
+        java.util.Set<String> excludedCodes = doc.excluded() == null
+                ? java.util.Set.of() : new java.util.HashSet<>(doc.excluded());
+        KwcagCatalog active = catalog.without(excludedCodes);
+
         List<Map<String, Object>> items = new ArrayList<>();
-        for (CatalogItem c : catalog.items()) {
+        for (CatalogItem c : active.items()) {
             ItemResult r = byCode.getOrDefault(c.code(), ItemResult.of(c.code(), ItemVerdict.수동확인필요));
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("no", c.no());
@@ -55,7 +63,17 @@ public final class AssessmentView {
             items.add(m);
         }
 
-        ComplianceEvaluator.Compliance c = new ComplianceEvaluator(catalog).evaluate(byCode);
+        ComplianceEvaluator.Compliance c = new ComplianceEvaluator(active).evaluate(byCode);
+        // 제외 항목(코드+제목) — 전체 카탈로그에서 조회
+        List<Map<String, Object>> excluded = new ArrayList<>();
+        for (String code : excludedCodes) {
+            try {
+                CatalogItem ci = catalog.byCode(code);
+                excluded.add(Map.of("code", code, "title", n(ci.title())));
+            } catch (RuntimeException ignore) {
+                excluded.add(Map.of("code", code, "title", ""));
+            }
+        }
         List<Map<String, Object>> cats = c.categories().stream().map(s -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("label", s.label()); m.put("category", s.category()); m.put("siAuto", s.siAuto());
@@ -67,7 +85,8 @@ public final class AssessmentView {
 
         return Map.of("items", items,
                 "compliance", Map.of("status", c.status(), "pendingTotal", c.pendingTotal(), "categories", cats),
-                "site", n(doc.site()), "displayName", n(doc.displayName()), "timestamp", n(doc.timestamp()));
+                "site", n(doc.site()), "displayName", n(doc.displayName()), "timestamp", n(doc.timestamp()),
+                "excluded", excluded);
     }
 
     private static String n(String s) { return s == null ? "" : s; }

@@ -118,14 +118,17 @@ final class WebConsoleUI {
             .cmpchk{width:auto;cursor:pointer}
             .statcell{width:340px;max-width:340px;font-size:12px;color:var(--muted);white-space:normal;word-break:break-word;overflow-wrap:anywhere}
             .statcell .pill{white-space:nowrap}
+            .itemchk{width:auto;cursor:pointer}
             .pwwrap{position:relative}.pwwrap input{padding-right:40px}
             .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;
               cursor:pointer;font-size:16px;line-height:1;padding:4px;opacity:.65}.eye:hover{opacity:1}
             </style></head><body>
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
-              <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button></nav></header>
+              <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
+              <button data-tab="items">④ 점검 항목</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
+              <div id="items" style="display:none"></div>
               <div id="result" style="display:none"></div>
               <div id="assessview" style="display:none"><div class="body"></div></div>
               <div id="compareview" style="display:none"><div class="body"></div></div></main>
@@ -140,8 +143,8 @@ final class WebConsoleUI {
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
               $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
-              ['config','run','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
-              if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult()});
+              ['config','run','items','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
+              if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult();if(b.dataset.tab==='items')loadItems()});
 
             // ── 설정 탭 ──
             const isTest=s=>s.name==='defect-kwater'||(s.displayName||'').includes('테스트');
@@ -334,6 +337,30 @@ final class WebConsoleUI {
               el.innerHTML='· <span class="pill '+sc+'">'+esc(d.compliance.status)+'</span> 미확정 '+d.compliance.pendingTotal;
             }catch(e){}}
 
+            // ── 점검 항목 관리 탭 ──
+            const AUTOLBL={auto:'자동',na:'해당없음(기본)',screen:'자동 스크리닝',manual:'수동확인'};
+            async function loadItems(){const {items,excludedCount}=await api('/api/items');
+              const cats=[['accessibility',true,'웹접근성 자동'],['accessibility',false,'웹접근성 수동'],
+                ['compatibility',true,'웹호환성 자동'],['compatibility',false,'웹호환성 수동']];
+              let html=`<div class="tabintro">검사할 <b>KWCAG 점검 항목</b>을 관리합니다. 체크를 <b>끄면</b> 그 항목은
+                검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통, 다음 검사부터 적용). 현재 제외 <b id="exCount">${excludedCount}</b>건.</div>
+                <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
+                  <button class="act ghost" onclick="allItems(true)">전체 선택</button>
+                  <button class="act ghost" onclick="allItems(false)">전체 해제</button></div>`;
+              cats.forEach(([cat,auto,label])=>{const list=items.filter(it=>it.category===cat&&(it.siClassification==='auto')===auto);
+                if(!list.length)return;
+                html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th>판정 방식</th></tr></thead><tbody>`+
+                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
+                    <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
+                    <td class=st>${AUTOLBL[it.automation]||it.automation}</td></tr>`).join('')+'</tbody></table>';
+              });
+              $('#items').innerHTML=html}
+            function allItems(v){document.querySelectorAll('.itemchk').forEach(c=>c.checked=v)}
+            async function saveItems(){const excluded=[...document.querySelectorAll('.itemchk:not(:checked)')].map(c=>c.dataset.code);
+              const r=await api('/api/items/exclude','POST',{excluded});
+              const el=document.getElementById('exCount');if(el)el.textContent=r.excludedCount;
+              toast(excluded.length?('제외 '+excluded.length+'건 저장 — 다음 검사부터 적용'):'제외 없음으로 저장')}
+
             // ── 결과 탭 (플랫폼별 그룹) ──
             const WD=['일','월','화','수','목','금','토'];
             function fmtTs(s){const m=/^(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})$/.exec(s||'');
@@ -342,10 +369,13 @@ final class WebConsoleUI {
             function statusPill(r){if(!r||!r.status)return '<span class=st>-</span>';
               const sc=r.status==='적합'?'ok':(r.status==='부적합'?'no':'wait');
               return `<span class="pill ${sc}">${esc(r.status)}</span>${r.pendingTotal>0?' <span class=st>미확정 '+r.pendingTotal+'</span>':''}`}
+            function itemNums(r){if(!r.status)return '<span class=st>-</span>';
+              return `<span class=st>적합 <b>${r.적합??0}</b> · 부적합 <b>${r.부적합??0}</b> · 수동확인 <b>${r.pendingTotal??0}</b> · 해당없음 <b>${r.해당없음??0}</b></span>`}
             function runRow(r,newest,gi,showChk){return `<tr>${showChk?`<td><input type=checkbox class=cmpchk data-g="${gi}" data-ts="${esc(r.timestamp)}" onchange="onCmpChange(${gi})"></td>`:''}<td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}<div class="runid">회차 ID <code>${esc(r.timestamp)}</code></div></td>
               <td>${statusPill(r)}</td>
-              <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a>
-              <button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
+              <td>${itemNums(r)}</td>
+              <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a></td>
+              <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
             function onCmpChange(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
               const chk=all.filter(c=>c.checked);
               all.forEach(c=>{c.disabled=!c.checked&&chk.length>=2});   // 2건 선택되면 나머지 잠금
@@ -368,7 +398,7 @@ final class WebConsoleUI {
                   <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
                   ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
                   ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})" style="margin-left:auto">비교할 2건 선택 (0/2)</button>`:''}</div>
-                <table><thead><tr>${cmp?'<th>비교</th>':''}<th>검사일시</th><th>판정</th><th>리포트 · 검수</th></tr></thead><tbody>
+                <table><thead><tr>${cmp?'<th>비교</th>':''}<th>검사일시</th><th>종합</th><th>항목 요약</th><th>리포트</th><th>검수</th></tr></thead><tbody>
                 ${g.runs.map((r,i)=>runRow(r,i===0,gi,cmp)).join('')}</tbody></table></div>`}).join('');
               $('#result').innerHTML=notice+body}
 

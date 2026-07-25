@@ -293,6 +293,8 @@ public final class ComplianceReportWriter {
             h+=`<div class="note">※ 준수율 = 적합 ÷ (적합 + 부적합) × 100. <b>해당없음·대기(미확정)는 분모에서 제외</b>합니다.
               <b>대기 항목이 남은 카테고리는 준수율을 산정하지 않고 '산정 전'으로 표기</b>하며 판정은 <b>대기</b>입니다 —
               평가자가 대기 항목을 모두 확정(적합/부적합/해당없음)하면 그때 최종 준수율·판정이 확정됩니다.</div>`;
+            if((R.excluded||[]).length)h+=`<div class="note">🚫 <b>검사 제외 항목 ${R.excluded.length}건</b>(관리자 설정) — 이번 검수 범위에서 제외되어 위 집계·준수율에 포함되지 않았습니다: `
+              +R.excluded.map(e=>`<code>${esc(e.code)}</code> ${esc(e.title)}`).join(', ')+`</div>`;
             // 카테고리별 항목 표 + 접이식 상세
             (c.categories||[]).forEach(cat=>{
               const its=items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);

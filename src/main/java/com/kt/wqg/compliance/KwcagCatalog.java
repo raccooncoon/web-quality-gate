@@ -28,6 +28,12 @@ public final class KwcagCatalog {
 
     public List<CatalogItem> items() { return items; }
 
+    /** 지정한 코드들을 제외한 카탈로그(검사 범위에서 제외). 매핑·집계·리포트가 자동으로 반영된다. */
+    public KwcagCatalog without(java.util.Set<String> excludedCodes) {
+        if (excludedCodes == null || excludedCodes.isEmpty()) return this;
+        return new KwcagCatalog(items.stream().filter(c -> !excludedCodes.contains(c.code())).toList());
+    }
+
     public CatalogItem byCode(String code) {
         return items.stream().filter(c -> c.code().equals(code)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("항목 코드 없음: " + code));

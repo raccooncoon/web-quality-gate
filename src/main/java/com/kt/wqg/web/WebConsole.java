@@ -34,6 +34,7 @@ public final class WebConsole {
     private final int port;
     private final ConfigStore configStore;
     private final CredentialStore credentials;
+    private final ItemExclusionStore exclusions;
     private final JobRunner jobs = new JobRunner();
 
     public WebConsole(Path configPath, int port) {
@@ -41,6 +42,7 @@ public final class WebConsole {
         this.port = port;
         this.configStore = new ConfigStore(configPath);
         this.credentials = new CredentialStore(configPath.resolveSibling("credentials.properties"));
+        this.exclusions = new ItemExclusionStore(configPath.resolveSibling("excluded-items.txt"));
     }
 
     public void start() throws IOException {
@@ -65,6 +67,8 @@ public final class WebConsole {
             if (path.equals("/api/detect-type")) { detectType(ex); return; }
             if (path.startsWith("/api/discover-paths/")) { discoverPaths(ex, path.substring("/api/discover-paths/".length())); return; }
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
+            if (path.equals("/api/items")) { sendJson(ex, itemsPayload()); return; }
+            if (path.equals("/api/items/exclude")) { saveExclusions(ex); return; }
             if (path.equals("/api/reports")) { sendJson(ex, reportsPayload()); return; }
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
             if (path.startsWith("/api/credentials/")) { saveCredentials(ex, path.substring("/api/credentials/".length())); return; }
@@ -211,9 +215,32 @@ public final class WebConsole {
         SitesConfig.Site site = config.sites().stream()
                 .filter(s -> s.name().equals(name)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
-        jobs.submit(name, report -> CheckService.runSite(config, site, credentials.resolver(), report)
+        java.util.Set<String> excluded = exclusions.excluded();
+        jobs.submit(name, report -> CheckService.runSite(config, site, credentials.resolver(), report, excluded)
                 .toString().replace('\\', '/'));
         sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
+    }
+
+    /** 점검 항목 목록(37) + 현재 제외 여부. */
+    private Object itemsPayload() {
+        var catalog = com.kt.wqg.compliance.KwcagCatalog.load();
+        java.util.Set<String> ex = exclusions.excluded();
+        List<Map<String, Object>> items = catalog.items().stream().map(c -> Map.<String, Object>of(
+                "no", c.no(), "code", c.code(), "title", c.title(), "category", c.category(),
+                "siClassification", c.siClassification(), "automation", c.automation(),
+                "excluded", ex.contains(c.code()))).toList();
+        return Map.of("items", items, "excludedCount", ex.size());
+    }
+
+    /** 제외 목록 저장. body: {excluded:[코드...]}. */
+    private void saveExclusions(HttpExchange ex) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        java.util.LinkedHashSet<String> codes = new java.util.LinkedHashSet<>();
+        if (b.has("excluded") && b.get("excluded").isArray()) {
+            b.get("excluded").forEach(n -> codes.add(n.asText()));
+        }
+        exclusions.save(codes);
+        sendJson(ex, Map.of("ok", true, "excludedCount", codes.size()));
     }
 
     /** 설정 확인(헬스체크) — baseUrl 접속·로그인·첫 화면 렌더를 빠르게 점검. 동기 응답. */
@@ -255,6 +282,12 @@ public final class WebConsole {
                             var c = AssessmentView.evaluateMerged(dir, catalog);
                             m.put("status", c.status());
                             m.put("pendingTotal", c.pendingTotal());
+                            // 리포트 안 열어도 보이는 요약 숫자
+                            int ok = c.categories().stream().mapToInt(s -> s.적합()).sum();
+                            int no = c.categories().stream().mapToInt(s -> s.부적합()).sum();
+                            int na = c.categories().stream().mapToInt(s -> s.naCount()).sum();
+                            int total = c.categories().stream().mapToInt(s -> s.total()).sum();
+                            m.put("적합", ok); m.put("부적합", no); m.put("해당없음", na); m.put("total", total);
                         } catch (RuntimeException ignored) { /* 손상된 리포트는 상태 생략 */ }
                     }
                     reports.add(m);

@@ -61,11 +61,14 @@ public class Main {
         // 계정: 콘솔에서 저장한 로컬 파일 우선, 없으면 환경변수(주간 예약 실행에서 콘솔 설정 재사용)
         var credResolver = new com.kt.wqg.web.CredentialStore(
                 configPath.resolveSibling("credentials.properties")).resolver();
+        // 검사 제외 항목(콘솔 '점검 항목'에서 저장) — CLI/예약 실행도 동일 적용
+        var excluded = new com.kt.wqg.web.ItemExclusionStore(
+                configPath.resolveSibling("excluded-items.txt")).excluded();
 
         for (SitesConfig.Site site : targets) {
             try {
                 Path report = CheckService.runSite(config, site, credResolver,
-                        msg -> System.out.printf("[%s] %s%n", site.name(), msg));
+                        msg -> System.out.printf("[%s] %s%n", site.name(), msg), excluded);
                 System.out.printf("[%s] 검사 완료 → %s%n", site.name(), report);
             } catch (RuntimeException e) {
                 // 시스템 단위 실패 격리 — 하나가 죽어도 나머지는 계속
