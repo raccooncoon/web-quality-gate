@@ -26,7 +26,14 @@ public final class ComplianceReportWriter {
                 var p = new java.util.Properties();
                 p.load(in);
                 v = p.getProperty("version", "dev");
-                b = p.getProperty("buildTime", "-").replace("T", " ").replace("Z", " UTC");
+                String raw = p.getProperty("buildTime", "-");
+                try {   // Maven 빌드시각(UTC) → 한국시간(KST) 표기
+                    b = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+                            .withZone(java.time.ZoneId.of("Asia/Seoul"))
+                            .format(java.time.Instant.parse(raw)) + " KST";
+                } catch (Exception e) {
+                    b = raw.replace("T", " ").replace("Z", " UTC");
+                }
             }
         } catch (Exception ignore) { /* 없으면 기본값 */ }
         VERSION = v; BUILD_TIME = b;
