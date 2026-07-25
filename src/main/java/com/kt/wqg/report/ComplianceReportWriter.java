@@ -248,7 +248,7 @@ public final class ComplianceReportWriter {
             }
             </style></head><body>
             <a class="backbtn noprint" id="backbtn" href="/#result" style="display:none">← 결과 목록</a>
-            <div class="verstamp noprint" title="클릭하면 복사" onclick="const t=this.textContent;navigator.clipboard.writeText(t).then(()=>{this.textContent='복사됨 ✓';setTimeout(()=>this.textContent=t,1000)})">v__VERSION__ · __BUILD_TIME__</div>
+            <div class="verstamp noprint" title="클릭하면 복사" onclick="copyStamp(this)">v__VERSION__ · __BUILD_TIME__</div>
             <button class="pbtn noprint" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
             <div id="app"></div>
             <div id="lb" class="noprint"><div class="lbcap"></div><div class="lbwrap"><img alt=""><canvas></canvas></div></div>
@@ -258,6 +258,13 @@ public final class ComplianceReportWriter {
             if(location.protocol.indexOf('http')===0){const _b=document.getElementById('backbtn');if(_b)_b.style.display='';}
             const R=JSON.parse(document.getElementById('data').textContent);
             const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+            function copyStamp(el){const s=el.textContent.trim();
+              const done=()=>{el.textContent='복사됨 ✓';setTimeout(()=>el.textContent=s,1000)};
+              const legacy=()=>{try{const ta=document.createElement('textarea');ta.value=s;
+                ta.style.cssText='position:fixed;opacity:0;left:-9999px';document.body.appendChild(ta);ta.focus();ta.select();
+                document.execCommand('copy');document.body.removeChild(ta)}catch(e){}};
+              if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(s).then(done,()=>{legacy();done()});
+              else{legacy();done()}}
             const WD=['일','월','화','수','목','금','토'];
             const fmtTs=s=>{const m=/^(\\d{4})(\\d{2})(\\d{2})-(\\d{2})(\\d{2})$/.exec(s||'');
               if(!m)return esc(s);const d=new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5]);

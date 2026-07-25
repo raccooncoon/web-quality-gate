@@ -146,8 +146,13 @@ final class WebConsoleUI {
             const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
             let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
               clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
-            function copyVer(el){const s=el.textContent.trim();
-              navigator.clipboard.writeText(s).then(()=>toast('복사됨: '+s),()=>toast('복사 실패'))}
+            function legacyCopy(s){try{const ta=document.createElement('textarea');ta.value=s;
+              ta.style.cssText='position:fixed;opacity:0;left:-9999px';document.body.appendChild(ta);ta.focus();ta.select();
+              const r=document.execCommand('copy');document.body.removeChild(ta);return r}catch(e){return false}}
+            function copyVer(el){const s=el.textContent.trim();const ok=()=>toast('복사됨: '+s);
+              if(navigator.clipboard&&navigator.clipboard.writeText)
+                navigator.clipboard.writeText(s).then(ok,()=>legacyCopy(s)?ok():toast('복사 실패'));
+              else legacyCopy(s)?ok():toast('복사 실패')}
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
               $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
