@@ -11,3 +11,4 @@ reports/
 credentials.properties
 secrets.properties
 vnu.jar
+excluded-items.txt
