@@ -385,7 +385,7 @@ final class WebConsoleUI {
             function itemNums(r){if(!r.status)return '<span class=st>-</span>';
               return `<span class=st style="white-space:nowrap"><b style="color:var(--navy)">전체 ${r.total??0}</b> · 적합 <b>${r.적합??0}</b> · 부적합 <b>${r.부적합??0}</b> · 수동확인 <b>${r.pendingTotal??0}</b> · 해당없음 <b>${r.해당없음??0}</b></span>`}
             function runRow(r,newest,gi){return `<tr><td><input type=checkbox class=cmpchk data-g="${gi}" data-ts="${esc(r.timestamp)}" onchange="onSel(${gi})"></td>
-              <td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}<div class="runid">회차 ID <code>${esc(r.timestamp)}</code></div></td>
+              <td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}</td>
               <td>${statusPill(r)}</td>
               <td>${itemNums(r)}</td>
               <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a></td>
