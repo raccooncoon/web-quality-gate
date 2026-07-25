@@ -121,8 +121,8 @@ final class WebConsoleUI {
             .statcell{width:340px;max-width:340px;font-size:12px;color:var(--muted);white-space:normal;word-break:break-word;overflow-wrap:anywhere}
             .statcell .pill{white-space:nowrap}
             .itemchk{width:auto;cursor:pointer}
-            .verstamp{position:fixed;right:12px;bottom:10px;font-size:11px;color:var(--muted);z-index:20;
-              background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:4px;padding:3px 9px;font-family:ui-monospace,monospace}
+            .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);z-index:20;opacity:.75;
+              background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:ui-monospace,monospace}
             .pwwrap{position:relative}.pwwrap input{padding-right:40px}
             .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;
               cursor:pointer;font-size:16px;line-height:1;padding:4px;opacity:.65}.eye:hover{opacity:1}

@@ -227,8 +227,8 @@ public final class ComplianceReportWriter {
               background:rgba(0,0,0,.5);padding:5px 12px;border-radius:3px}
             .sub{color:var(--muted);font-size:12.5px}
             footer{margin-top:30px;padding-top:14px;border-top:1px solid var(--line);color:var(--muted);font-size:11px;line-height:1.75}
-            .verstamp{position:fixed;right:12px;bottom:10px;font-size:10.5px;color:var(--muted);
-              background:rgba(255,255,255,.88);border:1px solid var(--line);border-radius:3px;padding:3px 8px;z-index:8;font-family:ui-monospace,monospace}
+            .verstamp{position:fixed;right:8px;bottom:6px;font-size:9px;color:var(--muted);opacity:.75;
+              background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:3px;padding:1px 5px;z-index:8;font-family:ui-monospace,monospace}
             .pbtn{position:fixed;top:14px;right:16px;background:var(--gov);color:#fff;border:none;border-radius:3px;
               padding:9px 15px;font-size:12.5px;font-weight:700;cursor:pointer;z-index:9;box-shadow:0 2px 8px rgba(0,0,0,.22)}
             .backbtn{position:fixed;top:14px;left:16px;background:var(--paper);color:var(--gov);border:1px solid var(--gov);
