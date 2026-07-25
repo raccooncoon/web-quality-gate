@@ -28,9 +28,12 @@ public final class RuleResolver {
         }
         List<String> rules = item.resolver().rules();
         List<Finding> mine = findings.stream().filter(f -> rules.contains(f.rule())).toList();
-        List<ItemResult.Evidence> evidence = mine.stream()
-                .map(f -> new ItemResult.Evidence(f.url(), f.rule(), f.help()))
-                .toList();
+        // 동일 대상이 URL 마다 반복되므로 (규칙+설명) 기준으로 중복 제거
+        java.util.LinkedHashMap<String, ItemResult.Evidence> uniq = new java.util.LinkedHashMap<>();
+        for (Finding f : mine) {
+            uniq.putIfAbsent(f.rule() + "|" + f.help(), new ItemResult.Evidence(f.url(), f.rule(), f.help()));
+        }
+        List<ItemResult.Evidence> evidence = new java.util.ArrayList<>(uniq.values());
 
         boolean hasViolation = mine.stream().anyMatch(f -> !f.isReview());
         boolean hasReview = mine.stream().anyMatch(Finding::isReview);

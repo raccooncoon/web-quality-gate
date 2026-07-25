@@ -73,10 +73,12 @@ public final class ComplianceMapper {
     }
 
     private static ItemResult resolveMarkup(CatalogItem item, List<Finding> markupErrors) {
-        List<ItemResult.Evidence> matched = markupErrors.stream()
+        // 같은 오류가 여러 화면에서 반복되므로 메시지 기준 중복 제거
+        java.util.LinkedHashMap<String, ItemResult.Evidence> uniq = new LinkedHashMap<>();
+        markupErrors.stream()
                 .filter(f -> !"c-deprecated".equals(item.code()) || isObsolete(f.help()))
-                .map(f -> new ItemResult.Evidence(f.url(), "markup", f.help()))
-                .toList();
+                .forEach(f -> uniq.putIfAbsent(f.help(), new ItemResult.Evidence(f.url(), "markup", f.help())));
+        List<ItemResult.Evidence> matched = new java.util.ArrayList<>(uniq.values());
         ItemVerdict verdict;
         if ("screen".equals(item.automation())) {
             verdict = ItemVerdict.수동확인필요;

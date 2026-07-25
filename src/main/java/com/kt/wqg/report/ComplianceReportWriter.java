@@ -311,9 +311,10 @@ public final class ComplianceReportWriter {
                 h+=`<tr class="main" id="it-${esc(it.code)}"><td class="num r0">${it.no}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
                   <td><span class="badge ${esc(it.verdict)}">${esc(it.verdict)}</span></td><td class="sub">${it.source==='assessor'?'평가자 확정':'자동 판정'}</td></tr>`;
                 h+=`<tr class="drow"><td colspan="6"><details class="d"><summary>상세 설명 보기</summary>`;
+                const hasEv=(it.evidence||[]).length>0;
                 const rmsg=it.verdict==='적합'?'✓ 자동 검사에서 위반이 발견되지 않아 <b>적합</b>입니다.'
                   :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 <b>해당없음</b>으로 처리했습니다.'
-                  :it.verdict==='수동확인필요'?'대상은 있으나 자동 판정이 어려워 <b>평가자 확인</b>이 필요합니다.'
+                  :it.verdict==='수동확인필요'?(hasEv?'검사에서 아래 <b>대상</b>이 확인되었습니다. 자동으로 적합 여부를 판단하기 어려워 <b>평가자 확인</b>이 필요합니다.':'자동 검사로는 판단이 어려운 항목으로 <b>평가자 확인</b>이 필요합니다.')
                   :'자동 검사에서 <b>위반</b>이 발견되었습니다. 아래 증거를 확인하세요.';
                 h+=`<div class="g"><div><b>검사 결과</b> ${rmsg}</div></div>`;
                 if(it.memo)h+=`<div class="g"><div><b>평가자 메모</b>${esc(it.memo)}</div></div>`;

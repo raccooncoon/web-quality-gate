@@ -102,7 +102,9 @@ final class WebConsoleUI {
             .candlist{max-height:220px;overflow:auto;margin:8px 0;border:1px solid var(--line2);border-radius:4px;padding:6px 8px;background:#fff}
             .cand{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--fg);font-weight:400;margin:2px 0;font-family:ui-monospace,monospace;cursor:pointer}
             .cand input{width:auto}
-            .platform{margin-bottom:20px}
+            .platform{margin-bottom:20px;overflow-x:auto}
+            .platform td:nth-child(2),.platform td:nth-child(3),.platform td:nth-child(4){white-space:nowrap}
+            .platform td .runid{white-space:normal}
             .phd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:14px;margin:0 0 6px;
               padding-bottom:6px;border-bottom:2px solid var(--navy);color:var(--navy)}
             .phd b{color:var(--navy)}.phd small{color:var(--muted);font-weight:400;font-family:ui-monospace,monospace;font-size:12px}
@@ -373,23 +375,26 @@ final class WebConsoleUI {
               const sc=r.status==='적합'?'ok':(r.status==='부적합'?'no':'wait');
               return `<span class="pill ${sc}">${esc(r.status)}</span>${r.pendingTotal>0?' <span class=st>미확정 '+r.pendingTotal+'</span>':''}`}
             function itemNums(r){if(!r.status)return '<span class=st>-</span>';
-              return `<span class=st><b style="color:var(--navy)">전체 ${r.total??0}</b> · 적합 <b>${r.적합??0}</b> · 부적합 <b>${r.부적합??0}</b> · 수동확인 <b>${r.pendingTotal??0}</b> · 해당없음 <b>${r.해당없음??0}</b></span>`}
-            function runRow(r,newest,gi,showChk){return `<tr>${showChk?`<td><input type=checkbox class=cmpchk data-g="${gi}" data-ts="${esc(r.timestamp)}" onchange="onCmpChange(${gi})"></td>`:''}<td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}<div class="runid">회차 ID <code>${esc(r.timestamp)}</code></div></td>
+              return `<span class=st style="white-space:nowrap"><b style="color:var(--navy)">전체 ${r.total??0}</b> · 적합 <b>${r.적합??0}</b> · 부적합 <b>${r.부적합??0}</b> · 수동확인 <b>${r.pendingTotal??0}</b> · 해당없음 <b>${r.해당없음??0}</b></span>`}
+            function runRow(r,newest,gi){return `<tr><td><input type=checkbox class=cmpchk data-g="${gi}" data-ts="${esc(r.timestamp)}" onchange="onSel(${gi})"></td>
+              <td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}<div class="runid">회차 ID <code>${esc(r.timestamp)}</code></div></td>
               <td>${statusPill(r)}</td>
               <td>${itemNums(r)}</td>
               <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a></td>
-              <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td>
-              <td><button class="act ghost" style="margin-top:0;color:var(--bad);border-color:var(--bad)" title="이 회차 삭제" onclick="delReport('${esc(r.site)}','${esc(r.timestamp)}')">🗑</button></td></tr>`}
-            async function delReport(site,ts){
-              if(!confirm('이 검사 회차(리포트)를 삭제합니다.\\n\\n시스템: '+site+'\\n회차 ID: '+ts+'\\n\\n리포트·스크린샷·검수 확정이 영구 삭제되며 되돌릴 수 없습니다. 삭제할까요?'))return;
-              const r=await api('/api/reports/delete/'+encodeURIComponent(site)+'/'+encodeURIComponent(ts),'POST',{});
-              if(r&&r.ok){toast('삭제됨: '+ts);loadResult()}else{toast('삭제 실패: '+((r&&r.error)||''))}}
-            function onCmpChange(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
-              const chk=all.filter(c=>c.checked);
-              all.forEach(c=>{c.disabled=!c.checked&&chk.length>=2});   // 2건 선택되면 나머지 잠금
-              const btn=document.getElementById('cmpbtn-'+gi);if(!btn)return;
-              btn.disabled=chk.length!==2;
-              btn.textContent=chk.length===2?'선택한 2건 비교 ▶':('비교할 2건 선택 ('+chk.length+'/2)')}
+              <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
+            // 체크박스 선택 → 비교(정확히 2건)·선택 삭제(1건 이상) 버튼 상태 갱신
+            function onSel(gi){const chk=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]:checked')];
+              const cb=document.getElementById('cmpbtn-'+gi);
+              if(cb){cb.disabled=chk.length!==2;cb.textContent=chk.length===2?'선택한 2건 비교 ▶':('비교 ('+chk.length+'/2)')}
+              const db=document.getElementById('delbtn-'+gi);
+              if(db){db.disabled=chk.length===0;db.textContent='선택 삭제 ('+chk.length+')'}}
+            async function delSelected(gi){const chk=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]:checked')];
+              if(!chk.length){toast('선택된 회차 없음');return}
+              const site=document.getElementById('delbtn-'+gi).dataset.site;
+              const list=chk.map(c=>c.dataset.ts);
+              if(!confirm('선택한 '+list.length+'개 회차를 삭제합니다.\\n\\n시스템: '+site+'\\n회차: '+list.join(', ')+'\\n\\n리포트·스크린샷·검수 확정이 영구 삭제되며 되돌릴 수 없습니다. 삭제할까요?'))return;
+              let ok=0;for(const ts of list){const r=await api('/api/reports/delete/'+encodeURIComponent(site)+'/'+encodeURIComponent(ts),'POST',{});if(r&&r.ok)ok++}
+              toast(ok+'개 회차 삭제됨');loadResult()}
             async function loadResult(){
               const [{reports},{systems}]=await Promise.all([api('/api/reports'),api('/api/systems')]);
               if(!reports.length){$('#result').innerHTML='<p class=st>아직 생성된 리포트가 없습니다. ② 실행 탭에서 검사를 돌려보세요.</p>';return}
@@ -405,9 +410,12 @@ final class WebConsoleUI {
                 return `<div class="platform"><div class="phd">
                   <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
                   ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
-                  ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})" style="margin-left:auto">비교할 2건 선택 (0/2)</button>`:''}</div>
-                <table><thead><tr>${cmp?'<th>비교</th>':''}<th>검사일시</th><th>종합</th><th>항목 요약</th><th>리포트</th><th>검수</th><th>삭제</th></tr></thead><tbody>
-                ${g.runs.map((r,i)=>runRow(r,i===0,gi,cmp)).join('')}</tbody></table></div>`}).join('');
+                  <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+                    ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})">비교 (0/2)</button>`:''}
+                    <button class="act delbtn" id="delbtn-${gi}" data-site="${esc(g.site)}" disabled style="background:var(--bad)" onclick="delSelected(${gi})">선택 삭제 (0)</button>
+                  </span></div>
+                <table><thead><tr><th>선택</th><th>검사일시</th><th>종합</th><th>항목 요약</th><th>리포트</th><th>검수</th></tr></thead><tbody>
+                ${g.runs.map((r,i)=>runRow(r,i===0,gi)).join('')}</tbody></table></div>`}).join('');
               $('#result').innerHTML=notice+body}
 
             // ── 리포트 비교(같은 시스템 두 회차) ──
