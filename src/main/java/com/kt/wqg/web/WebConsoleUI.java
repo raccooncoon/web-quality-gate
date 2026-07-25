@@ -370,7 +370,7 @@ final class WebConsoleUI {
               const sc=r.status==='적합'?'ok':(r.status==='부적합'?'no':'wait');
               return `<span class="pill ${sc}">${esc(r.status)}</span>${r.pendingTotal>0?' <span class=st>미확정 '+r.pendingTotal+'</span>':''}`}
             function itemNums(r){if(!r.status)return '<span class=st>-</span>';
-              return `<span class=st>적합 <b>${r.적합??0}</b> · 부적합 <b>${r.부적합??0}</b> · 수동확인 <b>${r.pendingTotal??0}</b> · 해당없음 <b>${r.해당없음??0}</b></span>`}
+              return `<span class=st><b style="color:var(--navy)">전체 ${r.total??0}</b> · 적합 <b>${r.적합??0}</b> · 부적합 <b>${r.부적합??0}</b> · 수동확인 <b>${r.pendingTotal??0}</b> · 해당없음 <b>${r.해당없음??0}</b></span>`}
             function runRow(r,newest,gi,showChk){return `<tr>${showChk?`<td><input type=checkbox class=cmpchk data-g="${gi}" data-ts="${esc(r.timestamp)}" onchange="onCmpChange(${gi})"></td>`:''}<td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}<div class="runid">회차 ID <code>${esc(r.timestamp)}</code></div></td>
               <td>${statusPill(r)}</td>
               <td>${itemNums(r)}</td>
