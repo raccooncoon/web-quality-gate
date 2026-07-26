@@ -244,22 +244,55 @@ public final class ComplianceReportWriter {
             .backbtn{position:fixed;top:14px;left:16px;background:var(--paper);color:var(--gov);border:1px solid var(--gov);
               border-radius:3px;padding:9px 14px;font-size:12.5px;font-weight:700;cursor:pointer;z-index:9;
               text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.15)}
-            @page{size:A4;margin:12mm}
+            /* 인쇄 전용 렌더링(#print)은 화면에선 숨김 — 화면은 #app(인터랙티브), PDF는 #print(평면·페이지 최적화) */
+            #print{display:none}
+            @page{size:A4;margin:14mm}
             @media print{
-              body{padding:0;max-width:none;font-size:10.5px;line-height:1.45;background:#fff}
-              .noprint{display:none!important}.cover{border-radius:0}
-              table.dt,.docinfo,.verdict,.sumt,.shot{break-inside:avoid}
-              h2{break-after:avoid}a{color:inherit;text-decoration:none}
-              details.d>summary{display:none}.g{padding:0 13px 9px;font-size:10px}
-              .dt td,.dt th{padding:5px 8px;font-size:10px}.dt .sub{font-size:9.5px}
-              .docinfo th,.docinfo td{padding:6px 10px;font-size:10.5px}
-              .shot img{max-height:340px;object-fit:contain;object-position:top}
+              html,body{background:#fff}
+              body{padding:0;max-width:none;font-size:10px;line-height:1.4;color:#111;
+                -webkit-print-color-adjust:exact;print-color-adjust:exact}
+              .noprint{display:none!important}
+              #app,.pbtn,.backbtn,.verstamp,#lb{display:none!important}
+              #print{display:block}
+              #print *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+              .pcover{text-align:center;padding:26mm 0 12mm;break-after:page}
+              .pey{font-size:12px;letter-spacing:.03em;color:#556}
+              .ph1{font-size:23px;margin:10px 0 2px;line-height:1.2}
+              .psite{color:#667;font-size:12px}
+              .pverd{margin:16px 0;font-size:14px}
+              .pverd .badge{font-size:13px;padding:3px 12px}
+              .pvlab{color:#556;margin-right:6px}
+              .pinfo{margin:16px auto 0;width:82%;border-collapse:collapse;font-size:11px;text-align:left}
+              .pinfo th{background:#eef1f5;border:1px solid #c7ced8;padding:5px 9px;width:110px;white-space:nowrap;font-weight:700}
+              .pinfo td{border:1px solid #c7ced8;padding:5px 9px}
+              .pfoot0{margin-top:14px;font-size:11px;color:#333}
+              #print h2.ph2{font-size:14px;border-bottom:2px solid #2a3442;padding-bottom:3px;margin:16px 0 8px;break-after:avoid}
+              #print h3.ph3{font-size:12px;color:#1a3a6b;margin:11px 0 4px;break-after:avoid}
+              .ptbl{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:7px}
+              .ptbl thead{display:table-header-group}
+              .ptbl tr{break-inside:avoid}
+              .ptbl th{background:#eef1f5;border:1px solid #b9c1cc;padding:4px 6px;text-align:center;font-weight:700}
+              .ptbl td{border:1px solid #cdd4dd;padding:4px 6px;text-align:center;vertical-align:top}
+              .ptbl td.l{text-align:left}
+              .ptbl td.num{width:26px;color:#667}
+              .ptbl td.code{white-space:nowrap;font-family:ui-monospace,monospace;font-size:9px}
+              .ptbl.kv th{width:74px;background:#eef1f5;text-align:left}
+              .ptbl.kv td{text-align:left}
+              .ptbl.det td:last-child{text-align:left}
+              .pit{font-size:10px}.pit .badge{font-size:9px;padding:1px 6px;margin-left:4px}
+              .psub{color:#667;font-size:8.5px;margin-top:1px}
+              .pres{margin-top:2px}.pev{color:#445;font-size:8.5px;margin-top:1px}
+              .pnote{font-size:8.5px;color:#556;margin:2px 0 5px}
+              .pfooter{margin-top:16px;padding-top:6px;border-top:1px solid #cdd4dd;font-size:8px;color:#667}
+              #print .badge{display:inline-block;border-radius:3px;padding:1px 6px;font-weight:700;font-size:9px}
+              a{color:inherit;text-decoration:none}
             }
             </style></head><body>
             <a class="backbtn noprint" id="backbtn" href="/#result" style="display:none">← 결과 목록</a>
             <div class="verstamp noprint" title="클릭하면 복사" onclick="copyStamp(this)">v__VERSION__ · __BUILD_TIME__</div>
             <button class="pbtn noprint" onclick="window.print()">🖨 인쇄 / PDF 저장</button>
             <div id="app"></div>
+            <div id="print"></div>
             <div id="lb" class="noprint"><div class="lbcap"></div><div class="lbwrap"><img alt=""><canvas></canvas></div></div>
             <script id="data" type="application/json">/*__DATA__*/</script>
             <script>
@@ -393,6 +426,72 @@ public final class ComplianceReportWriter {
               KWCAG 2.2 항목은 자동 검사 결과를 매핑·집계한 것이며, 수동확인 항목은 평가자 확정을 거칩니다. 공식 인증 판정이 아닙니다.
               <div style="margin-top:6px">도구 버전 <b>__VERSION__</b> · 빌드/배포 <b>__BUILD_TIME__</b></div></footer>`;
             document.getElementById('app').innerHTML=h;
+
+            // ── 인쇄/PDF 전용 렌더링 (화면과 별개: 접기 없이 평면, 페이지 넘김 최적화) ──
+            function buildPrint(){
+              const badge=v=>`<span class="badge ${esc(v)}">${esc(v)}</span>`;
+              let p=`<section class="pcover">
+                  <div class="pey">웹접근성 · 웹호환성 검수 결과보고서</div>
+                  <h1 class="ph1">${esc(R.displayName||R.site)}</h1>
+                  <div class="psite">${esc(R.site)}</div>
+                  <div class="pverd"><span class="pvlab">종합 판정</span>${badge(vc)}${c.pendingTotal>0?' <span class="prov">· 미확정 '+c.pendingTotal+'건</span>':''}</div>
+                  <table class="pinfo"><tbody>
+                    <tr><th>대상 시스템</th><td>${esc(R.displayName||R.site)} (${esc(R.site)})</td></tr>
+                    ${R.target?`<tr><th>검사 대상 URL</th><td>${esc(R.target.baseUrl||'-')}</td></tr>
+                    <tr><th>검사 계정</th><td>${R.target.account?esc(R.target.account)+(R.target.authType==='form'?' (폼 로그인 '+esc(R.target.loginPath||'/login')+')':''):'비로그인'}</td></tr>
+                    <tr><th>검사 경로</th><td>${(R.target.paths||[]).map(x=>esc(x)).join(', ')||'-'}</td></tr>`:''}
+                    <tr><th>검사 일시</th><td>${fmtTs(R.timestamp)}</td></tr>
+                    <tr><th>검사 기준</th><td>KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 3개 엔진 렌더링 비교</td></tr>
+                    <tr><th>검사 도구</th><td>web-quality-gate v__VERSION__ · axe-core + vnu.jar + Playwright(3-engine)</td></tr>
+                  </tbody></table>
+                  <div class="pfoot0">전체 <b>${items.length}</b>건 · 적합 ${cnt('적합')} · 부적합 ${cnt('부적합')} · 수동확인 ${cnt('수동확인필요')} · 해당없음 ${cnt('해당없음')}</div>
+                </section>`;
+              // 1. 카테고리별 준수율
+              p+=`<h2 class="ph2">1. 카테고리별 준수율</h2><table class="ptbl"><thead><tr><th>구분</th><th>항목</th><th>적합</th><th>부적합</th><th>해당없음</th><th>대기</th><th>준수율</th><th>기준</th><th>판정</th></tr></thead><tbody>`;
+              (c.categories||[]).forEach(s=>{const st=s.pending>0?'대기':(s.pass?'충족':'미달');
+                p+=`<tr><td class="l">${esc(s.label)}</td><td>${s.total}</td><td>${s.적합}</td><td>${s.부적합}</td><td>${s.naCount}</td><td>${s.pending}</td><td>${s.pending>0?'산정 전':'<b>'+s.rate+'%</b>'}</td><td>${s.threshold}%</td><td>${st}</td></tr>`;});
+              const PT={total:0,적합:0,부적합:0,na:0,pending:0};
+              (c.categories||[]).forEach(s=>{PT.total+=s.total;PT.적합+=s.적합;PT.부적합+=s.부적합;PT.na+=s.naCount;PT.pending+=s.pending;});
+              const ptr=(PT.적합+PT.부적합)>0?(PT.적합/(PT.적합+PT.부적합)*100).toFixed(1):'0.0';
+              p+=`<tr class="tot"><td class="l"><b>합계</b></td><td><b>${PT.total}</b></td><td><b>${PT.적합}</b></td><td><b>${PT.부적합}</b></td><td>${PT.na}</td><td>${PT.pending}</td><td>${PT.pending>0?'산정 전':'<b>'+ptr+'%</b>'}</td><td>—</td><td></td></tr>`;
+              p+=`</tbody></table><div class="pnote">※ 준수율 = 적합 ÷ (적합 + 부적합) × 100. 해당없음·대기(미확정)는 분모에서 제외.</div>`;
+              // 2. 평가 기준
+              p+=`<h2 class="ph2">2. 평가 기준</h2><table class="ptbl kv"><tbody>
+                <tr><th>적합</th><td>해당 항목의 위반이 발견되지 않음.</td></tr>
+                <tr><th>부적합</th><td>기준을 충족하지 못하는 위반이 발견됨(근거 제시).</td></tr>
+                <tr><th>수동확인</th><td>자동 판정이 불가해 평가자가 화면·근거를 보고 확정(AI 초안 제공).</td></tr>
+                <tr><th>해당없음</th><td>검사 대상 요소가 페이지에 없어 평가 대상이 아님(준수율 분모 제외).</td></tr>
+                </tbody></table><div class="pnote">근거: KWCAG 2.2(KS X OT0003:2022) · 전자정부 웹사이트 품질관리 지침 · 장애인차별금지법.</div>`;
+              // 3. 상세 점검 결과 — 카테고리별 평면(근거 항상 표시)
+              p+=`<h2 class="ph2">3. 상세 점검 결과</h2>`;
+              (c.categories||[]).forEach(cat=>{
+                const its=items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
+                if(!its.length)return;
+                p+=`<h3 class="ph3">${esc(cat.label)}</h3><table class="ptbl det"><thead><tr><th>No</th><th>코드</th><th>검사 항목 · 판정 · 근거</th></tr></thead><tbody>`;
+                its.forEach(it=>{const g=it.guide||{};
+                  const rmsg=it.verdict==='적합'?'자동 검사에서 위반이 발견되지 않아 적합.'
+                    :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 해당없음.'
+                    :it.verdict==='수동확인필요'?'자동 판정이 어려워 평가자 확인 필요.'
+                    :'자동 검사에서 위반이 발견됨.';
+                  let ev='';(it.evidence||[]).forEach(e=>{ev+=`<div class="pev">· ${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`;});
+                  p+=`<tr><td class="num">${it.no}</td><td class="code">${esc(it.code)}</td>
+                    <td><div class="pit"><b>${esc(it.title)}</b>${badge(it.verdict)}</div>
+                    <div class="psub">${esc(it.criteria)}</div>
+                    <div class="pres">${rmsg}${(it.verdict==='부적합'||it.verdict==='수동확인필요')&&g.fix?' <b>개선</b> '+esc(g.fix):''}</div>${ev}${it.memo?'<div class="pres"><b>평가자 메모</b> '+esc(it.memo)+'</div>':''}</td></tr>`;});
+                p+='</tbody></table>';
+              });
+              // 4. 개선 필요 항목
+              const bad=items.filter(it=>it.verdict==='부적합'||it.verdict==='수동확인필요').sort((a,b)=>(a.verdict==='부적합'?0:1)-(b.verdict==='부적합'?0:1));
+              if(bad.length){const nBad=bad.filter(it=>it.verdict==='부적합').length;
+                p+=`<h2 class="ph2">4. 개선 필요 항목 (부적합 ${nBad} · 수동확인 ${bad.length-nBad})</h2><table class="ptbl"><tbody>`;
+                bad.forEach(it=>{const fix=(it.guide||{}).fix;
+                  p+=`<tr><td class="code">${badge(it.verdict)} ${esc(it.code)}</td><td class="l"><b>${esc(it.title)}</b>${fix?'<div class="psub">'+esc(fix)+'</div>':''}</td></tr>`;});
+                p+='</tbody></table>';}
+              p+=`<div class="pfooter">web-quality-gate v__VERSION__ · 빌드/배포 __BUILD_TIME__ · 본 보고서는 axe-core·vnu.jar·Playwright(3-engine) 자동 검사 결과를 KWCAG 2.2 항목에 매핑·집계한 것이며, 수동확인 항목은 평가자 확정을 거칩니다. 공식 인증 판정이 아닙니다.</div>`;
+              document.getElementById('print').innerHTML=p;
+            }
+            buildPrint();
+
             function setView(v){const cat=document.getElementById('viewCat'),kw=document.getElementById('viewKw');
               if(cat)cat.style.display=v==='cat'?'':'none';if(kw)kw.style.display=v==='kw'?'':'none';
               document.querySelectorAll('.vtab').forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
