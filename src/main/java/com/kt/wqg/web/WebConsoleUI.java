@@ -303,7 +303,7 @@ final class WebConsoleUI {
               if(r.configured===false){box.innerHTML='<div class="hbox no">Base URL 을 입력하세요</div>';return}
               if(r.error){box.innerHTML='<div class="hbox no">✗ 연결 실패: '+esc(r.error)+'</div>';return}
               const vok=r.vision==='yes';
-              const vline=r.vision?('<div class=st style="margin-top:4px">'+(vok?'👁️ <b style="color:#137333">비전 지원</b> — 스크린샷을 직접 보고 판정 가능':'⚠️ <b style="color:#b45309">비전 미지원</b> — 텍스트 증거만으로 판정(스크린샷 못 봄). 비전 모델 권장(예: gemma3, qwen2.5vl)')+(r.visionDetail?' <span class=st>· 색판별 응답: "'+esc(r.visionDetail)+'"</span>':'')+'</div>'):'';
+              const vline=r.vision?('<div class=st style="margin-top:4px">'+(vok?'<b style="color:#137333">✓ 비전 지원</b> — 스크린샷을 직접 보고 판정 가능':'<b style="color:#b45309">△ 비전 미지원</b> — 텍스트 증거만으로 판정(스크린샷 못 봄). 비전 모델 권장(예: gemma3, qwen2.5vl)')+(r.visionDetail?' <span class=st>· 색판별 응답: "'+esc(r.visionDetail)+'"</span>':'')+'</div>'):'';
               box.innerHTML='<div class="hbox ok">✓ 연결 성공 · 모델 '+esc(r.model)+' · 응답 "'+esc(r.reply)+'"'+vline+'</div>'}
             async function loadConfig(){const {systems}=await api('/api/systems');
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
@@ -672,7 +672,7 @@ final class WebConsoleUI {
                 ${needs?`<button class="linkbtn aibtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
-                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide><summary>📷 근거 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
+                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide><summary>근거 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
                 <div id="ai-${id}" class="aidraft"></div>
                 <details class=guide><summary>상세 설명</summary>
                   <div><b>무엇</b> ${esc(g.what)}</div><div><b>왜</b> ${esc(g.why)}</div>
