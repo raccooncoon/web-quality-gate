@@ -188,6 +188,15 @@ public final class ComplianceReportWriter {
             details.d>summary::-webkit-details-marker{display:none}
             details.d>summary::before{content:"▸ "}
             details.d[open]>summary::before{content:"▾ "}
+            .viewbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 12px}
+            .vtabs{display:inline-flex;border:1px solid var(--gov);border-radius:5px;overflow:hidden}
+            .vtab{font-size:12.5px;font-weight:700;color:var(--gov);background:#fff;border:none;padding:6px 14px;cursor:pointer;border-right:1px solid var(--gov)}
+            .vtab:last-child{border-right:none}
+            .vtab.on{background:var(--gov);color:#fff}
+            .detbtn{font-size:12px;font-weight:700;color:var(--gov);background:#fff;border:1px solid var(--gov);border-radius:4px;padding:5px 13px;cursor:pointer}
+            .detbtn:hover{opacity:.82}
+            h3.cathd{font-size:13.5px;color:var(--head);margin:18px 0 8px;padding-left:9px;border-left:3px solid var(--gov);font-weight:800}
+            .docinfo .pathlist code{margin:1px 3px 1px 0;display:inline-block}
             .g{font-size:12px;color:var(--muted);padding:0 15px 12px}
             .g div{margin:4px 0}.g b{color:var(--ink);font-weight:700;margin-right:5px}
             .ev{font-size:11.5px;color:var(--muted);margin-top:5px;font-family:ui-monospace,monospace;word-break:break-all;
@@ -281,6 +290,9 @@ public final class ComplianceReportWriter {
               </div>
               <table class="docinfo">
                 <tr><th>대상 시스템</th><td>${esc(R.displayName||R.site)} <code>(${esc(R.site)})</code></td></tr>
+                ${R.target?`<tr><th>검사 대상 URL</th><td class="shoturl"><code>${esc(R.target.baseUrl||'-')}</code></td></tr>
+                <tr><th>검사 계정</th><td>${R.target.account?'<code>'+esc(R.target.account)+'</code>':'<span class="prov">비로그인</span>'} ${R.target.authType==='form'?'<span class="prov">· 폼 로그인 '+esc(R.target.loginPath||'/login')+'</span>':(R.target.authType&&R.target.authType!=='form'&&R.target.authType!=='none'?'<span class="prov">· '+esc(R.target.authType)+'</span>':'')}</td></tr>
+                <tr><th>검사 경로 <span class="prov">(${(R.target.paths||[]).length})</span></th><td class="pathlist">${(R.target.paths||[]).map(p=>'<code>'+esc(p)+'</code>').join(' ')||'-'}</td></tr>`:''}
                 <tr><th>검사 일시</th><td>${fmtTs(R.timestamp)}</td></tr>
                 <tr><th>검사 기준</th><td>KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 3개 엔진 렌더링 비교</td></tr>
                 <tr><th>종합 판정</th><td><span class="badge ${esc(vc)}">${esc(vc)}</span>${c.pendingTotal>0?' · 미확정 '+c.pendingTotal+'건':''}</td></tr>
@@ -310,30 +322,49 @@ public final class ComplianceReportWriter {
               평가자가 대기 항목을 모두 확정(적합/부적합/해당없음)하면 그때 최종 준수율·판정이 확정됩니다.</div>`;
             if((R.excluded||[]).length)h+=`<div class="note">🚫 <b>검사 제외 항목 ${R.excluded.length}건</b>(관리자 설정) — 이번 검수 범위에서 제외되어 위 집계·준수율에 포함되지 않았습니다: `
               +R.excluded.map(e=>`<code>${esc(e.code)}</code> ${esc(e.title)}`).join(', ')+`</div>`;
-            // 카테고리별 항목 표 + 접이식 상세
+            // 평가 기준
+            h+=`<h2>평가 기준</h2>
+              <table class="dt"><thead><tr><th style="width:100px">판정</th><th>의미 · 기준</th></tr></thead><tbody>
+              <tr><td><span class="badge 적합">적합</span></td><td>자동 검사(또는 평가자 확정)에서 해당 항목의 위반이 발견되지 않음.</td></tr>
+              <tr><td><span class="badge 부적합">부적합</span></td><td>기준을 충족하지 못하는 위반이 발견됨(근거 제시).</td></tr>
+              <tr><td><span class="badge 수동확인필요">수동확인</span></td><td>자동 판정이 불가해 평가자가 화면·근거를 보고 확정해야 함(AI 초안 제공).</td></tr>
+              <tr><td><span class="badge 해당없음">해당없음</span></td><td>검사 대상 콘텐츠·요소가 페이지에 없어 평가 대상이 아님(준수율 분모에서 제외).</td></tr>
+              </tbody></table>
+              <div class="note"><b>준수율</b> = 적합 ÷ (적합 + 부적합) × 100 (해당없음·미확정 제외). 카테고리 판정 = 준수율 ≥ 기준(%)이면 <b>충족</b>, 미만이면 <b>미달</b>. 종합 판정 = 부적합 0 · 미확정 0 이면 <b>적합</b>. 근거: KWCAG 2.2(KS X OT0003:2022) · 전자정부 웹사이트 품질관리 지침 · 장애인차별금지법.</div>`;
+            // 상세 점검 결과 — 두 가지 보기(카테고리별 / KWCAG 항목순) + 상세 전체 열기/닫기
+            h+=`<h2>상세 점검 결과</h2>
+              <div class="viewbar noprint">
+                <div class="vtabs"><button type="button" class="vtab on" data-v="cat" onclick="setView('cat')">카테고리별</button><button type="button" class="vtab" data-v="kw" onclick="setView('kw')">KWCAG 항목순</button></div>
+                <button type="button" class="detbtn" onclick="toggleAllDetails(this)" data-open="0">상세 전체 열기</button>
+              </div>`;
+            const thead='<thead><tr><th>No</th><th>코드</th><th>검사 항목</th><th>세부 기준</th><th>판정</th><th>근거</th></tr></thead>';
+            const itemRows=(list,withId)=>{let s='';list.forEach(it=>{const g=it.guide||{};
+              s+=`<tr class="main"${withId?' id="it-'+esc(it.code)+'"':''}><td class="num r0">${it.no}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
+                <td><span class="badge ${esc(it.verdict)}">${esc(it.verdict)}</span></td><td class="sub">${it.source==='assessor'?'평가자 확정':'자동 판정'}</td></tr>`;
+              s+=`<tr class="drow"><td colspan="6"><details class="d"><summary>상세 설명 보기</summary>`;
+              const hasEv=(it.evidence||[]).length>0;
+              const rmsg=it.verdict==='적합'?'✓ 자동 검사에서 위반이 발견되지 않아 <b>적합</b>입니다.'
+                :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 <b>해당없음</b>으로 처리했습니다.'
+                :it.verdict==='수동확인필요'?(hasEv?'검사에서 아래 <b>대상</b>이 확인되었습니다. 자동으로 적합 여부를 판단하기 어려워 <b>평가자 확인</b>이 필요합니다.':'자동 검사로는 판단이 어려운 항목으로 <b>평가자 확인</b>이 필요합니다.')
+                :'자동 검사에서 <b>위반</b>이 발견되었습니다. 아래 증거를 확인하세요.';
+              s+=`<div class="g"><div><b>검사 결과</b> ${rmsg}</div></div>`;
+              if(it.memo)s+=`<div class="g"><div><b>평가자 메모</b>${esc(it.memo)}</div></div>`;
+              s+=`<div class="g"><div><b>무엇</b>${esc(g.what)}</div><div><b>왜</b>${esc(g.why)}</div>
+                <div><b>근거</b>${esc(g.basis)}</div><div><b>개선 방법</b>${esc(g.fix)}</div>
+                ${g.limit?'<div><b>검사 한계</b>'+esc(g.limit)+'</div>':''}`;
+              (it.evidence||[]).forEach(e=>{s+=`<div class="ev">${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`});
+              s+='</div></details></td></tr>';});return s;};
+            // 뷰1: 카테고리별
+            let catHtml='';
             (c.categories||[]).forEach(cat=>{
               const its=items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
               if(!its.length)return;
-              h+=`<h2>${esc(cat.label)}</h2><table class="dt items"><thead><tr><th>No</th><th>코드</th><th>검사 항목</th><th>세부 기준</th><th>판정</th><th>근거</th></tr></thead><tbody>`;
-              its.forEach(it=>{const g=it.guide||{};
-                h+=`<tr class="main" id="it-${esc(it.code)}"><td class="num r0">${it.no}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
-                  <td><span class="badge ${esc(it.verdict)}">${esc(it.verdict)}</span></td><td class="sub">${it.source==='assessor'?'평가자 확정':'자동 판정'}</td></tr>`;
-                h+=`<tr class="drow"><td colspan="6"><details class="d"><summary>상세 설명 보기</summary>`;
-                const hasEv=(it.evidence||[]).length>0;
-                const rmsg=it.verdict==='적합'?'✓ 자동 검사에서 위반이 발견되지 않아 <b>적합</b>입니다.'
-                  :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 <b>해당없음</b>으로 처리했습니다.'
-                  :it.verdict==='수동확인필요'?(hasEv?'검사에서 아래 <b>대상</b>이 확인되었습니다. 자동으로 적합 여부를 판단하기 어려워 <b>평가자 확인</b>이 필요합니다.':'자동 검사로는 판단이 어려운 항목으로 <b>평가자 확인</b>이 필요합니다.')
-                  :'자동 검사에서 <b>위반</b>이 발견되었습니다. 아래 증거를 확인하세요.';
-                h+=`<div class="g"><div><b>검사 결과</b> ${rmsg}</div></div>`;
-                if(it.memo)h+=`<div class="g"><div><b>평가자 메모</b>${esc(it.memo)}</div></div>`;
-                h+=`<div class="g"><div><b>무엇</b>${esc(g.what)}</div><div><b>왜</b>${esc(g.why)}</div>
-                  <div><b>근거</b>${esc(g.basis)}</div><div><b>개선 방법</b>${esc(g.fix)}</div>
-                  ${g.limit?'<div><b>검사 한계</b>'+esc(g.limit)+'</div>':''}`;
-                (it.evidence||[]).forEach(e=>{h+=`<div class="ev">${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`});
-                h+='</div></details></td></tr>';
-              });
-              h+='</tbody></table>';
+              catHtml+=`<h3 class="cathd">${esc(cat.label)}</h3><table class="dt items">${thead}<tbody>`+itemRows(its,true)+'</tbody></table>';
             });
+            // 뷰2: KWCAG 항목순 (1.x→2.x→3.x→4.x→c-*)
+            const kwKey=code=>{const m=String(code).match(/^(\\d+)\\.(\\d+)\\.?(\\d+)?/);return m?[0,+m[1],+m[2],+(m[3]||0),'']:[1,0,0,0,String(code)];};
+            const kwSorted=items.slice().sort((a,b)=>{const x=kwKey(a.code),y=kwKey(b.code);for(let i=0;i<5;i++){if(x[i]<y[i])return -1;if(x[i]>y[i])return 1;}return 0;});
+            h+=`<div id="viewCat">${catHtml}</div><div id="viewKw" style="display:none"><table class="dt items">${thead}<tbody>${itemRows(kwSorted,false)}</tbody></table></div>`;
             // 개선 필요 요약(클릭 → 위 항목표 상세로 이동)
             const detail=items.filter(it=>it.verdict==='부적합'||it.verdict==='수동확인필요')
               .sort((a,b)=>(a.verdict==='부적합'?0:1)-(b.verdict==='부적합'?0:1));
@@ -362,9 +393,15 @@ public final class ComplianceReportWriter {
               KWCAG 2.2 항목은 자동 검사 결과를 매핑·집계한 것이며, 수동확인 항목은 평가자 확정을 거칩니다. 공식 인증 판정이 아닙니다.
               <div style="margin-top:6px">도구 버전 <b>__VERSION__</b> · 빌드/배포 <b>__BUILD_TIME__</b></div></footer>`;
             document.getElementById('app').innerHTML=h;
+            function setView(v){const cat=document.getElementById('viewCat'),kw=document.getElementById('viewKw');
+              if(cat)cat.style.display=v==='cat'?'':'none';if(kw)kw.style.display=v==='kw'?'':'none';
+              document.querySelectorAll('.vtab').forEach(b=>b.classList.toggle('on',b.dataset.v===v));}
+            function toggleAllDetails(btn){const open=btn.dataset.open!=='1';
+              document.querySelectorAll('#viewCat details.d, #viewKw details.d').forEach(d=>{d.open=open;});
+              btn.dataset.open=open?'1':'0';btn.textContent=open?'상세 전체 닫기':'상세 전체 열기';}
 
             // 개선 필요 요약 → 해당 항목 상세 펼치고 이동
-            function jumpTo(code){const row=document.getElementById('it-'+code);if(!row)return;
+            function jumpTo(code){setView('cat');const row=document.getElementById('it-'+code);if(!row)return;
               const det=row.nextElementSibling&&row.nextElementSibling.querySelector('details');if(det)det.open=true;
               row.scrollIntoView({behavior:'smooth',block:'center'});
               row.classList.remove('flash');void row.offsetWidth;row.classList.add('flash');}

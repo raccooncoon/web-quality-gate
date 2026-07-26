@@ -139,8 +139,25 @@ public final class CheckService {
                     STANDARD, engines, results);
             // report.html 을 SI 검수결과표로 최종 생성. AssessmentView 가 compliance.json 의 excluded 로
             // 스스로 필터링하므로 전체 카탈로그를 넘겨(제외 항목 제목 조회용) 일관성을 유지한다.
-            com.kt.wqg.report.ComplianceReportWriter.write(reportDir,
+            java.util.Map<String, Object> reportPayload = new java.util.LinkedHashMap<>(
                     com.kt.wqg.compliance.AssessmentView.build(reportDir, fullCatalog));
+            // 대상 정보(리포트 헤더용) — 검사 URL·인증 방식·검사 계정(ID만)·검사 경로 목록
+            java.util.Map<String, Object> target = new java.util.LinkedHashMap<>();
+            target.put("baseUrl", site.baseUrl());
+            boolean formAuth = site.auth() != null && "form".equals(site.auth().type());
+            target.put("authType", site.auth() == null ? "none" : site.auth().type());
+            target.put("loginPath", site.auth() == null ? null : site.auth().loginPath());
+            String account = null;
+            if (formAuth) {
+                try { account = CheckRunner.credentialsOf(site.name(), credResolver).id(); }
+                catch (RuntimeException ignore) {
+                    account = "env WQG_" + site.name().toUpperCase(java.util.Locale.ROOT).replace('-', '_') + "_ID";
+                }
+            }
+            target.put("account", account);
+            target.put("paths", site.urls().stream().map(SitesConfig.Url::path).toList());
+            reportPayload.put("target", target);
+            com.kt.wqg.report.ComplianceReportWriter.write(reportDir, reportPayload);
             return reportDir.resolve("report.html");
         }
     }
