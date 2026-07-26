@@ -282,6 +282,8 @@ public final class ComplianceReportWriter {
               .pit{font-size:10px}.pit .badge{font-size:9px;padding:1px 6px;margin-left:4px}
               .psub{color:#667;font-size:8.5px;margin-top:1px}
               .pres{margin-top:2px}.pev{color:#445;font-size:8.5px;margin-top:1px}
+              .pg{margin-top:2px}.pg div{font-size:8.7px;color:#334;margin-top:1px;line-height:1.35}
+              .pg b{color:#1a3a6b;margin-right:3px;font-weight:700}
               .pnote{font-size:8.5px;color:#556;margin:2px 0 5px}
               .pfooter{margin-top:16px;padding-top:6px;border-top:1px solid #cdd4dd;font-size:8px;color:#667}
               #print .badge{display:inline-block;border-radius:3px;padding:1px 6px;font-weight:700;font-size:9px}
@@ -469,15 +471,25 @@ public final class ComplianceReportWriter {
                 if(!its.length)return;
                 p+=`<h3 class="ph3">${esc(cat.label)}</h3><table class="ptbl det"><thead><tr><th>No</th><th>코드</th><th>검사 항목 · 판정 · 근거</th></tr></thead><tbody>`;
                 its.forEach(it=>{const g=it.guide||{};
+                  const full=it.verdict==='부적합'||it.verdict==='수동확인필요';
                   const rmsg=it.verdict==='적합'?'자동 검사에서 위반이 발견되지 않아 적합.'
                     :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 해당없음.'
                     :it.verdict==='수동확인필요'?'자동 판정이 어려워 평가자 확인 필요.'
                     :'자동 검사에서 위반이 발견됨.';
                   let ev='';(it.evidence||[]).forEach(e=>{ev+=`<div class="pev">· ${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`;});
+                  // 부적합·수동확인은 전체 근거(무엇/왜/근거/개선/한계), 적합·해당없음은 한 줄
+                  let detail=`<div class="pres">${rmsg}</div>`;
+                  if(full){detail+='<div class="pg">'
+                    +(g.what?`<div><b>무엇</b> ${esc(g.what)}</div>`:'')
+                    +(g.why?`<div><b>왜</b> ${esc(g.why)}</div>`:'')
+                    +(g.basis?`<div><b>근거</b> ${esc(g.basis)}</div>`:'')
+                    +(g.fix?`<div><b>개선</b> ${esc(g.fix)}</div>`:'')
+                    +(g.limit?`<div><b>검사 한계</b> ${esc(g.limit)}</div>`:'')
+                    +'</div>';}
                   p+=`<tr><td class="num">${it.no}</td><td class="code">${esc(it.code)}</td>
                     <td><div class="pit"><b>${esc(it.title)}</b>${badge(it.verdict)}</div>
                     <div class="psub">${esc(it.criteria)}</div>
-                    <div class="pres">${rmsg}${(it.verdict==='부적합'||it.verdict==='수동확인필요')&&g.fix?' <b>개선</b> '+esc(g.fix):''}</div>${ev}${it.memo?'<div class="pres"><b>평가자 메모</b> '+esc(it.memo)+'</div>':''}</td></tr>`;});
+                    ${detail}${ev}${it.memo?'<div class="pres"><b>평가자 메모</b> '+esc(it.memo)+'</div>':''}</td></tr>`;});
                 p+='</tbody></table>';
               });
               // 4. 개선 필요 항목
