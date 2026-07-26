@@ -335,7 +335,7 @@ final class WebConsoleUI {
               html+='<table><tr><th>시스템명</th><th>표시 이름</th><th>유형</th><th>baseUrl</th><th></th></tr>'
                 +systems.map(s=>'<tr><td><code>'+esc(s.name)+'</code></td><td>'+esc(s.displayName||'')+'</td><td>'+esc(s.type||'')
                   +'</td><td class=st style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.baseUrl||'(미설정)')
-                  +'</td><td><button class="act ghost" onclick="delSystem(\''+esc(s.name)+'\',\''+esc(s.displayName||s.name)+'\')">삭제</button></td></tr>').join('')
+                  +'</td><td><button class="act ghost" onclick="delSystem(\\''+esc(s.name)+'\\',\\''+esc(s.displayName||s.name)+'\\')">삭제</button></td></tr>').join('')
                 +'</table>';
               $('#syscfg').innerHTML=html;}
             // ── AI 설정 탭 ──
