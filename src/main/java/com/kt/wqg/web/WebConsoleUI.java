@@ -143,9 +143,11 @@ final class WebConsoleUI {
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
-              <button data-tab="items">④ 점검 항목</button></nav></header>
+              <button data-tab="items">④ 점검 항목</button>
+              <button data-tab="stdref">ⓘ 기준·도구</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
+              <div id="stdref" style="display:none"></div>
               <div id="result" style="display:none"></div>
               <div id="assessview" style="display:none"><div class="body"></div></div>
               <div id="compareview" style="display:none"><div class="body"></div></div></main>
@@ -168,8 +170,53 @@ final class WebConsoleUI {
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
               $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
-              ['config','run','items','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
-              if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult();if(b.dataset.tab==='items')loadItems()});
+              ['config','run','items','stdref','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
+              if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult();if(b.dataset.tab==='items')loadItems();if(b.dataset.tab==='stdref')loadStdRef()});
+
+            // ── 기준·도구 탭 (정적 참조: 도구 비교 + KWCAG 매핑 + 체크리스트) ──
+            function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
+              const P={a:'<span class="pill ok">자동</span>',m:'<span class="pill wait">수동</span>',p:'<span class="pill wait">부분</span>',n:'<span class="pill na">—</span>'};
+              const intro='<div class="tabintro">세 도구 모두 KWCAG를 보지만 <b>목적·엔진·공신력이 달라 대체가 아니라 보완</b>입니다. '
+                +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 도구 비교·항목 매핑·체크리스트(참조).</div>';
+              const cmp='<div class=grouphd>1. 도구 성격 비교</div>'
+                +'<table><tr><th>항목</th><th>카도와(KADO-WAH)</th><th>웹와치(WebWatch)</th><th style="background:var(--govsoft)">WQG (이 도구)</th></tr>'
+                +'<tr><td><b>성격</b></td><td>NIA 무료 공식 도구</td><td>상용 모니터링 솔루션</td><td>자체 제작 인하우스</td></tr>'
+                +'<tr><td><b>엔진</b></td><td>KWCAG 네이티브</td><td>자체 상용 엔진</td><td><small style="font-family:ui-monospace,monospace">axe-core+vnu+Playwright</small></td></tr>'
+                +'<tr><td><b>방식</b></td><td>단일 페이지·준자동</td><td>사이트 크롤링·스케줄</td><td>로그인 후 다중 페이지 자동+AI 초안</td></tr>'
+                +'<tr><td><b>크로스브라우저</b></td><td>'+P.n+'</td><td>'+P.n+'</td><td>'+P.a+' 3엔진 픽셀diff</td></tr>'
+                +'<tr><td><b>확대(200%)</b></td><td>'+P.n+'</td><td>'+P.p+'</td><td>'+P.a+' reflow 자동</td></tr>'
+                +'<tr><td><b>수동항목</b></td><td>평가자 유도</td><td>평가자</td><td>AI 비전 초안+근거 스크린샷, 평가자 확정</td></tr>'
+                +'<tr><td><b>공신력</b></td><td><span class="pill ok">인증·자가진단 표준</span></td><td>상용 모니터링</td><td><span class="pill wait">내부 QA 참고</span></td></tr>'
+                +'<tr><td><b>적합 용도</b></td><td>공식 자가진단·인증 준비</td><td>대규모 정기 모니터링</td><td>개발·운영 상시 QA·회귀 방지</td></tr></table>';
+              const M=[['P','인식의 용이성 (Perceivable)'],
+                ['1.1.1','적절한 대체 텍스트','a','a','axe'],['1.2.1','자막 제공','m','m','axe'],['1.3.1','표의 구성','a','a','axe'],
+                ['1.3.2','콘텐츠의 선형 구조','m','m','axe'],['1.3.3','명확한 지시사항','m','m','AI·평가자'],['1.4.1','색에 무관한 인식','m','p','AI·평가자'],
+                ['1.4.2','자동 재생 금지','m','a','axe'],['1.4.3','텍스트 명도 대비','a','a','axe'],['1.4.4','콘텐츠 간의 구분','m','m','평가자'],
+                ['P','운용의 용이성 (Operable)'],
+                ['2.1.1','키보드 사용 보장','m','m','axe'],['2.1.2','초점 이동과 표시','m','m','평가자'],['2.1.3','조작 가능(타깃 크기)','n','p','axe'],
+                ['2.1.4','문자 단축키','m','m','axe'],['2.2.1','응답시간 조절','m','m','axe'],['2.2.2','정지 기능','m','a','axe'],['2.3.1','깜빡임 제한','m','a','axe'],
+                ['2.4.1','반복 영역 건너뛰기','a','a','axe'],['2.4.2','제목 제공','a','a','axe'],['2.4.3','적절한 링크 텍스트','a','a','axe'],['2.4.4','고정 참조 위치','m','m','axe'],
+                ['2.5.1','단일 포인터 입력','m','m','axe'],['2.5.2','포인터 입력 취소','m','m','axe'],['2.5.3','레이블과 네임','m','m','axe'],['2.5.4','동작 기반 작동','m','m','axe'],
+                ['P','이해의 용이성 (Understandable)'],
+                ['3.1.1','기본 언어 표시','a','a','axe'],['3.2.1','사용자 요구에 따른 실행','m','m','axe'],['3.2.2','찾기 쉬운 도움 정보','m','m','AI·평가자'],
+                ['3.3.1','오류 정정','m','m','axe'],['3.3.2','레이블 제공','a','a','axe'],['3.3.3','접근 가능한 인증','m','m','axe'],['3.3.4','반복 입력 정보','m','m','AI·평가자'],
+                ['P','견고성 (Robust)'],
+                ['4.1.1','마크업 오류 방지','p','a','vnu'],['4.2.1','웹 애플리케이션 접근성(ARIA)','m','m','axe'],
+                ['P','WQG 확장 (KWCAG 외 · 웹호환성)'],
+                ['c-webstandard','웹표준 HTML/CSS','n','p','vnu·평가자'],['c-deprecated','Deprecated 태그','n','p','vnu'],
+                ['c-browser','브라우저 호환성','n','n','Playwright'],['c-reflow','해상도·확대(200%)','n','p','Playwright']];
+              const rows=M.map(r=>r[0]==='P'
+                ? '<tr><td colspan=4 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+r[1]+'</td></tr>'
+                : '<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>').join('');
+              const mapping='<div class=grouphd style="margin-top:22px">2. KWCAG 2.2 항목 매핑 (33 + 확장 4)</div>'
+                +'<table><tr><th style="min-width:190px">검사항목</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>'+rows+'</table>';
+              const ck='<div class=grouphd style="margin-top:22px">3. 자동/수동 체크리스트</div>'
+                +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
+                +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
+                +'<td style="vertical-align:top">명확한지시(1.3.3)·색무관인식(1.4.1)·콘텐츠구분(1.4.4)·키보드(2.1.1)·초점표시(2.1.2)·도움정보(3.2.2)·오류정정(3.3.1)·반복입력(3.3.4)·접근가능인증(3.3.3)</td></tr></table>';
+              const note='<div class="cardsteps" style="margin-top:18px">카도와·웹와치의 자동/수동 표기는 <b>근사치</b>(제품 버전·설정에 따라 다름). 실제 대조는 각 도구를 로그인된 브라우저에서 직접 실행. '
+                +'<b>WQG "적합"이 공식 인증 통과를 보장하지 않습니다</b> — 납품·인증은 카도와(또는 발주처 지정 도구)+전문가 수동평가로 최종 확인.</div>';
+              box.innerHTML=intro+cmp+mapping+ck+note;box.dataset.done='1';}
 
             // ── 설정 탭 ──
             const isTest=s=>s.name==='defect-kwater'||(s.displayName||'').includes('테스트');
