@@ -202,8 +202,21 @@ final class WebConsoleUI {
             function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
               const P={a:'<span class="pill ok">자동</span>',m:'<span class="pill wait">수동</span>',p:'<span class="pill wait">부분</span>',n:'<span class="pill na">—</span>'};
               const intro='<div class="tabintro">세 도구 모두 KWCAG를 보지만 <b>목적·엔진·공신력이 달라 대체가 아니라 보완</b>입니다. '
-                +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 도구 비교·항목 매핑·체크리스트(참조).</div>';
-              const cmp='<div class=grouphd>1. 도구 성격 비교</div>'
+                +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 표준 관계·도구 비교·항목 매핑·체크리스트(참조).</div>';
+              const std='<div class=grouphd>1. 표준 관계 · WCAG ↔ KWCAG</div>'
+                +'<div class="tabintro"><b>WCAG</b>가 국제 원본(W3C 권고), <b>KWCAG</b>는 이를 한국 실정에 맞게 추린·재구성한 국가표준(KS X OT0003)입니다. '
+                +'KWCAG 항목은 대부분 WCAG 성공기준(SC)에 대응하지만 <b>1:1이 아니라</b> 여러 WCAG 기준을 하나로 묶거나 일부(주로 AAA)를 제외한 <b>부분집합</b>입니다. '
+                +'WQG는 엔진(axe-core)이 내는 <b>WCAG 태그 결과를 KWCAG 33항목으로 매핑·집계</b>합니다(아래 3번 표).</div>'
+                +'<table><tr><th style="width:15%">구분</th><th>WCAG</th><th style="background:var(--govsoft)">KWCAG</th></tr>'
+                +'<tr><td><b>제정</b></td><td>W3C · 국제 권고</td><td>국가표준 KS X OT0003 · TTA</td></tr>'
+                +'<tr><td><b>최신</b></td><td>2.0·2.1·2.2</td><td>2.0·2.1·<b>2.2 (2022)</b></td></tr>'
+                +'<tr><td><b>구조</b></td><td>4원칙 → 13지침 → 78 성공기준 (A/AA/AAA)</td><td>4원칙 → 14지침 → <b>33 검사항목</b></td></tr>'
+                +'<tr><td><b>4원칙</b></td><td colspan=2 style="text-align:center">인식의 용이성 · 운용의 용이성 · 이해의 용이성 · 견고성 <small class=st>(양쪽 동일)</small></td></tr>'
+                +'<tr><td><b>법적 근거</b></td><td>직접 의무 아님(원본 기준)</td><td><b>장애인차별금지법 · 지능정보화기본법</b> → 공공기관 의무 · WA 품질인증 심사</td></tr>'
+                +'<tr><td><b>WQG에서</b></td><td>측정 엔진(axe-core)의 언어</td><td>판정·리포트의 언어(집계 단위)</td></tr></table>'
+                +'<div class="cardsteps" style="margin-top:12px"><b>WCAG 통과 ≈ KWCAG 통과</b>가 대체로 성립하지만, 법·인증이 KWCAG 기준이라 <b>판정은 KWCAG 항목 단위</b>로 합니다. '
+                +'아래 매핑의 "33 + 확장 4"에서 <b>33은 KWCAG 표준 항목</b>, <b>+4는 KWCAG 밖 웹호환성</b>(c-browser·c-reflow·c-deprecated·c-webstandard)을 WQG가 얹은 확장입니다.</div>';
+              const cmp='<div class=grouphd style="margin-top:22px">2. 도구 성격 비교</div>'
                 +'<table><tr><th>항목</th><th>카도와(KADO-WAH)</th><th>웹와치(WebWatch)</th><th style="background:var(--govsoft)">WQG (이 도구)</th></tr>'
                 +'<tr><td><b>성격</b></td><td>NIA 무료 공식 도구</td><td>상용 모니터링 솔루션</td><td>자체 제작 인하우스</td></tr>'
                 +'<tr><td><b>엔진</b></td><td>KWCAG 네이티브</td><td>자체 상용 엔진</td><td><small style="font-family:ui-monospace,monospace">axe-core+vnu+Playwright</small></td></tr>'
@@ -233,9 +246,9 @@ final class WebConsoleUI {
               const rows=M.map(r=>r[0]==='P'
                 ? '<tr><td colspan=4 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+r[1]+'</td></tr>'
                 : '<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>').join('');
-              const mapping='<div class=grouphd style="margin-top:22px">2. KWCAG 2.2 항목 매핑 (33 + 확장 4)</div>'
+              const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (33 + 확장 4)</div>'
                 +'<table><tr><th style="min-width:190px">검사항목</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>'+rows+'</table>';
-              const ck='<div class=grouphd style="margin-top:22px">3. 자동/수동 체크리스트</div>'
+              const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
                 +'<td style="vertical-align:top">명확한지시(1.3.3)·색무관인식(1.4.1)·콘텐츠구분(1.4.4)·키보드(2.1.1)·초점표시(2.1.2)·도움정보(3.2.2)·오류정정(3.3.1)·반복입력(3.3.4)·접근가능인증(3.3.3)</td></tr></table>';
@@ -246,7 +259,7 @@ final class WebConsoleUI {
                 +'<tr><td><b>axe-core</b> <small class=st>Deque</small></td><td>접근성(WCAG→KWCAG) 룰 — 대체텍스트·명도대비·레이블·ARIA·표 구성 등 자동 검출</td></tr>'
                 +'<tr><td><b>vnu.jar</b> <small class=st>W3C Nu Html Checker</small></td><td><b>마크업 유효성</b> — <code>validator.w3.org/nu</code> 엔진의 오프라인판. 닫히지 않은 태그·중복 id·잘못된 중첩·필수속성 누락·<b>deprecated(폐기) 태그</b> 등 HTML 문법 오류(항목 4.1.1·c-deprecated). MPA는 서버 원본 HTML, SPA는 JS 실행 후 렌더된 DOM을 검사</td></tr>'
                 +'<tr><td><b>Playwright</b> <small class=st>3엔진</small></td><td>chromium·firefox·webkit 스크린샷 <b>픽셀 diff</b>(크로스브라우저) + <b>200% 확대 reflow</b>(가로 오버플로)</td></tr></table>';
-              box.innerHTML=intro+cmp+engInfo+mapping+ck+note;box.dataset.done='1';}
+              box.innerHTML=intro+std+cmp+engInfo+mapping+ck+note;box.dataset.done='1';}
 
             // ── 증적·이력 탭 (검사 이력 대장 + 제출용 인쇄) ──
             const fmtTsFull=ts=>{const m=String(ts).match(/(\\d{4})(\\d\\d)(\\d\\d)-(\\d\\d)(\\d\\d)/);return m?m[1]+'-'+m[2]+'-'+m[3]+' '+m[4]+':'+m[5]:ts};
@@ -274,7 +287,7 @@ final class WebConsoleUI {
               $('#printhd').style.display='block';window.print();setTimeout(()=>{$('#printhd').style.display='none'},300);}
 
             // ── 설정 탭 ──
-            const isTest=s=>s.name==='defect-kwater'||(s.displayName||'').includes('테스트');
+            const isTest=s=>['defect-kwater','defect-local'].includes(s.name)||(s.displayName||'').includes('테스트')||(s.displayName||'').includes('로컬')||(s.baseUrl||'').includes('localhost')||(s.baseUrl||'').includes('dev-');
             const addForm=`<div class="sys" style="border-style:dashed"><div class="body" style="display:block;border:none">
               <div class="grouphd" style="margin-top:0">시스템 추가</div>
               <div class="row3"><div><label>시스템명(영문)</label><input id="ns-name" placeholder="cloud-cmp"></div>
