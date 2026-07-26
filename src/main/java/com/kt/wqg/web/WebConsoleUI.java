@@ -160,9 +160,9 @@ final class WebConsoleUI {
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
-              <button data-tab="items">④ 점검 항목</button>
               <span class="navsp"></span>
               <button data-tab="syscfg" class="util">⚙ 시스템 관리</button>
+              <button data-tab="items" class="util">✓ 점검 항목</button>
               <button data-tab="aicfg" class="util">✦ AI 설정</button>
               <button data-tab="audit" class="util">☰ 증적·이력</button>
               <button data-tab="stdref" class="util">ⓘ 기준·도구</button></nav></header>
