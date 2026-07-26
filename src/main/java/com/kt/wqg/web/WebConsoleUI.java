@@ -554,7 +554,7 @@ final class WebConsoleUI {
                 ${needs?`<button class="linkbtn aibtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
-                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide open><summary>📷 근거 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
+                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide><summary>📷 근거 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
                 <div id="ai-${id}" class="aidraft"></div>
                 <details class=guide><summary>상세 설명</summary>
                   <div><b>무엇</b> ${esc(g.what)}</div><div><b>왜</b> ${esc(g.why)}</div>
