@@ -144,9 +144,13 @@ final class WebConsoleUI {
             <nav><button data-tab="config" class="on">① 설정</button>
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
               <button data-tab="items">④ 점검 항목</button>
+              <button data-tab="syscfg">＋ 시스템 관리</button>
+              <button data-tab="aicfg">✦ AI 설정</button>
               <button data-tab="stdref">ⓘ 기준·도구</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
+              <div id="syscfg" style="display:none"></div>
+              <div id="aicfg" style="display:none"></div>
               <div id="stdref" style="display:none"></div>
               <div id="result" style="display:none"></div>
               <div id="assessview" style="display:none"><div class="body"></div></div>
@@ -170,8 +174,9 @@ final class WebConsoleUI {
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
               $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
-              ['config','run','items','stdref','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
-              if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult();if(b.dataset.tab==='items')loadItems();if(b.dataset.tab==='stdref')loadStdRef()});
+              ['config','run','items','syscfg','aicfg','stdref','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
+              if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult();if(b.dataset.tab==='items')loadItems();if(b.dataset.tab==='stdref')loadStdRef();
+              if(b.dataset.tab==='syscfg')loadSysCfg();if(b.dataset.tab==='aicfg')loadAiCfg()});
 
             // ── 기준·도구 탭 (정적 참조: 도구 비교 + KWCAG 매핑 + 체크리스트) ──
             function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
@@ -250,14 +255,14 @@ final class WebConsoleUI {
               const vok=r.vision==='yes';
               const vline=r.vision?('<div class=st style="margin-top:4px">'+(vok?'👁️ <b style="color:#137333">비전 지원</b> — 스크린샷을 직접 보고 판정 가능':'⚠️ <b style="color:#b45309">비전 미지원</b> — 텍스트 증거만으로 판정(스크린샷 못 봄). 비전 모델 권장(예: gemma3, qwen2.5vl)')+(r.visionDetail?' <span class=st>· 색판별 응답: "'+esc(r.visionDetail)+'"</span>':'')+'</div>'):'';
               box.innerHTML='<div class="hbox ok">✓ 연결 성공 · 모델 '+esc(r.model)+' · 응답 "'+esc(r.reply)+'"'+vline+'</div>'}
-            async function loadConfig(){const [{systems},llm]=await Promise.all([api('/api/systems'),api('/api/llm')]);
+            async function loadConfig(){const {systems}=await api('/api/systems');
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
-              let html='<div class="tabintro">폐쇄망 시스템의 <b>baseUrl·계정·검사 경로</b>를 설정하는 화면입니다. '
+              let html='<div class="tabintro">설정된 <b>검사 대상</b>의 baseUrl·계정·검사 경로를 편집하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
-                +'새 시스템은 아래 <b>시스템 추가</b>에서 만듭니다.</div>'+addForm;
+                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.</div>';
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
-              html+='<div class=grouphd>AI 설정</div>'+llmCard(llm);   // 맨 아래
+              if(!systems.length)html+='<div class="cardsteps"><b>＋ 시스템 관리</b> 탭에서 검사 대상 시스템을 먼저 추가하세요.</div>';
               $('#config').innerHTML=html;
               systems.forEach(s=>{const el=document.getElementById('sys-'+s.name);
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
@@ -273,12 +278,26 @@ final class WebConsoleUI {
                 el.querySelector('.gorun').onclick=()=>goRun(s.name);
                 el.querySelector('.del').onclick=()=>delSystem(s.name,s.displayName);
               })}
+            // ── 시스템 관리 탭 (추가 + 등록 목록) ──
+            async function loadSysCfg(){const {systems}=await api('/api/systems');
+              let html='<div class="tabintro">검사 대상 <b>시스템을 추가</b>합니다. 추가한 뒤 <b>① 설정</b> 탭에서 baseUrl·계정·검사 경로를 채우세요.</div>'+addForm;
+              html+='<div class=grouphd>등록된 시스템 ('+systems.length+')</div>';
+              html+='<table><tr><th>시스템명</th><th>표시 이름</th><th>유형</th><th>baseUrl</th><th></th></tr>'
+                +systems.map(s=>'<tr><td><code>'+esc(s.name)+'</code></td><td>'+esc(s.displayName||'')+'</td><td>'+esc(s.type||'')
+                  +'</td><td class=st style="max-width:220px;overflow:hidden;text-overflow:ellipsis">'+esc(s.baseUrl||'(미설정)')
+                  +'</td><td><button class="act ghost" onclick="delSystem(\''+esc(s.name)+'\',\''+esc(s.displayName||s.name)+'\')">삭제</button></td></tr>').join('')
+                +'</table>';
+              $('#syscfg').innerHTML=html;}
+            // ── AI 설정 탭 ──
+            async function loadAiCfg(){const llm=await api('/api/llm');
+              $('#aicfg').innerHTML='<div class="tabintro">수동확인 항목의 <b>AI 초안 판정</b>에 쓸 LLM을 설정합니다(OpenAI 호환). '
+                +'비전 모델이면 화면 스크린샷을 직접 보고 판정합니다. <b>연결 테스트</b>로 비전 지원 여부까지 확인하세요.</div>'+llmCard(llm);}
             async function addSystem(){const name=$('#ns-name').value.trim();
               if(!name){toast('시스템명 입력');return}
               const r=await api('/api/systems/add','POST',{name,displayName:$('#ns-disp').value.trim()||name,type:$('#ns-type').value});
-              if(r.error){toast(r.error);return}toast('추가됨: '+name);loadConfig()}
+              if(r.error){toast(r.error);return}toast('추가됨: '+name);loadSysCfg();loadConfig()}
             async function delSystem(name,disp){if(!confirm('시스템 삭제: '+(disp||name)+'\\n설정과 저장된 계정이 삭제됩니다. 계속?'))return;
-              await api('/api/systems/delete/'+name,'POST',{});toast('삭제됨: '+name);loadConfig()}
+              await api('/api/systems/delete/'+name,'POST',{});toast('삭제됨: '+name);loadSysCfg();loadConfig()}
             async function detectSel(name,el){const g=n=>el.querySelector('[name='+n+']');
               const baseUrl=g('baseUrl').value.trim(),loginPath=g('loginPath').value.trim()||'/login';
               const box=el.querySelector('.health');box.innerHTML='<div class=st>로그인 페이지 여는 중… 필드 감지</div>';
