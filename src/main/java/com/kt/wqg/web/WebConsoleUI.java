@@ -123,8 +123,10 @@ final class WebConsoleUI {
             .itemchk{width:auto;cursor:pointer}
             .aidraft{margin-top:8px}.aidraft .hbox{background:var(--govsoft);border-color:var(--gov)}
             .aithumbs{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 4px}
-            .aithumb{height:96px;max-width:220px;object-fit:cover;object-position:top;border:1px solid var(--gov);border-radius:6px;cursor:zoom-in;background:#fff}
-            .aithumb:hover{box-shadow:0 2px 8px rgba(20,40,80,.18)}
+            .aithumbs .cap{font-size:10.5px;color:#5a6b7d;text-align:center;margin-top:2px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .aithumb-box{display:flex;flex-direction:column;align-items:center}
+            .aithumb{width:200px;height:124px;object-fit:contain;object-position:top;border:1px solid var(--gov);border-radius:6px;cursor:zoom-in;background:#eef1f5}
+            .aithumb:hover{box-shadow:0 2px 8px rgba(20,40,80,.18);border-color:var(--gov)}
             #lbov{position:fixed;inset:0;background:rgba(10,20,40,.82);display:none;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;padding:24px}
             #lbov img{max-width:96vw;max-height:94vh;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:6px;background:#fff}
             .sparkle{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);-webkit-background-clip:text;background-clip:text;
@@ -567,7 +569,8 @@ final class WebConsoleUI {
                   </div></div></div>`}
             let aiBusy=false;
             function shotUrl(fn){return '/reports/'+encodeURIComponent(curData.site)+'/'+encodeURIComponent(curData.timestamp)+'/'+fn}
-            function thumbsRow(images){return (images&&images.length)?'<div class="aithumbs">'+images.map(fn=>'<img class="aithumb" loading="lazy" src="'+shotUrl(fn)+'" alt="근거 화면" onclick="showLb(this.src)">').join('')+'</div>':''}
+            function pageName(fn){var b=fn.split('/').pop();return b.replace('chromium-','').replace('.png','').replace(/_/g,'/')}
+            function thumbsRow(images){return (images&&images.length)?'<div class="aithumbs">'+images.map(fn=>'<div class="aithumb-box"><img class="aithumb" loading="lazy" src="'+shotUrl(fn)+'" alt="근거 화면 '+esc(pageName(fn))+'" onclick="showLb(this.src)"><span class="cap">/'+esc(pageName(fn))+'</span></div>').join('')+'</div>':''}
             function showLb(src){let o=document.getElementById('lbov');if(!o){o=document.createElement('div');o.id='lbov';o.onclick=function(){o.style.display='none'};document.body.appendChild(o)}o.innerHTML='<img src="'+src+'">';o.style.display='flex'}
             async function aiDraft(code,id){const box=document.getElementById('ai-'+id);
               if(aiBusy)return; aiBusy=true; document.querySelectorAll('.aibtn').forEach(b=>{b.disabled=true;b.style.opacity=.45});

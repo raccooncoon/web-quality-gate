@@ -270,7 +270,7 @@ public final class WebConsole {
             try (Stream<Path> s = Files.list(shots)) {
                 s.filter(p -> { String n = p.getFileName().toString();
                             return n.startsWith("chromium-") && n.endsWith(".png"); })
-                 .sorted().limit(2).forEach(p -> {
+                 .sorted().limit(8).forEach(p -> {   // 대표 페이지 전반을 근거로(폼·목록·통계 등) — 특정 화면만 보고 과잉판정 방지
                     try { images.add("data:image/png;base64,"
                             + java.util.Base64.getEncoder().encodeToString(Files.readAllBytes(p)));
                           imageNames.add("screenshots/" + p.getFileName()); }
