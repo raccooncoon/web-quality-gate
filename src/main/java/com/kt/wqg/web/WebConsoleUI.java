@@ -5,7 +5,7 @@ final class WebConsoleUI {
 
     private WebConsoleUI() {}
 
-    static final String HTML = """
+    private static final String HTML_A = """
             <!DOCTYPE html>
             <html lang="ko"><head><meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -26,6 +26,10 @@ final class WebConsoleUI {
             nav button{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#cbd8ea;font-size:13.5px;font-weight:700;
               padding:7px 16px;border-radius:4px;cursor:pointer}
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
+            nav{align-items:center}
+            .navsp{flex:1 1 auto}
+            nav button.util{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#b7c6db;font-weight:600}
+            nav button.util.on{background:#fff;color:var(--navy);border-color:#fff;font-weight:700}
             main{max-width:920px;margin:0 auto;padding:22px}
             .notice{background:var(--warnbg);border:1px solid var(--warn);border-radius:4px;
               padding:11px 14px;font-size:13px;margin-bottom:16px}.notice b{color:var(--warn)}
@@ -70,6 +74,19 @@ final class WebConsoleUI {
             .hbox.ok{background:var(--okbg);border-color:var(--ok)}.hbox.no{background:var(--badbg);border-color:var(--bad)}
             .hbox b{display:block;margin-bottom:5px}.hstep{padding:2px 0;font-size:12.5px}
             .pill.na{background:var(--line);color:var(--muted);border-color:var(--line2)}
+            @media print{
+              header,nav,.toast,.verstamp,.noprint{display:none!important}
+              body{background:#fff;color:#000}
+              main{max-width:100%;margin:0;padding:0}
+              #audit{display:block!important}
+              #printhd{display:block!important}
+              table{font-size:11px;border-color:#999}
+              th,td{border-color:#bbb}
+              th{background:#eee!important;color:#000!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+              .pill{border:1px solid #999!important;background:#fff!important;color:#000!important}
+              a[href]:after{content:''}
+              .cardsteps{background:#f4f4f4!important}
+            }
             .catbar{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:10px 14px;margin-bottom:8px}
             .cb-top{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:6px;flex-wrap:wrap}
             .bar{background:var(--line);border-radius:3px;height:8px;overflow:hidden}
@@ -144,13 +161,16 @@ final class WebConsoleUI {
             <nav><button data-tab="config" class="on">① 설정</button>
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
               <button data-tab="items">④ 점검 항목</button>
-              <button data-tab="syscfg">＋ 시스템 관리</button>
-              <button data-tab="aicfg">✦ AI 설정</button>
-              <button data-tab="stdref">ⓘ 기준·도구</button></nav></header>
+              <span class="navsp"></span>
+              <button data-tab="syscfg" class="util">🗂 시스템 관리</button>
+              <button data-tab="aicfg" class="util">🤖 AI 설정</button>
+              <button data-tab="audit" class="util">📋 증적·이력</button>
+              <button data-tab="stdref" class="util">📘 기준·도구</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
               <div id="syscfg" style="display:none"></div>
               <div id="aicfg" style="display:none"></div>
+              <div id="audit" style="display:none"></div>
               <div id="stdref" style="display:none"></div>
               <div id="result" style="display:none"></div>
               <div id="assessview" style="display:none"><div class="body"></div></div>
@@ -174,9 +194,9 @@ final class WebConsoleUI {
             document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
               document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
               $('#assessview').style.display='none';$('#compareview').style.display='none';  // 상단 탭으로 빠져나오기
-              ['config','run','items','syscfg','aicfg','stdref','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
+              ['config','run','items','syscfg','aicfg','audit','stdref','result'].forEach(t=>$('#'+t).style.display=t===b.dataset.tab?'':'none');
               if(b.dataset.tab==='run')loadRun();if(b.dataset.tab==='result')loadResult();if(b.dataset.tab==='items')loadItems();if(b.dataset.tab==='stdref')loadStdRef();
-              if(b.dataset.tab==='syscfg')loadSysCfg();if(b.dataset.tab==='aicfg')loadAiCfg()});
+              if(b.dataset.tab==='syscfg')loadSysCfg();if(b.dataset.tab==='aicfg')loadAiCfg();if(b.dataset.tab==='audit')loadAudit()});
 
             // ── 기준·도구 탭 (정적 참조: 도구 비교 + KWCAG 매핑 + 체크리스트) ──
             function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
@@ -221,7 +241,37 @@ final class WebConsoleUI {
                 +'<td style="vertical-align:top">명확한지시(1.3.3)·색무관인식(1.4.1)·콘텐츠구분(1.4.4)·키보드(2.1.1)·초점표시(2.1.2)·도움정보(3.2.2)·오류정정(3.3.1)·반복입력(3.3.4)·접근가능인증(3.3.3)</td></tr></table>';
               const note='<div class="cardsteps" style="margin-top:18px">카도와·웹와치의 자동/수동 표기는 <b>근사치</b>(제품 버전·설정에 따라 다름). 실제 대조는 각 도구를 로그인된 브라우저에서 직접 실행. '
                 +'<b>WQG "적합"이 공식 인증 통과를 보장하지 않습니다</b> — 납품·인증은 카도와(또는 발주처 지정 도구)+전문가 수동평가로 최종 확인.</div>';
-              box.innerHTML=intro+cmp+mapping+ck+note;box.dataset.done='1';}
+              const engInfo='<div class=grouphd style="margin-top:22px">WQG 검사 엔진</div>'
+                +'<table><tr><th style="width:26%">엔진</th><th>무엇을 검사하나</th></tr>'
+                +'<tr><td><b>axe-core</b> <small class=st>Deque</small></td><td>접근성(WCAG→KWCAG) 룰 — 대체텍스트·명도대비·레이블·ARIA·표 구성 등 자동 검출</td></tr>'
+                +'<tr><td><b>vnu.jar</b> <small class=st>W3C Nu Html Checker</small></td><td><b>마크업 유효성</b> — <code>validator.w3.org/nu</code> 엔진의 오프라인판. 닫히지 않은 태그·중복 id·잘못된 중첩·필수속성 누락·<b>deprecated(폐기) 태그</b> 등 HTML 문법 오류(항목 4.1.1·c-deprecated). MPA는 서버 원본 HTML, SPA는 JS 실행 후 렌더된 DOM을 검사</td></tr>'
+                +'<tr><td><b>Playwright</b> <small class=st>3엔진</small></td><td>chromium·firefox·webkit 스크린샷 <b>픽셀 diff</b>(크로스브라우저) + <b>200% 확대 reflow</b>(가로 오버플로)</td></tr></table>';
+              box.innerHTML=intro+cmp+engInfo+mapping+ck+note;box.dataset.done='1';}
+
+            // ── 증적·이력 탭 (검사 이력 대장 + 제출용 인쇄) ──
+            const fmtTsFull=ts=>{const m=String(ts).match(/(\\d{4})(\\d\\d)(\\d\\d)-(\\d\\d)(\\d\\d)/);return m?m[1]+'-'+m[2]+'-'+m[3]+' '+m[4]+':'+m[5]:ts};
+            function vpillA(v){return '<span class="pill '+(v==='적합'?'ok':v==='부적합'?'no':'wait')+'">'+esc(v)+'</span>'}
+            async function loadAudit(){const {reports}=await api('/api/reports');
+              const cover='<div class="tabintro noprint">웹접근성·웹호환성을 <b>주기적으로 점검한 증거(증적)</b> 문서입니다. 표지 정보를 채우고 <b>[증적 인쇄 / PDF]</b>를 누르면 제출용 문서로 저장됩니다. 브라우저 인쇄에서 <b>대상: PDF로 저장</b> 선택.</div>'
+                +'<div class="row3 noprint"><div><label>기관/부서</label><input id="ac-org" placeholder="K-water ○○부"></div>'
+                +'<div><label>대상 시스템</label><input id="ac-sys" value="결함관리시스템(K-water)"></div>'
+                +'<div><label>검사자</label><input id="ac-by" placeholder="성명"></div></div>';
+              const std='<div class="cardsteps" style="margin-top:12px"><b>검사 기준</b> — KWCAG 2.2(한국형 웹 콘텐츠 접근성 지침) · 전자정부 웹사이트 품질관리 지침 · 장애인차별금지법. <b>검사 도구</b> — WQG(axe-core + vnu.jar + Playwright 3엔진).</div>';
+              const rows=(reports||[]).map(r=>'<tr><td>'+fmtTsFull(r.timestamp)+'</td><td>'+esc(r.displayName||r.site)+'</td><td>'+vpillA(r.status)+'</td>'
+                +'<td style="text-align:center">'+(r['적합']||0)+'</td><td style="text-align:center">'+(r['부적합']||0)+'</td>'
+                +'<td style="text-align:center">'+(r['해당없음']||0)+'</td><td style="text-align:center">'+(r.pendingTotal||0)+'</td>'
+                +'<td class=noprint><a href="'+esc(r.path)+'" target="_blank">리포트</a></td></tr>').join('');
+              const table='<div class=grouphd style="margin-top:16px">검사 이력 대장 ('+((reports||[]).length)+'회)</div>'
+                +'<table><tr><th>검사 일시</th><th>대상</th><th>종합판정</th><th>적합</th><th>부적합</th><th>해당없음</th><th>수동확인</th><th class=noprint>상세</th></tr>'
+                +(rows||'<tr><td colspan=8 class=st>검사 이력이 없습니다. ② 실행 탭에서 검사하거나 주기 자동검사를 기다리세요.</td></tr>')+'</table>';
+              const printhd='<div id="printhd" style="display:none"><h2 style="margin:0 0 6px;font-size:18px">웹접근성·웹호환성 점검 증적</h2><div class="st" id="printmeta"></div><hr style="margin:10px 0;border:none;border-top:1px solid var(--line)"></div>';
+              const btn='<div class="actbar noprint" style="margin-top:14px"><button class="act" onclick="printAudit()">🖨 증적 인쇄 / PDF</button> <span class="st">주기 자동검사가 회차를 자동으로 쌓아 수행 증거가 됩니다.</span></div>';
+              $('#audit').innerHTML=printhd+cover+std+table+btn;}
+            function printAudit(){const g=id=>{const e=$('#'+id);return e?e.value:''};
+              const now=new Date().toISOString().slice(0,16).replace('T',' ');
+              $('#printmeta').innerHTML='기관/부서: <b>'+esc(g('ac-org')||'—')+'</b> · 대상: <b>'+esc(g('ac-sys')||'—')+'</b> · 검사자: <b>'+esc(g('ac-by')||'—')+'</b> · 출력일: '+esc(now)
+                +'<br>기준: KWCAG 2.2 · 전자정부 웹사이트 품질관리 지침 · 도구: WQG(axe-core+vnu+Playwright 3엔진)';
+              $('#printhd').style.display='block';window.print();setTimeout(()=>{$('#printhd').style.display='none'},300);}
 
             // ── 설정 탭 ──
             const isTest=s=>s.name==='defect-kwater'||(s.displayName||'').includes('테스트');
@@ -323,6 +373,8 @@ final class WebConsoleUI {
                   '<b>'+(r.ok?'✓ 설정 정상':'✗ 설정 확인 실패')+'</b>'+
                   r.steps.map(s=>`<div class=hstep>${s.ok?'✓':'✗'} ${esc(s.name)} <span class=st>${esc(s.detail)}</span></div>`).join('')+'</div>';
               }catch(e){box.innerHTML='<div class="hbox no">확인 중 오류: '+esc(e)+'</div>'}}
+            """;
+    private static final String HTML_B = """
             function sysCard(s){const cfg=s.configured;
               return `<div class="sys" id="sys-${s.name}"><div class="hd">
                 <div class="nm">${esc(s.displayName)}<small>${s.name}</small></div>
@@ -687,4 +739,7 @@ final class WebConsoleUI {
             // 리포트의 '결과 목록' 링크(/#result)로 진입 시 결과·검수 탭으로 이동
             if(location.hash==='#result')document.querySelector('nav button[data-tab=result]').click();
             </script></body></html>""";
+
+    // 두 text block 을 런타임에 이어붙인다 — 단일 String 상수가 64KB(클래스 상수풀 한도)를 넘지 않게.
+    static final String HTML = HTML_A.concat(HTML_B);
 }
