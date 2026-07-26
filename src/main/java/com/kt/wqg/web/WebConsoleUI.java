@@ -162,10 +162,10 @@ final class WebConsoleUI {
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
               <button data-tab="items">④ 점검 항목</button>
               <span class="navsp"></span>
-              <button data-tab="syscfg" class="util">🗂 시스템 관리</button>
-              <button data-tab="aicfg" class="util">🤖 AI 설정</button>
-              <button data-tab="audit" class="util">📋 증적·이력</button>
-              <button data-tab="stdref" class="util">📘 기준·도구</button></nav></header>
+              <button data-tab="syscfg" class="util">⚙ 시스템 관리</button>
+              <button data-tab="aicfg" class="util">✦ AI 설정</button>
+              <button data-tab="audit" class="util">☰ 증적·이력</button>
+              <button data-tab="stdref" class="util">ⓘ 기준·도구</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
               <div id="syscfg" style="display:none"></div>
@@ -265,7 +265,7 @@ final class WebConsoleUI {
                 +'<table><tr><th>검사 일시</th><th>대상</th><th>종합판정</th><th>적합</th><th>부적합</th><th>해당없음</th><th>수동확인</th><th class=noprint>상세</th></tr>'
                 +(rows||'<tr><td colspan=8 class=st>검사 이력이 없습니다. ② 실행 탭에서 검사하거나 주기 자동검사를 기다리세요.</td></tr>')+'</table>';
               const printhd='<div id="printhd" style="display:none"><h2 style="margin:0 0 6px;font-size:18px">웹접근성·웹호환성 점검 증적</h2><div class="st" id="printmeta"></div><hr style="margin:10px 0;border:none;border-top:1px solid var(--line)"></div>';
-              const btn='<div class="actbar noprint" style="margin-top:14px"><button class="act" onclick="printAudit()">🖨 증적 인쇄 / PDF</button> <span class="st">주기 자동검사가 회차를 자동으로 쌓아 수행 증거가 됩니다.</span></div>';
+              const btn='<div class="actbar noprint" style="margin-top:14px"><button class="act" onclick="printAudit()">증적 인쇄 / PDF 저장</button> <span class="st">주기 자동검사가 회차를 자동으로 쌓아 수행 증거가 됩니다.</span></div>';
               $('#audit').innerHTML=printhd+cover+std+table+btn;}
             function printAudit(){const g=id=>{const e=$('#'+id);return e?e.value:''};
               const now=new Date().toISOString().slice(0,16).replace('T',' ');
