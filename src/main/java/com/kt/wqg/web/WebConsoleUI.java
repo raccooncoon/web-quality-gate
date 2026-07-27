@@ -454,7 +454,7 @@ final class WebConsoleUI {
                   <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
                     <input name="cid" value="${esc(s.credId||'')}" placeholder="아이디"></div>
                     <div><label>계정 PW ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
-                    <div class="pwwrap"><input name="cpw" type="password" value="${esc(s.credPw||'')}" placeholder="비밀번호">
+                    <div class="pwwrap"><input name="cpw" type="password" value="" placeholder="${s.hasCredentials?'저장됨 — 변경할 때만 새로 입력':'비밀번호'}">
                       <button type="button" class="eye" onclick="togglePw(this)" aria-label="비밀번호 표시/숨김" title="표시/숨김">👁</button></div></div></div>
                   <button class="act ghost savecred">계정만 저장</button>
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>

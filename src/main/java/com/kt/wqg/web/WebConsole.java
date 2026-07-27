@@ -110,7 +110,7 @@ public final class WebConsole {
             m.put("submitSelector", s.auth() == null ? null : s.auth().submitSelector());
             m.put("hasCredentials", credentials.has(s.name()));
             m.put("credId", credentials.savedId(s.name()));
-            m.put("credPw", credentials.savedPw(s.name()));
+            // 비밀번호는 브라우저로 내려보내지 않는다(노출 방지 + 옛 값 재저장 방지). 저장 여부만 hasCredentials 로 표시.
             m.put("urls", s.urls().stream().map(SitesConfig.Url::path).toList());
             m.put("auto", s.auto() == null ? List.of() : s.auto());
             m.put("configured", s.baseUrl() != null && !s.baseUrl().contains("TODO"));
