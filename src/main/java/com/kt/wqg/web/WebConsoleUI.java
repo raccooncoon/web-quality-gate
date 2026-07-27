@@ -410,9 +410,12 @@ final class WebConsoleUI {
             async function detectType(name,el){const note=el.querySelector('.dtnote');
               const baseUrl=el.querySelector('[name=baseUrl]').value.trim();
               if(!baseUrl){toast('baseUrl 입력');return}
-              note.innerHTML='<div class=st>서버 응답으로 유형 확인 중…</div>';
-              let r;try{r=await api('/api/detect-type','POST',{baseUrl})}catch(e){r={error:String(e)}}
+              note.innerHTML='<div class=st>유형 확인 중… (로그인 필요 시 로그인 후 실제 검사 경로를 엽니다)</div>';
+              // name 을 보내면 저장된 로그인·검사경로로 판정(로그인 뒤 SPA 대응)
+              let r;try{r=await api('/api/detect-type','POST',{name,baseUrl})}catch(e){r={error:String(e)}}
               if(r.error){note.innerHTML='<div class="hbox no">✗ '+esc(r.error)+'</div>';return}
+              if(r.type==='unknown'){ // 로그인 벽에 막힘 — 유형을 덮어쓰지 않음
+                note.innerHTML='<div class="hbox no">⚠ '+esc(r.reason)+'</div>';return}
               el.querySelector('[name=type]').value=r.type;markAuto(el.querySelector('[name=type]'));
               note.innerHTML='<div class="hbox ok">✓ <b>'+esc(r.type.toUpperCase())+'</b> 로 설정 — '+esc(r.reason)+'<div class=hint>확인 후 [설정 저장]</div></div>'}
             async function healthCheck(name){const box=document.getElementById('health-'+name);

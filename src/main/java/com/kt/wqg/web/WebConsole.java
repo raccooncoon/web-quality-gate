@@ -323,7 +323,18 @@ public final class WebConsole {
                     "{\"error\":\"baseUrl 을 먼저 입력하세요\"}".getBytes(StandardCharsets.UTF_8));
             return;
         }
-        CheckService.DetectedType d = CheckService.detectType(baseUrl);
+        // 저장된 시스템이면 로그인 후 실제 검사 경로(첫 URL)를 열어 판정(로그인 뒤 SPA 대응).
+        // 미저장/신규거나 설정 미완이면 baseUrl "/" 만 보고 판정.
+        String name = b.path("name").asText("").trim();
+        CheckService.DetectedType d;
+        SitesConfig.Site site = name.isEmpty() ? null : configStore.load().sites().stream()
+                .filter(s -> s.name().equals(name)).findFirst().orElse(null);
+        if (site != null && site.baseUrl() != null && !site.baseUrl().contains("TODO")
+                && site.auth() != null && site.auth().required()) {
+            d = CheckService.detectType(site, credentials.resolver());
+        } else {
+            d = CheckService.detectType(baseUrl);
+        }
         sendJson(ex, Map.of("type", d.type(), "reason", d.reason()));
     }
 

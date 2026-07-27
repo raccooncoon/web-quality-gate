@@ -264,12 +264,30 @@ public final class CheckService {
      * <b>JS 실행 후 렌더된 DOM</b> 의 본문 텍스트를 비교한다.
      * SPA 는 서버가 빈 셸을 주고 JS 가 본문을 채우므로 렌더 후 텍스트가 급증한다.
      */
+    /** baseUrl "/" 만 보고 판정(비로그인·신규 시스템용). */
     public static DetectedType detectType(String baseUrl) {
-        String url = CheckRunner.resolveUrl(baseUrl, "/");
+        return detectType(baseUrl, "/", null, null);
+    }
+
+    /** 저장된 시스템 기준 판정 — 로그인 필요 시 로그인 후 <b>실제 검사 경로</b>(첫 URL)를 열어 판정. */
+    public static DetectedType detectType(SitesConfig.Site site, java.util.function.UnaryOperator<String> credResolver) {
+        String path = site.urls().isEmpty() ? "/" : site.urls().get(0).path();
+        return detectType(site.baseUrl(), path, site, credResolver);
+    }
+
+    private static DetectedType detectType(String baseUrl, String path,
+                                           SitesConfig.Site site, java.util.function.UnaryOperator<String> credResolver) {
+        String url = CheckRunner.resolveUrl(baseUrl, path);
         try (Playwright pw = Playwright.create()) {
             Browser br = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
             try (BrowserContext ctx = br.newContext()) {
                 Page page = ctx.newPage();
+                // 로그인 필요 + 계정 있으면 먼저 로그인 (SPA는 대개 로그인 뒤에 있음)
+                if (site != null && site.auth() != null && site.auth().required() && credResolver != null) {
+                    try {
+                        CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
+                    } catch (RuntimeException ignore) { /* 로그인 실패 시 비로그인 상태로 진행 → 로그인 벽 감지됨 */ }
+                }
                 var resp = page.navigate(url, new Page.NavigateOptions()
                         .setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED)
                         .setTimeout(20000));
@@ -285,12 +303,30 @@ public final class CheckService {
                 Object rt = page.evaluate(
                         "() => document.body ? document.body.innerText.replace(/\\s+/g,' ').trim().length : 0");
                 int renderedLen = rt instanceof Number ? ((Number) rt).intValue() : 0;
+                // 로그인 벽 감지: 요청 경로가 로그인 경로가 아닌데 최종 URL이 로그인 페이지면 앱을 못 본 것
+                String loginPath = site != null && site.auth() != null ? site.auth().loginPath() : "/login";
+                String finalPath = pathOfUrl(page.url());
+                if (loginPath != null && finalPath != null && finalPath.equals(loginPath) && !path.equals(loginPath)) {
+                    return new DetectedType("unknown",
+                            "요청한 경로가 로그인 페이지(" + finalPath + ")로 리다이렉트됨 — 로그인 뒤 화면을 못 봐 자동 판정 불가. "
+                            + "계정을 저장한 뒤 다시 시도하거나 유형을 직접 지정하세요.");
+                }
                 return classifyType(rawLen, renderedLen, rootDiv);
             } finally {
                 br.close();
             }
         } catch (Exception e) {
             throw new RuntimeException("유형 판별 실패: " + url + " — " + e.getMessage(), e);
+        }
+    }
+
+    private static String pathOfUrl(String url) {
+        if (url == null) return null;
+        try {
+            String p = java.net.URI.create(url).getRawPath();
+            return (p == null || p.isEmpty()) ? "/" : p;
+        } catch (RuntimeException e) {
+            return url;
         }
     }
 
