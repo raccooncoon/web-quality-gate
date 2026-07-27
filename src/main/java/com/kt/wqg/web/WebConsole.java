@@ -127,11 +127,16 @@ public final class WebConsole {
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
 
         String authType = text(b, "authType", cur.auth() == null ? "none" : cur.auth().type());
-        SitesConfig.Auth auth = "form".equalsIgnoreCase(authType)
-                ? new SitesConfig.Auth("form", text(b, "loginPath", "/login"),
-                        text(b, "idSelector", null), text(b, "pwSelector", null),
-                        text(b, "submitSelector", null))
-                : new SitesConfig.Auth("none", null, null, null, null);
+        SitesConfig.Auth auth;
+        if ("form".equalsIgnoreCase(authType) || "sso".equalsIgnoreCase(authType)) {
+            boolean sso = "sso".equalsIgnoreCase(authType);
+            auth = new SitesConfig.Auth(sso ? "sso" : "form",
+                    text(b, "loginPath", sso ? "/" : "/login"),
+                    text(b, "idSelector", null), text(b, "pwSelector", null),
+                    text(b, "submitSelector", null));
+        } else {
+            auth = new SitesConfig.Auth("none", null, null, null, null);
+        }
 
         List<SitesConfig.Url> urls = new ArrayList<>();
         for (JsonNode u : b.path("urls")) {

@@ -68,6 +68,7 @@ public final class CheckRunner {
      */
     public static String login(Page page, SitesConfig.Site site, Credentials creds) {
         SitesConfig.Auth auth = site.auth();
+        if (auth.isSso()) return loginSso(page, site, creds);
         String loginUrl = resolveUrl(site.baseUrl(), auth.loginPath());
         page.navigate(loginUrl);
         page.fill(auth.idSelector(), creds.id());
@@ -87,6 +88,42 @@ public final class CheckRunner {
                     "로그인 실패 — submit 후에도 로그인 페이지에 머물러 있음: " + finalUrl);
         }
         return finalUrl;
+    }
+
+    /**
+     * SSO(OIDC/Keycloak) 로그인. 보호 URL(loginPath, 없으면 "/")로 이동하면 IdP(Keycloak)로
+     * 리다이렉트되고, IdP 로그인 폼(기본 셀렉터 {@code #username}/{@code #password}/{@code #kc-login},
+     * sites.yaml 에서 재정의 가능)을 채워 제출하면 다시 앱으로 리다이렉트되어 세션이 확립된다.
+     * 성공 판정은 앱/IdP 호스트가 같을 수도 있으므로 URL 이 아니라 <b>IdP 로그인 폼(비번 필드)의 소멸</b>로 한다.
+     */
+    private static String loginSso(Page page, SitesConfig.Site site, Credentials creds) {
+        SitesConfig.Auth auth = site.auth();
+        String entry = resolveUrl(site.baseUrl(),
+                auth.loginPath() == null || auth.loginPath().isBlank() ? "/" : auth.loginPath());
+        String idSel = orDefault(auth.idSelector(), "#username");
+        String pwSel = orDefault(auth.pwSelector(), "#password");
+        String submitSel = orDefault(auth.submitSelector(), "#kc-login");
+
+        page.navigate(entry);
+        // IdP 로그인 폼으로 리다이렉트될 때까지 기다린다(fill 이 셀렉터를 auto-wait).
+        page.fill(idSel, creds.id());
+        page.fill(pwSel, creds.pw());
+        // 제출 → IdP→앱 리다이렉트 체인. 제출로 발생한 첫 POST 를 기다린 뒤 네트워크 정착까지 대기.
+        page.waitForResponse(r -> "POST".equals(r.request().method()), () -> page.click(submitSel));
+        try {
+            page.waitForLoadState(LoadState.NETWORKIDLE,
+                    new Page.WaitForLoadStateOptions().setTimeout(20000));
+        } catch (RuntimeException ignore) { /* 타임아웃 무시 — 폼 잔존 여부로 판정 */ }
+        String finalUrl = page.url();
+        // 로그인 폼(비번 필드)이 아직 있으면 IdP 에 머문 것 = 실패(자격증명 오류 등)
+        if (page.querySelector(pwSel) != null) {
+            throw new IllegalStateException("SSO 로그인 실패 — IdP 로그인 폼에 머물러 있음: " + finalUrl);
+        }
+        return finalUrl;
+    }
+
+    private static String orDefault(String v, String def) {
+        return v == null || v.isBlank() ? def : v;
     }
 
     /**

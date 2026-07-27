@@ -357,9 +357,9 @@ final class WebConsoleUI {
               systems.forEach(s=>{const el=document.getElementById('sys-'+s.name);
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
                 el.querySelectorAll('.autoval').forEach(attachAutoClear);
-                if(s.authType==='form')el.querySelector('.body').classList.add('auth-form');
+                if(s.authType==='form'||s.authType==='sso')el.querySelector('.body').classList.add('auth-form');
                 el.querySelector('[name=authType]').onchange=e=>
-                  el.querySelector('.body').classList.toggle('auth-form',e.target.value==='form');
+                  el.querySelector('.body').classList.toggle('auth-form',e.target.value==='form'||e.target.value==='sso');
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
@@ -443,8 +443,9 @@ final class WebConsoleUI {
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
                   <div><label>로그인 방식</label><select name="authType">
-                  <option value="none" ${s.authType!=='form'?'selected':''}>없음</option>
-                  <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option></select></div></div>
+                  <option value="none" ${s.authType!=='form'&&s.authType!=='sso'?'selected':''}>없음</option>
+                  <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option>
+                  <option value="sso" ${s.authType==='sso'?'selected':''}>SSO (Keycloak/OIDC)</option></select></div></div>
                 <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
                 <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
                 <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
@@ -455,7 +456,8 @@ final class WebConsoleUI {
                     <div><label>비번 셀렉터</label><input name="pwSelector" class="${ac('pwSelector').trim()}" value="${esc(s.pwSelector||'')}" placeholder="input[name=password]"></div></div>
                   <label>제출 버튼 셀렉터</label><input name="submitSelector" class="${ac('submitSelector').trim()}" value="${esc(s.submitSelector||'')}" placeholder="button[type=submit]">
                   <button class="act ghost detect">🔍 로그인 필드 자동 감지</button>
-                  <div class="hint">baseUrl·로그인 경로를 채운 뒤 누르면 로그인 페이지를 열어 셀렉터를 채웁니다.</div>
+                  <div class="hint">baseUrl·로그인 경로를 채운 뒤 누르면 로그인 페이지를 열어 셀렉터를 채웁니다.
+                    <b>SSO(Keycloak/OIDC)</b>는 로그인 경로를 보호 페이지(예 <code>/</code>)로 두면 IdP로 리다이렉트되며, 셀렉터·계정은 <b>IdP 로그인 폼 기준</b>입니다(비우면 Keycloak 기본 <code>#username</code>·<code>#password</code>·<code>#kc-login</code> 사용).</div>
                   <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
                     <input name="cid" value="${esc(s.credId||'')}" placeholder="아이디"></div>
                     <div><label>계정 PW ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>

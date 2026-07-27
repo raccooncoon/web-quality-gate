@@ -30,7 +30,10 @@ public record SitesConfig(List<Site> sites, Checks checks, Output output) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Auth(String type, String loginPath,
                        String idSelector, String pwSelector, String submitSelector) {
-        public boolean required() { return "form".equalsIgnoreCase(type); }
+        public boolean required() {
+            return "form".equalsIgnoreCase(type) || "sso".equalsIgnoreCase(type);
+        }
+        public boolean isSso() { return "sso".equalsIgnoreCase(type); }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
