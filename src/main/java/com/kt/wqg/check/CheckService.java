@@ -254,7 +254,8 @@ public final class CheckService {
         }
     }
 
-    public record DetectedSelectors(String idSelector, String pwSelector, String submitSelector) {}
+    public record DetectedSelectors(String idSelector, String pwSelector, String submitSelector,
+                                    String finalUrl, String requestedPath) {}
 
     public record DetectedType(String type, String reason) {}
 
@@ -347,9 +348,15 @@ public final class CheckService {
             try (BrowserContext context = browser.newContext()) {
                 Page page = context.newPage();
                 page.navigate(CheckRunner.resolveUrl(baseUrl, path));
+                // 리다이렉트(예: Spring Security → /login) 정착 대기 후 최종 URL 확보
+                try {
+                    page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
+                            new Page.WaitForLoadStateOptions().setTimeout(5000));
+                } catch (RuntimeException ignore) { /* 타임아웃 무시 */ }
+                String finalUrl = page.url();
                 Object r = page.evaluate(DETECT_JS);
                 Map<?, ?> m = (Map<?, ?>) r;
-                return new DetectedSelectors(str(m.get("id")), str(m.get("pw")), str(m.get("submit")));
+                return new DetectedSelectors(str(m.get("id")), str(m.get("pw")), str(m.get("submit")), finalUrl, path);
             } finally {
                 browser.close();
             }

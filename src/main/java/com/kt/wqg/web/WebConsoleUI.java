@@ -54,6 +54,9 @@ final class WebConsoleUI {
             input.autoval,select.autoval,textarea.autoval{background:var(--autobg)!important;border-color:var(--auto)!important;box-shadow:inset 3px 0 0 var(--auto)}
             .autoval-chip{background:var(--autobg);color:var(--auto);border:1px solid var(--auto);border-radius:3px;padding:1px 6px;font-weight:700;font-size:11px}
             .autolegend{font-size:11.5px;color:var(--muted);margin-top:8px}
+            .mapviewbar{display:flex;gap:6px;margin:10px 0}
+            .mvtab{width:auto;padding:5px 12px;border:1px solid var(--line2);background:var(--card);border-radius:4px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
+            .mvtab.on{background:var(--gov);color:#fff;border-color:var(--gov)}
             label{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px;font-weight:600}
             input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line2);border-radius:4px;
               background:#fff;color:var(--fg);font-size:13px;font-family:inherit}
@@ -247,11 +250,21 @@ final class WebConsoleUI {
                 ['P','WQG 확장 (KWCAG 외 · 웹호환성)'],
                 ['c-webstandard','웹표준 HTML/CSS','n','p','vnu·평가자'],['c-deprecated','Deprecated 태그','n','p','vnu'],
                 ['c-browser','브라우저 호환성','n','n','Playwright'],['c-reflow','해상도·확대(200%)','n','p','Playwright']];
-              const rows=M.map(r=>r[0]==='P'
-                ? '<tr><td colspan=4 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+r[1]+'</td></tr>'
-                : '<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>').join('');
+              const grpHd=l=>'<tr><td colspan=4 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
+              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
+              // 뷰1: 원칙별(KWCAG 4원칙)
+              const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
+              // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
+              const mItems=M.filter(r=>r[0]!=='P');
+              const isCompat=r=>String(r[0]).startsWith('c-'),isManual=r=>String(r[4]).includes('평가자');
+              const modeGroups=[['웹접근성 · 자동 판정',r=>!isCompat(r)&&!isManual(r)],['웹접근성 · 수동 확인 (AI 초안·평가자)',r=>!isCompat(r)&&isManual(r)],
+                ['웹호환성 · 자동 판정',r=>isCompat(r)&&!isManual(r)],['웹호환성 · 수동 확인',r=>isCompat(r)&&isManual(r)]];
+              const rowsMd=modeGroups.map(gp=>{const its=mItems.filter(gp[1]);return its.length?grpHd(gp[0]+' ('+its.length+')')+its.map(itRow).join(''):''}).join('');
+              const theadMap='<tr><th style="min-width:190px">검사항목</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
               const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (33 + 확장 4)</div>'
-                +'<table><tr><th style="min-width:190px">검사항목</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>'+rows+'</table>';
+                +'<div class="mapviewbar"><button type="button" class="mvtab on" data-mv="pr">원칙별 (KWCAG 4원칙)</button><button type="button" class="mvtab" data-mv="md">자동·수동별 (웹접근성→웹호환성)</button></div>'
+                +'<table id="mapPr">'+theadMap+rowsPr+'</table>'
+                +'<table id="mapMd" style="display:none">'+theadMap+rowsMd+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
@@ -263,7 +276,11 @@ final class WebConsoleUI {
                 +'<tr><td><b>axe-core</b> <small class=st>Deque</small></td><td>접근성(WCAG→KWCAG) 룰 — 대체텍스트·명도대비·레이블·ARIA·표 구성 등 자동 검출</td></tr>'
                 +'<tr><td><b>vnu.jar</b> <small class=st>W3C Nu Html Checker</small></td><td><b>마크업 유효성</b> — <code>validator.w3.org/nu</code> 엔진의 오프라인판. 닫히지 않은 태그·중복 id·잘못된 중첩·필수속성 누락·<b>deprecated(폐기) 태그</b> 등 HTML 문법 오류(항목 4.1.1·c-deprecated). MPA는 서버 원본 HTML, SPA는 JS 실행 후 렌더된 DOM을 검사</td></tr>'
                 +'<tr><td><b>Playwright</b> <small class=st>3엔진</small></td><td>chromium·firefox·webkit 스크린샷 <b>픽셀 diff</b>(크로스브라우저) + <b>200% 확대 reflow</b>(가로 오버플로)</td></tr></table>';
-              box.innerHTML=intro+std+cmp+engInfo+mapping+ck+note;box.dataset.done='1';}
+              box.innerHTML=intro+std+cmp+engInfo+mapping+ck+note;box.dataset.done='1';
+              box.querySelectorAll('.mvtab').forEach(b=>b.onclick=()=>mapView(b.dataset.mv));}
+            function mapView(v){const pr=$('#mapPr'),md=$('#mapMd');if(!pr||!md)return;
+              pr.style.display=v==='pr'?'':'none';md.style.display=v==='md'?'':'none';
+              document.querySelectorAll('.mvtab').forEach(b=>b.classList.toggle('on',b.dataset.mv===v))}
 
             // ── 증적·이력 탭 (검사 이력 대장 + 제출용 인쇄) ──
             const fmtTsFull=ts=>{const m=String(ts).match(/(\\d{4})(\\d\\d)(\\d\\d)-(\\d\\d)(\\d\\d)/);return m?m[1]+'-'+m[2]+'-'+m[3]+' '+m[4]+':'+m[5]:ts};
@@ -377,11 +394,19 @@ final class WebConsoleUI {
               const box=el.querySelector('.health');box.innerHTML='<div class=st>로그인 페이지 여는 중… 필드 감지</div>';
               const r=await api('/api/detect-selectors','POST',{baseUrl,loginPath});
               if(r.error){box.innerHTML='<div class="hbox no">'+esc(r.error)+'</div>';return}
+              // 리다이렉트 감지 — 입력한 로그인 경로가 실제 경로로 튕기면 경고 + loginPath 자동 교정
+              let warn='';
+              if(r.redirected&&r.finalPath){
+                warn='<div class="hbox no">⚠ 입력한 로그인 경로 <code>'+esc(loginPath)+'</code> 는 실제 <code>'+esc(r.finalPath)
+                  +'</code> 로 리다이렉트됩니다 — 아래 셀렉터는 <b>리다이렉트된 실제 로그인 페이지</b>에서 감지된 값입니다. '
+                  +'로그인 경로를 <b>'+esc(r.finalPath)+'</b> 로 바로잡았습니다.</div>';
+                g('loginPath').value=r.finalPath;markAuto(g('loginPath'));
+              }
               if(r.idSelector){g('idSelector').value=r.idSelector;markAuto(g('idSelector'))}
               if(r.pwSelector){g('pwSelector').value=r.pwSelector;markAuto(g('pwSelector'))}
               if(r.submitSelector){g('submitSelector').value=r.submitSelector;markAuto(g('submitSelector'))}
               const found=[r.idSelector&&'아이디',r.pwSelector&&'비번',r.submitSelector&&'제출'].filter(Boolean);
-              box.innerHTML='<div class="hbox '+(found.length?'ok':'no')+'">'+(found.length?'✓ 감지: '+found.join('·')+' (확인 후 저장)':'✗ 로그인 필드를 못 찾음 — 수동 입력')+'</div>'}
+              box.innerHTML=warn+'<div class="hbox '+(found.length?'ok':'no')+'">'+(found.length?'✓ 필드 감지: '+found.join('·')+' — 실제 로그인 성공은 <b>설정 확인(헬스체크)</b>로 검증하세요':'✗ 로그인 필드를 못 찾음 — 수동 입력')+'</div>'}
             async function detectType(name,el){const note=el.querySelector('.dtnote');
               const baseUrl=el.querySelector('[name=baseUrl]').value.trim();
               if(!baseUrl){toast('baseUrl 입력');return}

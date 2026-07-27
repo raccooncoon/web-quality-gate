@@ -200,7 +200,23 @@ public final class WebConsole {
         m.put("idSelector", d.idSelector());
         m.put("pwSelector", d.pwSelector());
         m.put("submitSelector", d.submitSelector());
+        // 리다이렉트 감지 — 입력 경로가 실제 경로로 튕기면(예: Spring Security) 실제 경로를 알려 loginPath를 바로잡게 한다
+        String finalPath = pathOf(d.finalUrl());
+        m.put("finalPath", finalPath);
+        m.put("requestedPath", d.requestedPath());
+        m.put("redirected", finalPath != null && !finalPath.equals(d.requestedPath()));
         sendJson(ex, m);
+    }
+
+    /** URL 문자열에서 경로만 추출(쿼리·호스트 제외). 실패하면 원본 반환. */
+    private static String pathOf(String url) {
+        if (url == null) return null;
+        try {
+            String p = java.net.URI.create(url).getRawPath();
+            return (p == null || p.isEmpty()) ? "/" : p;
+        } catch (RuntimeException e) {
+            return url;
+        }
     }
 
     /** LLM 설정 조회(키는 저장 여부만). */
