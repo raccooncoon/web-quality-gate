@@ -59,7 +59,8 @@ public final class AssessmentView {
             m.put("source", r.source());
             m.put("memo", r.memo());
             m.put("evidence", r.evidence().stream().map(e -> Map.of(
-                    "url", n(e.url()), "rule", n(e.rule()), "detail", n(e.detail()))).toList());
+                    "url", n(e.url()), "rule", n(e.rule()), "detail", n(e.detail()),
+                    "target", n(e.target()))).toList());
             items.add(m);
         }
 

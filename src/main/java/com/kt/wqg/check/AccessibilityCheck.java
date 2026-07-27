@@ -47,13 +47,14 @@ public final class AccessibilityCheck {
 
     /**
      * axe 위반(Rule)을 리포트 스키마 Violation 으로 매핑한다.
-     * nodes 는 영향 노드 수, kwcag 는 KWCAG 2.1 병기, elements 는 문제 요소 샘플(최대 5개).
+     * nodes 는 영향 노드 수, kwcag 는 KWCAG 2.1 병기, elements 는 문제 요소 대상(최대 100개).
      */
     static List<CheckResult.Violation> toViolations(List<Rule> rules) {
         return rules.stream().map(r -> {
             List<CheckedNode> nodes = r.getNodes() == null ? List.of() : r.getNodes();
+            // 실패 요소(대상)를 증적으로 최대한 남긴다(과거 5개 샘플 → 100). 실제 총계는 nodes.size().
             List<CheckResult.Element> elements = nodes.stream()
-                    .limit(5)
+                    .limit(100)
                     .map(n -> new CheckResult.Element(targetOf(n.getTarget()), n.getHtml()))
                     .toList();
             return new CheckResult.Violation(

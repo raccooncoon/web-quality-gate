@@ -26,7 +26,9 @@ public final class ComplianceMapper {
         List<Finding> axeFindings = results.stream()
                 .filter(r -> "accessibility".equals(r.checkType()))
                 .flatMap(r -> r.violations().stream()
-                        .map(v -> new Finding(r.url(), v.id(), v.help(), firstTarget(v))))
+                        // 위반 요소(대상)마다 Finding 을 만든다 — 한 규칙의 실패 대상 전체를 증적에 남기기 위함
+                        .flatMap(v -> targetsOf(v).stream()
+                                .map(t -> new Finding(r.url(), v.id(), v.help(), t))))
                 .toList();
         List<Finding> pool = new java.util.ArrayList<>(axeFindings);
         pool.addAll(probeFindings);
@@ -104,7 +106,11 @@ public final class ComplianceMapper {
         return new ItemResult(item.code(), v, "auto", failed, null);
     }
 
-    private static String firstTarget(CheckResult.Violation v) {
-        return v.elements() == null || v.elements().isEmpty() ? null : v.elements().get(0).target();
+    /** 위반의 모든 요소 target(대상 selector). 요소가 없으면 [null] 한 건. */
+    private static List<String> targetsOf(CheckResult.Violation v) {
+        if (v.elements() == null || v.elements().isEmpty()) {
+            return java.util.Collections.singletonList(null);
+        }
+        return v.elements().stream().map(CheckResult.Element::target).toList();
     }
 }

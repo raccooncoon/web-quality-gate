@@ -722,7 +722,7 @@ final class WebConsoleUI {
             function itemCard(it){const vc=verdictClass(it.verdict);
               const id=it.code.replace(/\\W/g,'_');const memoId='memo-'+id;
               const g=it.guide||{};const needs=it.verdict==='수동확인필요';
-              const ev=(it.evidence||[]).map(e=>`<div class=ev>${esc(e.rule)} — ${esc(e.detail)}${e.url?' <span class=st>'+esc(e.url)+'</span>':''}</div>`).join('');
+              const ev=(it.evidence||[]).map(e=>`<div class=ev>${esc(e.rule)} — ${esc(e.detail)}${e.target?' · 대상 <code>'+esc(e.target)+'</code>':''}${e.url?' <span class=st>'+esc(e.url)+'</span>':''}</div>`).join('');
               return `<div class="item ${needs?'needs':'done'}">
                 <div class="it-hd"><span class=st>${it.no}.</span><b>${esc(it.title)}</b><small class=st>${esc(it.code)}</small>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>

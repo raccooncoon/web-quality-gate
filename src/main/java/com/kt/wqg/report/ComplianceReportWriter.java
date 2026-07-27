@@ -387,7 +387,7 @@ public final class ComplianceReportWriter {
               s+=`<div class="g"><div><b>무엇</b>${esc(g.what)}</div><div><b>왜</b>${esc(g.why)}</div>
                 <div><b>근거</b>${esc(g.basis)}</div><div><b>개선 방법</b>${esc(g.fix)}</div>
                 ${g.limit?'<div><b>검사 한계</b>'+esc(g.limit)+'</div>':''}`;
-              (it.evidence||[]).forEach(e=>{s+=`<div class="ev">${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`});
+              (it.evidence||[]).forEach(e=>{s+=`<div class="ev">${esc(e.rule)} — ${esc(e.detail)}${e.target?' · 대상 <code>'+esc(e.target)+'</code>':''}${e.url?' ('+esc(e.url)+')':''}</div>`});
               s+='</div></details></td></tr>';});return s;};
             // 뷰1: 카테고리별
             let catHtml='';
@@ -476,7 +476,7 @@ public final class ComplianceReportWriter {
                     :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 해당없음.'
                     :it.verdict==='수동확인필요'?'자동 판정이 어려워 평가자 확인 필요.'
                     :'자동 검사에서 위반이 발견됨.';
-                  let ev='';(it.evidence||[]).forEach(e=>{ev+=`<div class="pev">· ${esc(e.rule)} — ${esc(e.detail)}${e.url?' ('+esc(e.url)+')':''}</div>`;});
+                  let ev='';(it.evidence||[]).forEach(e=>{ev+=`<div class="pev">· ${esc(e.rule)} — ${esc(e.detail)}${e.target?' · 대상 '+esc(e.target):''}${e.url?' ('+esc(e.url)+')':''}</div>`;});
                   // 부적합·수동확인은 전체 근거(무엇/왜/근거/개선/한계), 적합·해당없음은 한 줄
                   let detail=`<div class="pres">${rmsg}</div>`;
                   if(full){detail+='<div class="pg">'

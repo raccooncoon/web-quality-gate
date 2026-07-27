@@ -28,10 +28,13 @@ public final class RuleResolver {
         }
         List<String> rules = item.resolver().rules();
         List<Finding> mine = findings.stream().filter(f -> rules.contains(f.rule())).toList();
-        // 동일 대상이 URL 마다 반복되므로 (규칙+설명) 기준으로 중복 제거
+        // 규칙+설명+대상(요소 selector) 기준으로 중복 제거 — 같은 대상이 URL마다 반복되는 것만 합치고
+        // 서로 다른 실패 요소(대상)는 모두 남긴다(증적으로 대상 전체를 제시하기 위함).
         java.util.LinkedHashMap<String, ItemResult.Evidence> uniq = new java.util.LinkedHashMap<>();
         for (Finding f : mine) {
-            uniq.putIfAbsent(f.rule() + "|" + f.help(), new ItemResult.Evidence(f.url(), f.rule(), f.help()));
+            String tgt = f.target() == null ? "" : f.target();
+            uniq.putIfAbsent(f.rule() + "|" + f.help() + "|" + tgt,
+                    new ItemResult.Evidence(f.url(), f.rule(), f.help(), f.target()));
         }
         List<ItemResult.Evidence> evidence = new java.util.ArrayList<>(uniq.values());
 
