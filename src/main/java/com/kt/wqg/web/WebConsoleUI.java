@@ -206,7 +206,8 @@ final class WebConsoleUI {
               if(b.dataset.tab==='syscfg')loadSysCfg();if(b.dataset.tab==='aicfg')loadAiCfg();if(b.dataset.tab==='audit')loadAudit()});
 
             // ── 기준·도구 탭 (정적 참조: 도구 비교 + KWCAG 매핑 + 체크리스트) ──
-            function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
+            async function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
+              const {items:realItems}=await api('/api/items');
               const P={a:'<span class="pill ok">자동</span>',m:'<span class="pill wait">수동</span>',p:'<span class="pill wait">부분</span>',n:'<span class="pill na">—</span>'};
               const intro='<div class="tabintro">세 도구 모두 KWCAG를 보지만 <b>목적·엔진·공신력이 달라 대체가 아니라 보완</b>입니다. '
                 +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 표준 관계·도구 비교·항목 매핑·체크리스트(참조).</div>';
@@ -255,16 +256,20 @@ final class WebConsoleUI {
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
-              const mItems=M.filter(r=>r[0]!=='P');
-              const isCompat=r=>String(r[0]).startsWith('c-'),isManual=r=>String(r[4]).includes('평가자');
-              const modeGroups=[['웹접근성 · 자동 판정',r=>!isCompat(r)&&!isManual(r)],['웹접근성 · 수동 확인 (AI 초안·평가자)',r=>!isCompat(r)&&isManual(r)],
-                ['웹호환성 · 자동 판정',r=>isCompat(r)&&!isManual(r)],['웹호환성 · 수동 확인',r=>isCompat(r)&&isManual(r)]];
-              const rowsMd=modeGroups.map(gp=>{const its=mItems.filter(gp[1]);return its.length?grpHd(gp[0]+' ('+its.length+')')+its.map(itRow).join(''):''}).join('');
               const theadMap='<tr><th style="min-width:190px">검사항목</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
+              // 뷰2: 자동·수동별 — 실제 점검 항목(/api/items) 기준으로 그룹핑(④ 점검 항목 탭과 동일 분류)
+              const modeCats=[['accessibility',true,'웹접근성 · 자동 판정'],['accessibility',false,'웹접근성 · 수동 확인 (AI 초안·평가자)'],
+                ['compatibility',true,'웹호환성 · 자동 판정'],['compatibility',false,'웹호환성 · 수동 확인']];
+              let rowsMd='';
+              modeCats.forEach(mc=>{const list=realItems.filter(it=>it.category===mc[0]&&(it.siClassification==='auto')===mc[1]);
+                if(!list.length)return;
+                rowsMd+=grpHd(mc[2]+' ('+list.length+')')
+                  +list.map(it=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
+              const theadMd='<tr><th>점검 항목</th><th style="width:120px">판정 방식</th></tr>';
               const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (33 + 확장 4)</div>'
-                +'<div class="mapviewbar"><button type="button" class="mvtab on" data-mv="pr">원칙별 (KWCAG 4원칙)</button><button type="button" class="mvtab" data-mv="md">자동·수동별 (웹접근성→웹호환성)</button></div>'
+                +'<div class="mapviewbar"><button type="button" class="mvtab on" data-mv="pr">원칙별 (KWCAG 4원칙)</button><button type="button" class="mvtab" data-mv="md">자동·수동별 · 점검 항목</button></div>'
                 +'<table id="mapPr">'+theadMap+rowsPr+'</table>'
-                +'<table id="mapMd" style="display:none">'+theadMap+rowsMd+'</table>';
+                +'<table id="mapMd" style="display:none">'+theadMd+rowsMd+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
