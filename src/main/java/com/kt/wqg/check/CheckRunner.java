@@ -75,8 +75,10 @@ public final class CheckRunner {
         // submit 후 곧바로 waitForLoadState 하면 아직 네비게이션이 시작되지 않은
         // 로그인 페이지의 load 상태를 보고 즉시 반환하는 경쟁 상태가 생긴다.
         // submit 이 유발한 POST 응답을 실제로 기다려 리다이렉트 체인을 확정한다.
+        // 로그인 페이지 경로(loginPath, 예 /app/login)와 폼 제출 대상(예 /login)이 다른
+        // 앱이 흔하므로, POST 대상 URL은 조건에서 빼고 '제출로 발생한 첫 POST'를 기다린다.
         page.waitForResponse(
-                r -> r.url().contains(auth.loginPath()) && "POST".equals(r.request().method()),
+                r -> "POST".equals(r.request().method()),
                 () -> page.click(auth.submitSelector()));
         page.waitForLoadState(LoadState.LOAD);
         String finalUrl = page.url();
