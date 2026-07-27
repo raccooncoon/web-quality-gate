@@ -112,6 +112,7 @@ public final class WebConsole {
             m.put("credId", credentials.savedId(s.name()));
             m.put("credPw", credentials.savedPw(s.name()));
             m.put("urls", s.urls().stream().map(SitesConfig.Url::path).toList());
+            m.put("auto", s.auto() == null ? List.of() : s.auto());
             m.put("configured", s.baseUrl() != null && !s.baseUrl().contains("TODO"));
             list.add(m);
         }
@@ -140,9 +141,16 @@ public final class WebConsole {
         }
         if (urls.isEmpty()) urls = cur.urls();
 
+        // 자동 판별/수집으로 채워진 필드 출처 — 클라이언트가 보내면 갱신, 없으면 기존 유지
+        List<String> autoFields = cur.auto();
+        if (b.has("auto")) {
+            autoFields = new ArrayList<>();
+            for (JsonNode a : b.path("auto")) autoFields.add(a.asText());
+        }
+
         SitesConfig.Site updated = new SitesConfig.Site(cur.name(),
                 text(b, "displayName", cur.displayName()), text(b, "type", cur.type()),
-                text(b, "baseUrl", cur.baseUrl()), auth, urls);
+                text(b, "baseUrl", cur.baseUrl()), auth, urls, autoFields);
         configStore.replaceSite(updated);
         sendJson(ex, Map.of("ok", true));
     }

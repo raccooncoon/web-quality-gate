@@ -334,6 +334,7 @@ final class WebConsoleUI {
               $('#config').innerHTML=html;
               systems.forEach(s=>{const el=document.getElementById('sys-'+s.name);
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
+                el.querySelectorAll('.autoval').forEach(attachAutoClear);
                 if(s.authType==='form')el.querySelector('.body').classList.add('auth-form');
                 el.querySelector('[name=authType]').onchange=e=>
                   el.querySelector('.body').classList.toggle('auth-form',e.target.value==='form');
@@ -367,9 +368,10 @@ final class WebConsoleUI {
             async function delSystem(name,disp){if(!confirm('시스템 삭제: '+(disp||name)+'\\n설정과 저장된 계정이 삭제됩니다. 계속?'))return;
               await api('/api/systems/delete/'+name,'POST',{});toast('삭제됨: '+name);loadSysCfg();loadConfig()}
             // 자동 판별/자동 수집으로 채워진 입력값을 청록색으로 표시(사용자가 편집하면 해제)
-            function markAuto(inp){if(!inp)return;inp.classList.add('autoval');
+            function attachAutoClear(inp){if(!inp)return;
               const clr=()=>{inp.classList.remove('autoval');inp.removeEventListener('input',clr);inp.removeEventListener('change',clr)};
               inp.addEventListener('input',clr);inp.addEventListener('change',clr)}
+            function markAuto(inp){if(!inp)return;inp.classList.add('autoval');attachAutoClear(inp)}
             async function detectSel(name,el){const g=n=>el.querySelector('[name='+n+']');
               const baseUrl=g('baseUrl').value.trim(),loginPath=g('loginPath').value.trim()||'/login';
               const box=el.querySelector('.health');box.innerHTML='<div class=st>로그인 페이지 여는 중… 필드 감지</div>';
@@ -397,14 +399,14 @@ final class WebConsoleUI {
               }catch(e){box.innerHTML='<div class="hbox no">확인 중 오류: '+esc(e)+'</div>'}}
             """;
     private static final String HTML_B = """
-            function sysCard(s){const cfg=s.configured;
+            function sysCard(s){const cfg=s.configured;const A=s.auto||[];const ac=n=>A.includes(n)?' autoval':'';
               return `<div class="sys" id="sys-${s.name}"><div class="hd">
                 <div class="nm">${esc(s.displayName)}<small>${s.name}</small></div>
                 <div>${s.hasCredentials?'<span class=pill ok>계정 저장됨</span>':(s.authType==='form'?'<span class=pill wait>계정 필요</span>':'')}
                   ${cfg?'<span class=pill ok>설정됨</span>':'<span class=pill no>미설정</span>'}</div></div>
                 <div class="body">
                 <div class="cardsteps"><b>진행 순서</b> ① 유형·baseUrl → ② 로그인 필드·계정 → ③ 검사 경로 → ④ 설정 저장 → ⑤ 설정 확인(헬스체크)</div>
-                <div class="row"><div><label>유형</label><select name="type">
+                <div class="row"><div><label>유형</label><select name="type" class="${ac('type').trim()}">
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
                   <div><label>로그인 방식</label><select name="authType">
@@ -416,9 +418,9 @@ final class WebConsoleUI {
                 <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="auth-only">
                   <div class="row3"><div><label>로그인 경로</label><input name="loginPath" value="${esc(s.loginPath||'/login')}"></div>
-                    <div><label>아이디 셀렉터</label><input name="idSelector" value="${esc(s.idSelector||'')}" placeholder="input[name=username]"></div>
-                    <div><label>비번 셀렉터</label><input name="pwSelector" value="${esc(s.pwSelector||'')}" placeholder="input[name=password]"></div></div>
-                  <label>제출 버튼 셀렉터</label><input name="submitSelector" value="${esc(s.submitSelector||'')}" placeholder="button[type=submit]">
+                    <div><label>아이디 셀렉터</label><input name="idSelector" class="${ac('idSelector').trim()}" value="${esc(s.idSelector||'')}" placeholder="input[name=username]"></div>
+                    <div><label>비번 셀렉터</label><input name="pwSelector" class="${ac('pwSelector').trim()}" value="${esc(s.pwSelector||'')}" placeholder="input[name=password]"></div></div>
+                  <label>제출 버튼 셀렉터</label><input name="submitSelector" class="${ac('submitSelector').trim()}" value="${esc(s.submitSelector||'')}" placeholder="button[type=submit]">
                   <button class="act ghost detect">🔍 로그인 필드 자동 감지</button>
                   <div class="hint">baseUrl·로그인 경로를 채운 뒤 누르면 로그인 페이지를 열어 셀렉터를 채웁니다.</div>
                   <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
@@ -430,7 +432,7 @@ final class WebConsoleUI {
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>
                 </div>
                 <label>검사 경로 (한 줄에 하나, "경로 | readySelector" 형식 가능)</label>
-                <textarea name="urls">${esc((s.urls||[]).join('\\n'))}</textarea>
+                <textarea name="urls" class="${ac('urls').trim()}">${esc((s.urls||[]).join('\\n'))}</textarea>
                 <button class="act ghost discover">🧭 검사 경로 자동 수집</button>
                 <div class="hint">로그인(필요 시) 후 내부 링크를 훑어 후보 경로를 제시합니다. 원하는 항목만 골라 위 목록에 추가하세요.</div>
                 <div class="discovered" id="disc-${s.name}"></div>
@@ -443,14 +445,20 @@ final class WebConsoleUI {
             function parseUrls(t){return t.split('\\n').map(l=>l.trim()).filter(Boolean).map(l=>{
               const[p,rs]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||''}})}
             async function saveSys(name,el){const g=n=>el.querySelector('[name='+n+']').value;
+              const auto=[...el.querySelectorAll('.autoval')].map(x=>x.getAttribute('name')).filter(Boolean);
               await api('/api/save/'+name,'POST',{type:g('type'),authType:g('authType'),baseUrl:g('baseUrl'),
                 loginPath:g('loginPath'),idSelector:g('idSelector'),pwSelector:g('pwSelector'),
-                submitSelector:g('submitSelector'),urls:parseUrls(g('urls'))});
-              const cid=g('cid'),cpw=g('cpw');if(cid&&cpw)await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});
-              toast('저장됨: '+name);loadConfig()}
+                submitSelector:g('submitSelector'),urls:parseUrls(g('urls')),auto});
+              const cid=g('cid'),cpw=g('cpw');if(cid&&cpw){await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});markCredSaved(el)}
+              // 카드를 다시 그리지 않고 그대로 유지 — 설정됨 배지만 즉시 갱신
+              const cfgOk=g('baseUrl')&&!g('baseUrl').includes('TODO');
+              const badge=el.querySelector('.hd .pill.no');if(cfgOk&&badge){badge.className='pill ok';badge.textContent='설정됨'}
+              toast('저장됨: '+name)}
+            function markCredSaved(el){const cp=el.querySelector('.hd .pill.wait');
+              if(cp){cp.className='pill ok';cp.textContent='계정 저장됨'}}
             async function saveCred(name,el){const cid=el.querySelector('[name=cid]').value,
               cpw=el.querySelector('[name=cpw]').value;if(!cid||!cpw){toast('ID/PW 입력');return}
-              await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});toast('계정 저장됨');loadConfig()}
+              await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});markCredSaved(el);toast('계정 저장됨')}
             // 검사 경로 자동 수집 — 로그인 후 내부 링크를 훑어 후보 제시 → 선택 → 검사 경로에 추가
             async function discoverUrls(name,el){const box=el.querySelector('.discovered');
               box.innerHTML='<div class=st>로그인(필요 시) 후 내부 경로 수집 중… (최대 30초)</div>';
