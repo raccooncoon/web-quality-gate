@@ -14,7 +14,8 @@ final class WebConsoleUI {
             /* 공공기관 문서 톤 — 밝은 단일 테마(다크모드 미사용), 리포트와 동일 팔레트 */
             :root{--bg:#eceff4;--card:#fff;--fg:#17202e;--muted:#5a6573;--line:#d4dbe4;--line2:#b9c3d0;
               --navy:#0f2340;--navy2:#1b3b63;--gov:#1f5aa6;--accent:#1f5aa6;--govsoft:#e9f1fb;--gold:#b0894a;
-              --ok:#1f7a44;--bad:#c02a2a;--warn:#a9781c;--okbg:#e7f4ec;--badbg:#fbeaea;--warnbg:#faf1df;color-scheme:light}
+              --ok:#1f7a44;--bad:#c02a2a;--warn:#a9781c;--okbg:#e7f4ec;--badbg:#fbeaea;--warnbg:#faf1df;
+              --auto:#0c7b7b;--autobg:#e2f4f4;color-scheme:light}
             *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);word-break:keep-all;
               font-family:"Malgun Gothic","Apple SD Gothic Neo",system-ui,-apple-system,sans-serif;line-height:1.55}
             .ev,input,textarea,code,small,.sys .nm small{word-break:break-all}
@@ -50,6 +51,9 @@ final class WebConsoleUI {
             .pill.ok{background:var(--okbg);color:var(--ok);border-color:var(--ok)}
             .pill.no{background:var(--badbg);color:var(--bad);border-color:var(--bad)}
             .pill.wait{background:var(--warnbg);color:var(--warn);border-color:var(--warn)}
+            input.autoval,select.autoval,textarea.autoval{background:var(--autobg)!important;border-color:var(--auto)!important;box-shadow:inset 3px 0 0 var(--auto)}
+            .autoval-chip{background:var(--autobg);color:var(--auto);border:1px solid var(--auto);border-radius:3px;padding:1px 6px;font-weight:700;font-size:11px}
+            .autolegend{font-size:11.5px;color:var(--muted);margin-top:8px}
             label{display:block;font-size:12px;color:var(--muted);margin:10px 0 3px;font-weight:600}
             input,select,textarea{width:100%;padding:8px 10px;border:1px solid var(--line2);border-radius:4px;
               background:#fff;color:var(--fg);font-size:13px;font-family:inherit}
@@ -322,7 +326,8 @@ final class WebConsoleUI {
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
               let html='<div class="tabintro">설정된 <b>검사 대상</b>의 baseUrl·계정·검사 경로를 편집하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
-                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.</div>';
+                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.</div>'
+                +'<div class="autolegend"><span class="autoval-chip">자동</span> 표시된 값은 <b>유형 자동 판별·로그인 필드 자동 감지·검사 경로 자동 수집</b>으로 채워진 것입니다 — 내용을 확인한 뒤 <b>[설정 저장]</b>하세요. 직접 수정하면 표시가 사라집니다.</div>';
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
               if(!systems.length)html+='<div class="cardsteps"><b>＋ 시스템 관리</b> 탭에서 검사 대상 시스템을 먼저 추가하세요.</div>';
@@ -361,14 +366,18 @@ final class WebConsoleUI {
               if(r.error){toast(r.error);return}toast('추가됨: '+name);loadSysCfg();loadConfig()}
             async function delSystem(name,disp){if(!confirm('시스템 삭제: '+(disp||name)+'\\n설정과 저장된 계정이 삭제됩니다. 계속?'))return;
               await api('/api/systems/delete/'+name,'POST',{});toast('삭제됨: '+name);loadSysCfg();loadConfig()}
+            // 자동 판별/자동 수집으로 채워진 입력값을 청록색으로 표시(사용자가 편집하면 해제)
+            function markAuto(inp){if(!inp)return;inp.classList.add('autoval');
+              const clr=()=>{inp.classList.remove('autoval');inp.removeEventListener('input',clr);inp.removeEventListener('change',clr)};
+              inp.addEventListener('input',clr);inp.addEventListener('change',clr)}
             async function detectSel(name,el){const g=n=>el.querySelector('[name='+n+']');
               const baseUrl=g('baseUrl').value.trim(),loginPath=g('loginPath').value.trim()||'/login';
               const box=el.querySelector('.health');box.innerHTML='<div class=st>로그인 페이지 여는 중… 필드 감지</div>';
               const r=await api('/api/detect-selectors','POST',{baseUrl,loginPath});
               if(r.error){box.innerHTML='<div class="hbox no">'+esc(r.error)+'</div>';return}
-              if(r.idSelector)g('idSelector').value=r.idSelector;
-              if(r.pwSelector)g('pwSelector').value=r.pwSelector;
-              if(r.submitSelector)g('submitSelector').value=r.submitSelector;
+              if(r.idSelector){g('idSelector').value=r.idSelector;markAuto(g('idSelector'))}
+              if(r.pwSelector){g('pwSelector').value=r.pwSelector;markAuto(g('pwSelector'))}
+              if(r.submitSelector){g('submitSelector').value=r.submitSelector;markAuto(g('submitSelector'))}
               const found=[r.idSelector&&'아이디',r.pwSelector&&'비번',r.submitSelector&&'제출'].filter(Boolean);
               box.innerHTML='<div class="hbox '+(found.length?'ok':'no')+'">'+(found.length?'✓ 감지: '+found.join('·')+' (확인 후 저장)':'✗ 로그인 필드를 못 찾음 — 수동 입력')+'</div>'}
             async function detectType(name,el){const note=el.querySelector('.dtnote');
@@ -377,7 +386,7 @@ final class WebConsoleUI {
               note.innerHTML='<div class=st>서버 응답으로 유형 확인 중…</div>';
               let r;try{r=await api('/api/detect-type','POST',{baseUrl})}catch(e){r={error:String(e)}}
               if(r.error){note.innerHTML='<div class="hbox no">✗ '+esc(r.error)+'</div>';return}
-              el.querySelector('[name=type]').value=r.type;
+              el.querySelector('[name=type]').value=r.type;markAuto(el.querySelector('[name=type]'));
               note.innerHTML='<div class="hbox ok">✓ <b>'+esc(r.type.toUpperCase())+'</b> 로 설정 — '+esc(r.reason)+'<div class=hint>확인 후 [설정 저장]</div></div>'}
             async function healthCheck(name){const box=document.getElementById('health-'+name);
               box.innerHTML='<div class=st>설정 확인 중… (브라우저 기동·로그인 점검, 최대 30초)</div>';
@@ -464,7 +473,7 @@ final class WebConsoleUI {
               if(!chosen.length){toast('선택된 경로 없음');return}
               const ta=el.querySelector('[name=urls]');const merged=parseUrls(ta.value).map(u=>u.path);
               chosen.forEach(p=>{if(!merged.includes(p))merged.push(p)});
-              ta.value=merged.join('\\n');el.querySelector('.discovered').innerHTML='';
+              ta.value=merged.join('\\n');markAuto(ta);el.querySelector('.discovered').innerHTML='';
               toast(chosen.length+'개 추가됨 — [설정 저장]을 눌러 반영하세요')}
 
             // 설정 카드 → 실행 탭으로 바로 이동(해당 시스템 행으로 스크롤·강조)
