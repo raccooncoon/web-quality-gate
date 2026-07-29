@@ -435,8 +435,8 @@ public final class ComplianceReportWriter {
               let s='';
               // 1) 대상 페이지 — 스크린샷 그리드
               s+='<h2>대상 페이지</h2><div class="pgrid">';
-              pages.forEach(p=>{s+=`<div class="pcard"><div class="pchd"><span class="pcno">${p.no}</span> <code>${esc(p.path)}</code></div>`
-                +`<div class="pcurl">${esc(p.url)}</div>`
+              pages.forEach(p=>{s+=`<div class="pcard"><div class="pchd"><span class="pcno">${p.no}</span> ${esc(p.title||('홈 > '+p.path))}</div>`
+                +`<div class="pcurl"><code>${esc(p.path)}</code> · ${esc(p.url)}</div>`
                 +`<div class="pcimg"><img loading="lazy" src="${esc(p.shot||'')}" alt="${esc(p.path)} 화면" onerror="this.parentNode.innerHTML='<div class=noshot>스크린샷 없음</div>'"></div></div>`;});
               s+='</div>';
               // 2) 페이지별 평가 — 항목 × 페이지 매트릭스
@@ -611,7 +611,7 @@ public final class ComplianceReportWriter {
                 const pages=R.pages||[];
                 if(!pages.length) return '';
                 let s='<h2 class="ph2">대상 페이지</h2><div class="ppg">';
-                pages.forEach(p=>{s+=`<div class="ppcard"><div class="pphd">${p.no}. ${esc(p.path)} <span class="ppurl">${esc(p.url)}</span></div>`
+                pages.forEach(p=>{s+=`<div class="ppcard"><div class="pphd">${p.no}. ${esc(p.title||('홈 > '+p.path))} <span class="ppurl">${esc(p.path)}</span></div>`
                   +`<img src="${esc(p.shot||'')}" onerror="this.style.display='none'"></div>`;});
                 s+='</div>';
                 s+='<div class="pmxland"><h2 class="ph2">페이지별 평가</h2><table class="pmx"><thead><tr><th class="pmxit">심사 기준</th>';

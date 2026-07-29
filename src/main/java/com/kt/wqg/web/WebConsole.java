@@ -181,7 +181,7 @@ public final class WebConsole {
         String display = b.path("displayName").asText(name);
         String type = b.path("type").asText("spa");
         SitesConfig.Site site = new SitesConfig.Site(name, display, type, "http://TODO",
-                new SitesConfig.Auth("none", null, null, null, null),
+                new SitesConfig.Auth("storage", "/", null, null, null),
                 List.of(new SitesConfig.Url("/", null)));
         configStore.addSite(site);
         sendJson(ex, Map.of("ok", true));
@@ -338,7 +338,7 @@ public final class WebConsole {
         SitesConfig.Site site = name.isEmpty() ? null : configStore.load().sites().stream()
                 .filter(s -> s.name().equals(name)).findFirst().orElse(null);
         if (site != null && site.baseUrl() != null && !site.baseUrl().contains("TODO")
-                && site.auth() != null && site.auth().required()) {
+                && site.auth() != null && (site.auth().required() || site.auth().isStorage())) {
             d = CheckService.detectType(site, credentials.resolver());
         } else {
             d = CheckService.detectType(baseUrl);

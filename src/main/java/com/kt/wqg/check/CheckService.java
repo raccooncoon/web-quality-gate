@@ -60,6 +60,7 @@ public final class CheckService {
         try (Playwright playwright = Playwright.create()) {
             List<CheckResult> results = new ArrayList<>();
             List<com.kt.wqg.compliance.Finding> probeFindings = new ArrayList<>();
+            java.util.Map<String, String> pageTitles = new java.util.LinkedHashMap<>();
             String storageState = null;
 
             progress.accept("브라우저 기동…");
@@ -98,6 +99,7 @@ public final class CheckService {
                         probeFindings.addAll(com.kt.wqg.check.probe.ProbeCheck.run(
                                 page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
                                 com.kt.wqg.check.probe.ProbeCheck.defaults()));
+                        try { pageTitles.put(url.path(), page.title()); } catch (RuntimeException ignore) { }
                     } catch (RuntimeException e) {
                         skipped.add(url.path());
                         progress.accept(String.format("건너뜀 (%d/%d): %s — %s",
@@ -138,7 +140,7 @@ public final class CheckService {
                     .map(it -> itemMap.get(it.code())).toList();
             // 페이지별 판정 — 대상 페이지·페이지별 평가표·동영상 콘텐츠 표의 근거 데이터
             java.util.List<java.util.Map<String, Object>> pages =
-                    buildPages(site, catalog, results, probeFindings);
+                    buildPages(site, catalog, results, probeFindings, pageTitles);
             com.kt.wqg.compliance.ComplianceStore.write(reportDir,
                     new com.kt.wqg.compliance.ComplianceDoc(site.name(), site.label(), timestamp,
                             ordered, new java.util.ArrayList<>(excluded), pages));
@@ -242,7 +244,8 @@ public final class CheckService {
     private static java.util.List<java.util.Map<String, Object>> buildPages(
             SitesConfig.Site site, com.kt.wqg.compliance.KwcagCatalog catalog,
             List<com.kt.wqg.report.CheckResult> results,
-            List<com.kt.wqg.compliance.Finding> probeFindings) {
+            List<com.kt.wqg.compliance.Finding> probeFindings,
+            java.util.Map<String, String> pageTitles) {
         var perUrl = new com.kt.wqg.compliance.ComplianceMapper(catalog).mapByUrl(results, probeFindings);
         java.util.List<java.util.Map<String, Object>> pages = new java.util.ArrayList<>();
         int no = 1;
@@ -255,6 +258,7 @@ public final class CheckService {
             pg.put("no", no++);
             pg.put("path", path);
             pg.put("url", url);
+            pg.put("title", breadcrumb(path, pageTitles.get(path)));
             pg.put("shot", "screenshots/chromium-" + CompatibilityCheck.slug(path) + ".png");
             java.util.Map<String, String> cells = new java.util.LinkedHashMap<>();
             for (com.kt.wqg.compliance.CatalogItem it : catalog.items()) {
@@ -268,6 +272,31 @@ public final class CheckService {
             pages.add(pg);
         }
         return pages;
+    }
+
+    /** '홈 &gt; 세그먼트…' 브레드크럼. 리프 라벨은 페이지 제목(&lt;title&gt;)이 있으면 사용. */
+    private static String breadcrumb(String path, String title) {
+        java.util.List<String> crumbs = new java.util.ArrayList<>();
+        crumbs.add("홈");
+        for (String s : (path == null ? "" : path).split("/")) if (!s.isBlank()) crumbs.add(s);
+        String leaf = cleanTitle(title);
+        if (!leaf.isEmpty()) {
+            if (crumbs.size() > 1) crumbs.set(crumbs.size() - 1, leaf);
+            else crumbs.add(leaf);
+        }
+        return String.join(" > ", crumbs);
+    }
+
+    /** 페이지 제목에서 리프 라벨만 추출('페이지명 | 사이트' → '페이지명'). */
+    private static String cleanTitle(String title) {
+        if (title == null) return "";
+        String t = title.trim();
+        if (t.isEmpty()) return "";
+        for (String sep : new String[]{"|", "»", "·", " - ", " — ", "::"}) {
+            int idx = t.indexOf(sep);
+            if (idx > 0) { t = t.substring(0, idx).trim(); break; }
+        }
+        return t.length() > 40 ? t.substring(0, 40) : t;
     }
 
     /** 판정 → 페이지별 평가표 기호. 수동확인은 잠정(△). */
@@ -442,10 +471,15 @@ public final class CheckService {
         String url = CheckRunner.resolveUrl(baseUrl, path);
         try (Playwright pw = Playwright.create()) {
             Browser br = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-            try (BrowserContext ctx = br.newContext()) {
+            // storage(세션 재사용) 방식이면 저장 세션을 로드해 실제 앱 화면으로 판정
+            boolean useStored = site != null && site.auth() != null && site.auth().isStorage()
+                    && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
+            Browser.NewContextOptions opts = new Browser.NewContextOptions();
+            if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
+            try (BrowserContext ctx = br.newContext(opts)) {
                 Page page = ctx.newPage();
                 // 로그인 필요 + 계정 있으면 먼저 로그인 (SPA는 대개 로그인 뒤에 있음)
-                if (site != null && site.auth() != null && site.auth().required() && credResolver != null) {
+                if (!useStored && site != null && site.auth() != null && site.auth().required() && credResolver != null) {
                     try {
                         CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
                     } catch (RuntimeException ignore) { /* 로그인 실패 시 비로그인 상태로 진행 → 로그인 벽 감지됨 */ }
