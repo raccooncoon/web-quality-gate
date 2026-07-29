@@ -23,9 +23,9 @@ class CompliancePipelineTest {
         assertEquals(ItemVerdict.부적합, items.get("1.4.3").verdict());
         assertTrue(c.pendingTotal() > 0, "수동확인필요 항목이 있어 미확정");
         assertEquals("미완료", c.status());
-        // 웹접근성 수동 버킷에 1.4.3 부적합이 집계됐는지
-        ComplianceEvaluator.CategoryScore a11yManual = c.categories().stream()
-                .filter(s -> s.category().equals("accessibility") && !s.siAuto()).findFirst().orElseThrow();
-        assertTrue(a11yManual.부적합() >= 1);
+        // 인식의 용이성(1.x) 그룹에 1.4.3 부적합이 집계됐는지
+        ComplianceEvaluator.CategoryScore perceivable = c.categories().stream()
+                .filter(s -> s.category().equals("1")).findFirst().orElseThrow();
+        assertTrue(perceivable.부적합() >= 1);
     }
 }

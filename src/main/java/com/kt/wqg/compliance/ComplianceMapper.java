@@ -22,6 +22,24 @@ public final class ComplianceMapper {
         return map(results, List.of());
     }
 
+    /**
+     * URL(페이지)별로 항목 판정을 낸다(페이지별 평가표·대상 페이지용).
+     * 각 URL의 결과·프로브 findings 만 넣어 map() 을 재사용하므로, 페이지 하나를 검사한 것과 동일하게 판정된다.
+     * 반환 맵의 키 순서는 결과에 처음 등장한 URL 순서를 유지한다.
+     */
+    public Map<String, Map<String, ItemResult>> mapByUrl(List<CheckResult> results, List<Finding> probeFindings) {
+        java.util.LinkedHashSet<String> urls = new java.util.LinkedHashSet<>();
+        results.forEach(r -> urls.add(r.url()));
+        probeFindings.forEach(f -> urls.add(f.url()));
+        Map<String, Map<String, ItemResult>> out = new LinkedHashMap<>();
+        for (String url : urls) {
+            List<CheckResult> ru = results.stream().filter(r -> url.equals(r.url())).toList();
+            List<Finding> fu = probeFindings.stream().filter(f -> url.equals(f.url())).toList();
+            out.put(url, map(ru, fu));
+        }
+        return out;
+    }
+
     public Map<String, ItemResult> map(List<CheckResult> results, List<Finding> probeFindings) {
         List<Finding> axeFindings = results.stream()
                 .filter(r -> "accessibility".equals(r.checkType()))
@@ -58,14 +76,26 @@ public final class ComplianceMapper {
         return out;
     }
 
-    /** 적합 판정(axe·markup·compat)에 '무엇을 검사해 정상이었는지' 근거를 채운다. */
+    /**
+     * 적합 판정(axe·markup·compat)에 '무엇을 검사해 정상이었는지' 근거를 채운다.
+     * axe 항목에서 대상 요소가 하나도 없었으면(규칙이 통과 집계에 없음 = inapplicable)
+     * '적합'이 아니라 '해당없음'으로 정정한다 — 검사할 대상 자체가 없었기 때문.
+     * 단, 이 실행에 통과 데이터가 전혀 없으면(axe pass 미수집) 판단 불가로 기존 적합을 유지한다.
+     */
     private static ItemResult withPassEvidence(CatalogItem item, ItemResult res, Map<String, Integer> passByRule) {
         if (res.verdict() != ItemVerdict.적합 || !res.evidence().isEmpty()) return res;
         List<ItemResult.Evidence> ev = new java.util.ArrayList<>();
         if ("axe".equals(item.resolver().type()) && item.resolver().rules() != null) {
-            item.resolver().rules().stream().filter(passByRule::containsKey)
-                    .forEach(rule -> ev.add(new ItemResult.Evidence("전체 화면", rule,
-                            passByRule.get(rule) + "개 요소 검사 · 위반 0 · 통과")));
+            List<String> matched = item.resolver().rules().stream()
+                    .filter(passByRule::containsKey).toList();
+            if (matched.isEmpty() && !passByRule.isEmpty()) {
+                // 검사 대상 요소가 없었음 → 해당없음(대상 없음)
+                return new ItemResult(res.code(), ItemVerdict.해당없음, res.source(),
+                        List.of(new ItemResult.Evidence("전체 화면", item.resolver().rules().get(0),
+                                "검사 대상 요소 없음 · 해당없음")), res.memo());
+            }
+            matched.forEach(rule -> ev.add(new ItemResult.Evidence("전체 화면", rule,
+                    passByRule.get(rule) + "개 요소 검사 · 위반 0 · 통과")));
         } else if ("markup".equals(item.resolver().type())) {
             ev.add(new ItemResult.Evidence("전체 화면", "markup", "마크업 표준 검사 · 오류 0건 · 통과"));
         } else if ("compat".equals(item.resolver().type())) {

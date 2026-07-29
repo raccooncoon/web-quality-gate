@@ -46,6 +46,43 @@ public class Main {
             return;
         }
 
+        // 재검사 없이 저장된 compliance.json 으로 report.html 만 다시 생성(리포트 서식/문구 갱신용).
+        //   java -jar ... regen-report [reportDir ...]   인자 없으면 reports/ 전체 순회
+        if (args.length > 0 && args[0].equals("regen-report")) {
+            SitesConfig cfg = SitesConfigLoader.load(Path.of("config/sites.yaml"));
+            var cred = new com.kt.wqg.web.CredentialStore(
+                    Path.of("config/credentials.properties")).resolver();
+            List<Path> dirs = new java.util.ArrayList<>();
+            if (args.length > 1) {
+                for (int i = 1; i < args.length; i++) dirs.add(Path.of(args[i]));
+            } else {
+                Path root = Path.of(cfg.output().dir());
+                if (java.nio.file.Files.isDirectory(root)) {
+                    try (var s = java.nio.file.Files.walk(root, 2)) {
+                        s.filter(p -> java.nio.file.Files.isDirectory(p)
+                                && java.nio.file.Files.isRegularFile(p.resolve("compliance.json")))
+                         .forEach(dirs::add);
+                    }
+                }
+            }
+            for (Path dir : dirs) {
+                String siteName = dir.getParent().getFileName().toString();
+                SitesConfig.Site site = cfg.sites().stream()
+                        .filter(x -> x.name().equals(siteName)).findFirst().orElse(null);
+                if (site == null) {
+                    System.err.printf("사이트 설정 없음: %s (%s) — 건너뜀%n", siteName, dir);
+                    continue;
+                }
+                try {
+                    Path html = CheckService.writeComplianceReport(dir, site, cred);
+                    System.out.println("리포트 재생성 → " + html);
+                } catch (RuntimeException e) {
+                    System.err.printf("재생성 실패: %s — %s%n", dir, e.getMessage());
+                }
+            }
+            return;
+        }
+
         Path configPath = Path.of(args.length > 0 ? args[0] : "config/sites.yaml");
         String onlySite = args.length > 1 ? args[1] : null;
         SitesConfig config = SitesConfigLoader.load(configPath);

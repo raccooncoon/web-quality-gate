@@ -18,9 +18,10 @@ class ComplianceEvaluatorTest {
         return m;
     }
 
-    private CategoryScore cat(Compliance c, String category, boolean siAuto) {
+    /** category 필드에 담긴 구분 키(KWCAG 4원칙 1/2/3/4, 웹 호환성 c)로 조회. */
+    private CategoryScore cat(Compliance c, String key) {
         return c.categories().stream()
-                .filter(s -> s.category().equals(category) && s.siAuto() == siAuto)
+                .filter(s -> s.category().equals(key))
                 .findFirst().orElseThrow();
     }
 
@@ -29,8 +30,8 @@ class ComplianceEvaluatorTest {
         Compliance c = eval.evaluate(allWith(ItemVerdict.적합));
         assertEquals("적합", c.status());
         assertEquals(0, c.pendingTotal());
-        assertEquals(100.0, cat(c, "accessibility", false).rate(), 1e-9);
-        assertTrue(cat(c, "compatibility", true).pass());
+        assertEquals(100.0, cat(c, "1").rate(), 1e-9);   // 인식의 용이성
+        assertTrue(cat(c, "c").pass());                  // 웹 호환성 전부 적합 → 100 ≥ 100
     }
 
     @Test
@@ -41,18 +42,13 @@ class ComplianceEvaluatorTest {
     }
 
     @Test
-    void 접근성수동_1건_부적합이면_준수율96_2_통과() {
-        // 27항목 중 26 적합 / 1 부적합 = 96.3% ≥ 95%
+    void 원칙그룹_1건_부적합이면_준수율_반영() {
+        // 인식(1.x) 그룹의 한 항목 부적합 → 그 그룹 준수율 100 미만
         Map<String, ItemResult> m = allWith(ItemVerdict.적합);
-        String firstManualA11y = catalog.byBucket("accessibility", false).get(0).code();
-        m.put(firstManualA11y, ItemResult.of(firstManualA11y, ItemVerdict.부적합));
-        Compliance c = eval.evaluate(m);
-        CategoryScore s = cat(c, "accessibility", false);
-        assertEquals(26, s.적합());
+        m.put("1.4.3", ItemResult.of("1.4.3", ItemVerdict.부적합));
+        CategoryScore s = cat(eval.evaluate(m), "1");
         assertEquals(1, s.부적합());
-        assertTrue(s.rate() >= 95.0, "준수율=" + s.rate());
-        assertTrue(s.pass());
-        assertEquals("적합", c.status());
+        assertTrue(s.rate() < 100.0, "준수율=" + s.rate());
     }
 
     @Test
@@ -61,19 +57,17 @@ class ComplianceEvaluatorTest {
         String c1 = catalog.byBucket("compatibility", true).get(0).code();
         m.put(c1, ItemResult.of(c1, ItemVerdict.부적합));
         Compliance c = eval.evaluate(m);
-        assertFalse(cat(c, "compatibility", true).pass());
+        assertFalse(cat(c, "c").pass());
         assertEquals("부적합", c.status());
     }
 
     @Test
     void 해당없음은_준수율_분모에서_제외() {
         Map<String, ItemResult> m = allWith(ItemVerdict.적합);
-        // 접근성 수동 버킷의 한 항목을 해당없음 처리 → 분모 26, 적합 26 → 100%
-        String code = catalog.byBucket("accessibility", false).get(0).code();
-        m.put(code, ItemResult.of(code, ItemVerdict.해당없음));
-        CategoryScore s = cat(eval.evaluate(m), "accessibility", false);
+        // 인식(1.x) 그룹의 한 항목을 해당없음 처리 → 분모에서 제외, 나머지 전부 적합 → 100%
+        m.put("1.4.3", ItemResult.of("1.4.3", ItemVerdict.해당없음));
+        CategoryScore s = cat(eval.evaluate(m), "1");
         assertEquals(1, s.naCount());
-        assertEquals(26, s.적합());
         assertEquals(100.0, s.rate(), 1e-9);
     }
 }

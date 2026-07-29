@@ -47,6 +47,18 @@ class ComplianceMapperTest {
     }
 
     @Test
+    void axe_대상요소_없으면_해당없음_있으면_적합() {
+        // color-contrast 는 통과 요소가 잡힘(대상 있음) → 1.4.3 적합(+근거)
+        // no-autoplay-audio 는 통과에 없음(오디오 0개 = inapplicable) → 1.4.2 해당없음
+        CheckResult r = new CheckResult("s", "https://x/a", "accessibility", "t", null, true,
+                List.of(), List.of(new CheckResult.Pass("color-contrast", 1136)));
+        Map<String, ItemResult> m = mapper.map(List.of(r));
+        assertEquals(ItemVerdict.적합, m.get("1.4.3").verdict());
+        assertFalse(m.get("1.4.3").evidence().isEmpty());
+        assertEquals(ItemVerdict.해당없음, m.get("1.4.2").verdict());
+    }
+
+    @Test
     void 마크업_오류있으면_4_1_1_부적합_c_webstandard는_수동확인() {
         Map<String, ItemResult> m = mapper.map(List.of(markup("https://x/a", "Element X is not allowed")));
         assertEquals(ItemVerdict.부적합, m.get("4.1.1").verdict()); // auto

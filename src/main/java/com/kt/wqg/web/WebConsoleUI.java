@@ -53,6 +53,26 @@ final class WebConsoleUI {
             .pill.wait{background:var(--warnbg);color:var(--warn);border-color:var(--warn)}
             input.autoval,select.autoval,textarea.autoval{background:var(--autobg)!important;border-color:var(--auto)!important;box-shadow:inset 3px 0 0 var(--auto)}
             .autoval-chip{background:var(--autobg);color:var(--auto);border:1px solid var(--auto);border-radius:3px;padding:1px 6px;font-weight:700;font-size:11px}
+            /* 검사 경로 — 구조화된 행 목록 편집기 */
+            .pathhd{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 4px}
+            .pathhd .pathcount{color:var(--muted);font-weight:400;font-size:11.5px}
+            .pathlist{border:1px solid var(--line2);border-radius:6px;overflow:hidden;background:var(--card)}
+            .pathrow{display:grid;grid-template-columns:1fr 210px 34px;align-items:stretch;border-bottom:1px solid var(--line)}
+            .pathrow:last-child{border-bottom:none}
+            .pathrow>input{border:0;border-radius:0;background:transparent;box-shadow:none;padding:8px 11px;
+              font-family:ui-monospace,monospace;width:100%}
+            .pathrow>input:focus{outline:2px solid var(--gov);outline-offset:-2px;background:var(--govsoft)}
+            .pathrow .pp{font-size:12.5px;font-weight:600;color:var(--fg)}
+            .pathrow .ps{font-size:11.5px;color:var(--muted);border-left:1px solid var(--line)}
+            .pathrow .ps::placeholder{color:var(--line2);font-weight:400}
+            .pathrow .rm{border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);
+              cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
+            .pathrow .rm:hover{color:var(--bad);background:var(--badbg)}
+            .pathrow.justadded{animation:pf 2s ease}@keyframes pf{0%,55%{background:var(--autobg)}100%{background:transparent}}
+            .pathempty{padding:14px;text-align:center;color:var(--muted);font-size:12px}
+            .pathadd{display:flex;gap:7px;margin-top:7px}
+            .pathadd input{font-family:ui-monospace,monospace;font-size:12px}
+            .pathadd button{margin-top:0;white-space:nowrap}
             .autolegend{font-size:11.5px;color:var(--muted);margin-top:8px}
             .mapviewbar{display:flex;gap:6px;margin:10px 0}
             .mvtab{width:auto;padding:5px 12px;border:1px solid var(--line2);background:var(--card);border-radius:4px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer}
@@ -80,6 +100,27 @@ final class WebConsoleUI {
             .hbox{margin-top:10px;padding:10px 12px;border-radius:4px;font-size:13px;border:1px solid var(--line)}
             .hbox.ok{background:var(--okbg);border-color:var(--ok)}.hbox.no{background:var(--badbg);border-color:var(--bad)}
             .hbox b{display:block;margin-bottom:5px}.hstep{padding:2px 0;font-size:12.5px}
+            /* 진행 표시 — 스피너 + 메시지 칩 */
+            .busy{margin-top:10px;display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:6px;
+              font-size:13px;color:var(--navy);background:var(--govsoft);border:1px solid var(--gov)}
+            .spin{width:15px;height:15px;flex:none;border:2px solid var(--gov);border-right-color:transparent;
+              border-radius:50%;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+            .busy .sub{color:var(--muted);font-size:11.5px}
+            /* 결과 카드 — 상태 배지 헤더 + 단계 행 */
+            .rcard{margin-top:10px;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+              animation:rin .25s ease}@keyframes rin{from{opacity:0;transform:translateY(-3px)}to{opacity:1}}
+            .rcard .rhd{display:flex;align-items:center;gap:9px;padding:9px 13px;font-size:13px;font-weight:700}
+            .rcard.ok .rhd{background:var(--okbg);color:var(--ok)}.rcard.no .rhd{background:var(--badbg);color:var(--bad)}
+            .rcard .badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;border:1px solid currentColor}
+            .rcard .rbody{padding:4px 13px 8px;background:var(--card)}
+            .sstep{display:flex;align-items:flex-start;gap:9px;padding:7px 0;border-bottom:1px solid var(--line)}
+            .sstep:last-child{border-bottom:none}
+            .dot{flex:none;width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+              font-size:11px;font-weight:700;color:#fff;margin-top:1px}
+            .sstep.ok .dot{background:var(--ok)}.sstep.no .dot{background:var(--bad)}
+            .sstep .snm{font-size:12.5px;font-weight:600;color:var(--fg)}
+            .sstep .sdt{font-size:11.5px;color:var(--muted);margin-top:1px}
+            .rnote{padding:7px 13px;font-size:11.5px;color:var(--muted);background:var(--card);border-top:1px solid var(--line)}
             .pill.na{background:var(--line);color:var(--muted);border-color:var(--line2)}
             @media print{
               header,nav,.toast,.verstamp,.noprint{display:none!important}
@@ -104,6 +145,22 @@ final class WebConsoleUI {
             .it-hd b{flex:1}
             .linkbtn{background:none;border:none;color:var(--gov);font-size:12px;cursor:pointer;padding:0;font-weight:700}
             .ev{font-size:12px;color:var(--muted);margin:2px 0}
+            /* 증거 — 규칙 캡션 + 각진 표(대상·요소·위치) */
+            .evsum{margin-top:7px;font-size:12px;color:var(--fg)}
+            .evcap{margin-top:9px;font-size:11.5px;color:var(--fg);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+            .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
+              background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
+            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;border:1px solid var(--line2)}
+            .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
+              font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
+            .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
+            .evt .evno{width:38px!important;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evel{width:auto!important;font-family:ui-monospace,monospace;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .evt .evloc{width:112px!important;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
+            .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
+              border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
+            .evcap .evtx:hover{background:var(--govsoft)}
             .guide{margin-top:6px;font-size:12.5px;color:var(--muted)}
             .guide summary{cursor:pointer;color:var(--gov);font-weight:700}
             .guide div{margin:4px 0}
@@ -161,8 +218,9 @@ final class WebConsoleUI {
               background:rgba(255,255,255,.9);border:1px solid var(--line);border-radius:3px;padding:1px 5px;font-family:ui-monospace,monospace}
             .verstamp:hover{opacity:1}
             .pwwrap{position:relative}.pwwrap input{padding-right:40px}
-            .eye{position:absolute;right:4px;top:50%;transform:translateY(-50%);background:none;border:none;
-              cursor:pointer;font-size:16px;line-height:1;padding:4px;opacity:.65}.eye:hover{opacity:1}
+            .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;
+              cursor:pointer;line-height:0;padding:4px;color:var(--muted)}.eye:hover{color:var(--gov)}
+            .eye svg{width:18px;height:18px;display:block}
             </style></head><body>
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
             <nav><button data-tab="config" class="on">① 설정</button>
@@ -171,7 +229,6 @@ final class WebConsoleUI {
               <button data-tab="syscfg" class="util">⚙ 시스템 관리</button>
               <button data-tab="items" class="util">✓ 점검 항목</button>
               <button data-tab="aicfg" class="util">✦ AI 설정</button>
-              <button data-tab="audit" class="util">☰ 증적·이력</button>
               <button data-tab="stdref" class="util">ⓘ 기준·도구</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
@@ -189,8 +246,33 @@ final class WebConsoleUI {
             const api=(u,m,b)=>fetch(u,{method:m||'GET',headers:{'Content-Type':'application/json'},
               body:b?JSON.stringify(b):undefined}).then(r=>r.json());
             const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+            // 증거: detail 의 '· 예) A / B' 를 대상 요소 목록으로 분리 → 규칙별 각진 표로 렌더
+            const evTargets=e=>{const p=(e.detail||'').split('· 예)');
+              let t=p.length>1?p[1].split(' / ').map(x=>x.trim()).filter(Boolean):[];
+              if(e.target)t.unshift(e.target);
+              return {desc:p[0].replace(/\\s+$/,''),targets:t}};
+            const urlPath=u=>{try{return new URL(u).pathname||u}catch(_){return u||''}};
+            const evTables=evs=>{const byRule=new Map();
+              (evs||[]).forEach(e=>{const {desc,targets}=evTargets(e);const loc=e.url?urlPath(e.url):'전체 화면';
+                if(!byRule.has(e.rule))byRule.set(e.rule,{rows:[],hasEl:false});
+                const g=byRule.get(e.rule);
+                if(targets.length){targets.forEach(t=>g.rows.push({el:t,loc}));g.hasEl=true;}
+                else g.rows.push({el:desc||'—',loc});});
+              let h='';
+              byRule.forEach((g,rule)=>{h+=`<div class="evcap"><span class="evrule">${esc(rule)}</span>${g.hasEl?` 검사 대상 <b>${g.rows.length}</b>건`:''}`
+                +`<button type="button" class="evtx" onclick="this.parentNode.nextElementSibling.classList.toggle('wrap')">펼쳐보기</button></div>`
+                +`<div class="evtwrap"><table class="evt"><thead><tr><th class="evno">대상</th><th>요소</th><th class="evloc">위치</th></tr></thead><tbody>`
+                +g.rows.map((r,i)=>`<tr><td class="evno">${i+1}</td><td class="evel" title="${esc(r.el)}">${esc(r.el)}</td><td class="evloc" title="${esc(r.loc)}">${esc(r.loc)}</td></tr>`).join('')
+                +`</tbody></table></div>`;});
+              return h};
             let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
               clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
+            // 진행 표시 칩(스피너 + 메시지, 선택적 보조문구)
+            function busy(msg,sub){return '<div class="busy"><span class="spin"></span><span>'+esc(msg)
+              +(sub?' <span class="sub">'+esc(sub)+'</span>':'')+'</span></div>'}
+            // 심플 라인 눈 아이콘(뜬/감은)
+            const EYE_OPEN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+            const EYE_OFF='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.1 10.1 0 0 1 12 20C5 20 1 12 1 12a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A9.1 9.1 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2m-6.7-1.1a3 3 0 1 1-4.2-4.2"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
             function legacyCopy(s){try{const ta=document.createElement('textarea');ta.value=s;
               ta.style.cssText='position:fixed;opacity:0;left:-9999px';document.body.appendChild(ta);ta.focus();ta.select();
               const r=document.execCommand('copy');document.body.removeChild(ta);return r}catch(e){return false}}
@@ -248,15 +330,23 @@ final class WebConsoleUI {
                 ['3.3.1','오류 정정','m','m','axe'],['3.3.2','레이블 제공','a','a','axe'],['3.3.3','접근 가능한 인증','m','m','axe'],['3.3.4','반복 입력 정보','m','m','AI·평가자'],
                 ['P','견고성 (Robust)'],
                 ['4.1.1','마크업 오류 방지','p','a','vnu'],['4.2.1','웹 애플리케이션 접근성(ARIA)','m','m','axe'],
-                ['P','WQG 확장 (KWCAG 외 · 웹호환성)'],
+                ['P','웹 호환성'],
                 ['c-webstandard','웹표준 HTML/CSS','n','p','vnu·평가자'],['c-deprecated','Deprecated 태그','n','p','vnu'],
                 ['c-browser','브라우저 호환성','n','n','Playwright'],['c-reflow','해상도·확대(200%)','n','p','Playwright']];
-              const grpHd=l=>'<tr><td colspan=4 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
-              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
+              // KIWAC(한국웹접근성인증평가원) WA 인증 심사 24 기준 ↔ 우리 코드 매핑. 없으면 대상 아님(KWCAG 2.2 확장·웹호환성).
+              const KIWAC={'1.1.1':'1','1.2.1':'2','1.4.1':'3','1.3.3':'4','1.4.3':'5','1.4.2':'6','1.4.4':'7',
+                '2.1.1':'8-1','2.5.1':'8-2','2.1.2':'9','2.1.3':'10','2.2.1':'11','2.2.2':'12','2.3.1':'13',
+                '2.4.1':'14','2.4.2':'15','2.4.3':'16','3.1.1':'17','3.2.1':'18','1.3.2':'19','1.3.1':'20',
+                '3.3.2':'21','3.3.1':'22','4.1.1':'23','4.2.1':'24'};
+              const kiwacCell=code=>KIWAC[code]
+                ?'<span class="pill ok" title="KIWAC WA인증 심사 기준 '+KIWAC[code]+'번">KIWAC '+KIWAC[code]+'</span>'
+                :'<span class="pill na" title="KIWAC 24 심사 기준 외(KWCAG 2.2 확장·웹호환성)">대상 아님</span>';
+              const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
+              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
-              const theadMap='<tr><th style="min-width:190px">검사항목</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
+              const theadMap='<tr><th style="min-width:190px">검사항목</th><th style="background:var(--govsoft)">KIWAC 심사기준</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
               // 뷰2: 자동·수동별 — 실제 점검 항목(/api/items) 기준으로 그룹핑(④ 점검 항목 탭과 동일 분류)
               const modeCats=[['accessibility',true,'웹접근성 · 자동 판정'],['accessibility',false,'웹접근성 · 수동 확인 (AI 초안·평가자)'],
                 ['compatibility',true,'웹호환성 · 자동 판정'],['compatibility',false,'웹호환성 · 수동 확인']];
@@ -265,11 +355,10 @@ final class WebConsoleUI {
                 if(!list.length)return;
                 rowsMd+=grpHd(mc[2]+' ('+list.length+')')
                   +list.map(it=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
-              const theadMd='<tr><th>점검 항목</th><th style="width:120px">판정 방식</th></tr>';
-              const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (33 + 확장 4)</div>'
-                +'<div class="mapviewbar"><button type="button" class="mvtab on" data-mv="pr">원칙별 (KWCAG 4원칙)</button><button type="button" class="mvtab" data-mv="md">자동·수동별 · 점검 항목</button></div>'
-                +'<table id="mapPr">'+theadMap+rowsPr+'</table>'
-                +'<table id="mapMd" style="display:none">'+theadMd+rowsMd+'</table>';
+              const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (KWCAG 4원칙 + 웹 호환성)</div>'
+                +'<div class="cardsteps"><b>KIWAC 심사기준</b> — 한국웹접근성인증평가원(KIWAC) WA 품질인증 심사표의 <b>24개 심사 기준</b>과 우리 항목의 대응입니다. '
+                +'<span class="pill ok">KIWAC N</span>은 심사표 N번 항목, <span class="pill na">대상 아님</span>은 KWCAG 2.2 확장 항목이거나 웹호환성(심사표 밖)입니다. 이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.</div>'
+                +'<table id="mapPr">'+theadMap+rowsPr+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
@@ -366,6 +455,12 @@ final class WebConsoleUI {
                 el.querySelector('.detect').onclick=()=>detectSel(s.name,el);
                 el.querySelector('.dtype').onclick=()=>detectType(s.name,el);
                 el.querySelector('.discover').onclick=()=>discoverUrls(s.name,el);
+                initPaths(el);
+                const np=el.querySelector('.newpath');
+                const addNp=()=>{let v=np.value.trim();if(!v){toast('경로 입력');return}
+                  if(!v.startsWith('/')&&!/^https?:/i.test(v))v='/'+v;addPath(el,v,'',true);np.value='';np.focus()};
+                el.querySelector('.addpath').onclick=addNp;
+                np.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addNp()}};
                 el.querySelector('.gorun').onclick=()=>goRun(s.name);
                 el.querySelector('.del').onclick=()=>delSystem(s.name,s.displayName);
               })}
@@ -396,7 +491,7 @@ final class WebConsoleUI {
             function markAuto(inp){if(!inp)return;inp.classList.add('autoval');attachAutoClear(inp)}
             async function detectSel(name,el){const g=n=>el.querySelector('[name='+n+']');
               const baseUrl=g('baseUrl').value.trim(),loginPath=g('loginPath').value.trim()||'/login';
-              const box=el.querySelector('.health');box.innerHTML='<div class=st>로그인 페이지 여는 중… 필드 감지</div>';
+              const box=el.querySelector('.detectbox');box.innerHTML=busy('로그인 페이지 여는 중…','아이디·비밀번호·제출 버튼 필드 감지');
               const r=await api('/api/detect-selectors','POST',{baseUrl,loginPath});
               if(r.error){box.innerHTML='<div class="hbox no">'+esc(r.error)+'</div>';return}
               // 리다이렉트 감지 — 입력한 로그인 경로가 실제 경로로 튕기면 경고 + loginPath 자동 교정
@@ -415,7 +510,7 @@ final class WebConsoleUI {
             async function detectType(name,el){const note=el.querySelector('.dtnote');
               const baseUrl=el.querySelector('[name=baseUrl]').value.trim();
               if(!baseUrl){toast('baseUrl 입력');return}
-              note.innerHTML='<div class=st>유형 확인 중… (로그인 필요 시 로그인 후 실제 검사 경로를 엽니다)</div>';
+              note.innerHTML=busy('유형 확인 중…','로그인 필요 시 로그인 후 실제 검사 경로를 엽니다');
               // name 을 보내면 저장된 로그인·검사경로로 판정(로그인 뒤 SPA 대응)
               let r;try{r=await api('/api/detect-type','POST',{name,baseUrl})}catch(e){r={error:String(e)}}
               if(r.error){note.innerHTML='<div class="hbox no">✗ '+esc(r.error)+'</div>';return}
@@ -424,12 +519,14 @@ final class WebConsoleUI {
               el.querySelector('[name=type]').value=r.type;markAuto(el.querySelector('[name=type]'));
               note.innerHTML='<div class="hbox ok">✓ <b>'+esc(r.type.toUpperCase())+'</b> 로 설정 — '+esc(r.reason)+'<div class=hint>확인 후 [설정 저장]</div></div>'}
             async function healthCheck(name){const box=document.getElementById('health-'+name);
-              box.innerHTML='<div class=st>설정 확인 중… (브라우저 기동·로그인 점검, 최대 30초)</div>';
+              box.innerHTML=busy('설정 확인 중…','브라우저 기동·로그인 점검 — 최대 30초');
               try{const r=await api('/api/health/'+name,'POST',{});
-                box.innerHTML='<div class="hbox '+(r.ok?'ok':'no')+'">'+
-                  '<b>'+(r.ok?'✓ 설정 정상':'✗ 설정 확인 실패')+'</b>'+
-                  r.steps.map(s=>`<div class=hstep>${s.ok?'✓':'✗'} ${esc(s.name)} <span class=st>${esc(s.detail)}</span></div>`).join('')+'</div>';
-              }catch(e){box.innerHTML='<div class="hbox no">확인 중 오류: '+esc(e)+'</div>'}}
+                const steps=(r.steps||[]).map(s=>`<div class="sstep ${s.ok?'ok':'no'}"><span class="dot">${s.ok?'✓':'✗'}</span>`
+                  +`<div><div class="snm">${esc(s.name)}</div>${s.detail?`<div class="sdt">${esc(s.detail)}</div>`:''}</div></div>`).join('');
+                box.innerHTML=`<div class="rcard ${r.ok?'ok':'no'}"><div class="rhd">`
+                  +`<span class="badge">${r.ok?'정상':'실패'}</span><span>${r.ok?'설정 확인 완료':'설정 확인 실패'}</span></div>`
+                  +`<div class="rbody">${steps}</div></div>`;
+              }catch(e){box.innerHTML='<div class="rcard no"><div class="rhd"><span class="badge">오류</span><span>확인 중 오류</span></div><div class="rnote">'+esc(e)+'</div></div>'}}
             """;
     private static final String HTML_B = """
             function sysCard(s){const cfg=s.configured;const A=s.auto||[];const ac=n=>A.includes(n)?' autoval':'';
@@ -458,16 +555,21 @@ final class WebConsoleUI {
                   <button class="act ghost detect">🔍 로그인 필드 자동 감지</button>
                   <div class="hint">baseUrl·로그인 경로를 채운 뒤 누르면 로그인 페이지를 열어 셀렉터를 채웁니다.
                     <b>SSO(Keycloak/OIDC)</b>는 로그인 경로를 보호 페이지(예 <code>/</code>)로 두면 IdP로 리다이렉트되며, 셀렉터·계정은 <b>IdP 로그인 폼 기준</b>입니다(비우면 Keycloak 기본 <code>#username</code>·<code>#password</code>·<code>#kc-login</code> 사용).</div>
+                  <div class="detectbox"></div>
                   <div class="row"><div><label>계정 ID ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
                     <input name="cid" value="${esc(s.credId||'')}" placeholder="아이디"></div>
                     <div><label>계정 PW ${s.hasCredentials?'<span class="pill ok">저장됨</span>':''}</label>
                     <div class="pwwrap"><input name="cpw" type="password" value="" placeholder="${s.hasCredentials?'저장됨 — 변경할 때만 새로 입력':'비밀번호'}">
-                      <button type="button" class="eye" onclick="togglePw(this)" aria-label="비밀번호 표시/숨김" title="표시/숨김">👁</button></div></div></div>
+                      <button type="button" class="eye" onclick="togglePw(this)" aria-label="비밀번호 표시/숨김" title="표시/숨김">${EYE_OPEN}</button></div></div></div>
                   <button class="act ghost savecred">계정만 저장</button>
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>
                 </div>
-                <label>검사 경로 (한 줄에 하나, "경로 | readySelector" 형식 가능)</label>
-                <textarea name="urls" class="${ac('urls').trim()}">${esc((s.urls||[]).join('\\n'))}</textarea>
+                <div class="pathhd"><label style="margin:0">검사 경로 <span class="pathcount"></span></label>
+                  <span class="hint" style="margin:0">SPA는 우측에 대기 셀렉터 지정 가능</span></div>
+                <div class="pathlist"></div>
+                <textarea name="urls" style="display:none">${esc((s.urls||[]).join('\\n'))}</textarea>
+                <div class="pathadd"><input class="newpath" placeholder="/경로 입력 후 Enter 또는 [추가]">
+                  <button class="act ghost addpath" type="button">＋ 추가</button></div>
                 <button class="act ghost discover">🧭 검사 경로 자동 수집</button>
                 <div class="hint">로그인(필요 시) 후 내부 링크를 훑어 후보 경로를 제시합니다. 원하는 항목만 골라 위 목록에 추가하세요.</div>
                 <div class="discovered" id="disc-${s.name}"></div>
@@ -479,6 +581,31 @@ final class WebConsoleUI {
                   <span class="hint" style="margin-left:8px">설정과 저장된 계정이 삭제됩니다.</span></div></div></div>`}
             function parseUrls(t){return t.split('\\n').map(l=>l.trim()).filter(Boolean).map(l=>{
               const[p,rs]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||''}})}
+            // ── 검사 경로 행 목록: 숨은 textarea[name=urls]가 저장·수집의 원본, 행 UI는 그 편집기 ──
+            function pathRowHtml(path,sel){return '<div class="pathrow">'
+              +'<input class="pp" spellcheck="false" value="'+esc(path)+'">'
+              +'<input class="ps" spellcheck="false" placeholder="대기 셀렉터 (선택)" value="'+esc(sel||'')+'">'
+              +'<button class="rm" type="button" title="삭제">✕</button></div>'}
+            function bindPathRow(el,row){row.querySelector('.pp').oninput=()=>syncPaths(el);
+              row.querySelector('.ps').oninput=()=>syncPaths(el);
+              row.querySelector('.rm').onclick=()=>{row.remove();syncPaths(el)}}
+            function updatePathCount(el,n){const c=el.querySelector('.pathcount');if(c)c.textContent='('+n+')'}
+            function initPaths(el){const list=el.querySelector('.pathlist');if(!list)return;
+              const items=parseUrls(el.querySelector('[name=urls]').value);
+              list.innerHTML=items.length?items.map(u=>pathRowHtml(u.path,u.readySelector)).join('')
+                :'<div class="pathempty">등록된 검사 경로가 없습니다 — 아래에서 추가하거나 [검사 경로 자동 수집]을 이용하세요.</div>';
+              list.querySelectorAll('.pathrow').forEach(r=>bindPathRow(el,r));
+              updatePathCount(el,items.length)}
+            function syncPaths(el){const rows=[...el.querySelectorAll('.pathlist .pathrow')];
+              const lines=rows.map(r=>{const p=r.querySelector('.pp').value.trim();if(!p)return '';
+                const s=r.querySelector('.ps').value.trim();return s?p+' | '+s:p}).filter(Boolean);
+              el.querySelector('[name=urls]').value=lines.join('\\n');updatePathCount(el,lines.length)}
+            function addPath(el,path,sel,flash){const list=el.querySelector('.pathlist');
+              const empty=list.querySelector('.pathempty');if(empty)list.innerHTML='';
+              const tmp=document.createElement('div');tmp.innerHTML=pathRowHtml(path,sel||'');
+              const row=tmp.firstChild;list.appendChild(row);bindPathRow(el,row);
+              if(flash){row.classList.add('justadded');setTimeout(()=>row.classList.remove('justadded'),2000)}
+              syncPaths(el);return row}
             async function saveSys(name,el){const g=n=>el.querySelector('[name='+n+']').value;
               const auto=[...el.querySelectorAll('.autoval')].map(x=>x.getAttribute('name')).filter(Boolean);
               await api('/api/save/'+name,'POST',{type:g('type'),authType:g('authType'),baseUrl:g('baseUrl'),
@@ -509,15 +636,15 @@ final class WebConsoleUI {
                 <button class="act" onclick="addDiscovered('${name}')">선택 경로 추가</button>
                 <button class="act ghost" onclick="document.getElementById('disc-${name}').innerHTML=''">닫기</button></div>`}
             function togglePw(btn){const inp=btn.parentNode.querySelector('input');
-              const show=inp.type==='password';inp.type=show?'text':'password';btn.textContent=show?'🙈':'👁'}
+              const show=inp.type==='password';inp.type=show?'text':'password';btn.innerHTML=show?EYE_OFF:EYE_OPEN}
             function candAll(name,v){document.querySelectorAll('#disc-'+name+' .cand input').forEach(c=>c.checked=v)}
             function addDiscovered(name){const el=document.getElementById('sys-'+name);
               const chosen=[...el.querySelectorAll('.discovered input:checked')].map(c=>c.value);
               if(!chosen.length){toast('선택된 경로 없음');return}
-              const ta=el.querySelector('[name=urls]');const merged=parseUrls(ta.value).map(u=>u.path);
-              chosen.forEach(p=>{if(!merged.includes(p))merged.push(p)});
-              ta.value=merged.join('\\n');markAuto(ta);el.querySelector('.discovered').innerHTML='';
-              toast(chosen.length+'개 추가됨 — [설정 저장]을 눌러 반영하세요')}
+              const cur=new Set(parseUrls(el.querySelector('[name=urls]').value).map(u=>u.path));
+              let added=0;chosen.forEach(p=>{if(!cur.has(p)){addPath(el,p,'',true);cur.add(p);added++}});
+              el.querySelector('.discovered').innerHTML='';
+              toast(added+'개 추가됨 — [설정 저장]을 눌러 반영하세요')}
 
             // 설정 카드 → 실행 탭으로 바로 이동(해당 시스템 행으로 스크롤·강조)
             function goRun(name){document.querySelector('nav button[data-tab=run]').click();
@@ -571,15 +698,21 @@ final class WebConsoleUI {
 
             // ── 점검 항목 관리 탭 ──
             const AUTOLBL={auto:'자동',na:'해당없음(기본)',screen:'자동 스크리닝',manual:'수동확인'};
+            // 공통 분류: KWCAG 4원칙(코드 1/2/3/4) + 웹 호환성(c-*). 그룹·코드 순으로 정렬.
+            const PRIN=[['1','인식의 용이성 (Perceivable)'],['2','운용의 용이성 (Operable)'],
+              ['3','이해의 용이성 (Understandable)'],['4','견고성 (Robustness)'],['c','웹 호환성']];
+            const gkey=code=>String(code)[0]==='c'?'c':(String(code)[0]>='1'&&String(code)[0]<='4'?String(code)[0]:'4');
+            const csort=(a,b)=>{const na=String(a).split('.').map(Number),nb=String(b).split('.').map(Number);
+              for(let i=0;i<Math.max(na.length,nb.length);i++){const x=na[i]||0,y=nb[i]||0;if(x!==y)return x-y}return 0};
             async function loadItems(){const {items,excludedCount}=await api('/api/items');
-              const cats=[['accessibility',true,'웹접근성 자동'],['accessibility',false,'웹접근성 수동'],
-                ['compatibility',true,'웹호환성 자동'],['compatibility',false,'웹호환성 수동']];
               let html=`<div class="tabintro">검사할 <b>KWCAG 점검 항목</b>을 관리합니다. 체크를 <b>끄면</b> 그 항목은
-                검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통, 다음 검사부터 적용). 현재 제외 <b id="exCount">${excludedCount}</b>건.</div>
+                검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통, 다음 검사부터 적용). 현재 제외 <b id="exCount">${excludedCount}</b>건.
+                <br><span class=st>KWCAG 4원칙 + 웹 호환성 순으로 분류합니다.</span></div>
                 <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
                   <button class="act ghost" onclick="allItems(true)">전체 선택</button>
                   <button class="act ghost" onclick="allItems(false)">전체 해제</button></div>`;
-              cats.forEach(([cat,auto,label])=>{const list=items.filter(it=>it.category===cat&&(it.siClassification==='auto')===auto);
+              PRIN.forEach(([g,label])=>{let list=items.filter(it=>gkey(it.code)===g);
+                if(g!=='c')list=list.slice().sort((a,b)=>csort(a.code,b.code));
                 if(!list.length)return;
                 html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th>판정 방식</th></tr></thead><tbody>`+
                   list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
@@ -729,7 +862,7 @@ final class WebConsoleUI {
             function itemCard(it){const vc=verdictClass(it.verdict);
               const id=it.code.replace(/\\W/g,'_');const memoId='memo-'+id;
               const g=it.guide||{};const needs=it.verdict==='수동확인필요';
-              const ev=(it.evidence||[]).map(e=>`<div class=ev>${esc(e.rule)} — ${esc(e.detail)}${e.target?' · 대상 <code>'+esc(e.target)+'</code>':''}${e.url?' <span class=st>'+esc(e.url)+'</span>':''}</div>`).join('');
+              const ev=evTables(it.evidence);
               return `<div class="item ${needs?'needs':'done'}">
                 <div class="it-hd"><span class=st>${it.no}.</span><b>${esc(it.title)}</b><small class=st>${esc(it.code)}</small>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>
@@ -737,7 +870,7 @@ final class WebConsoleUI {
                 ${needs?`<button class="linkbtn aibtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
                 <div class=st>근거: ${it.source==='assessor'?'평가자 확정':'자동판정'}${it.memo?(' · 메모: '+esc(it.memo)):''}</div>
                 ${ev}
-                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide><summary>근거 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
+                ${needs&&(curData&&curData.screenshots&&curData.screenshots.length)?`<details class=guide><summary>대상 화면 미리보기 (${curData.screenshots.length}장) — 클릭하면 크게</summary>${thumbsRow(curData.screenshots)}</details>`:''}
                 <div id="ai-${id}" class="aidraft"></div>
                 <details class=guide><summary>상세 설명</summary>
                   <div><b>무엇</b> ${esc(g.what)}</div><div><b>왜</b> ${esc(g.why)}</div>
@@ -793,12 +926,18 @@ final class WebConsoleUI {
                   <span>${tag} <span class=st>적합 ${c.적합}/${c.적합+c.부적합} · 기준 ${c.threshold}%</span></span></div>
                   <div class="bar"><i style="width:${pct}%;background:${col}"></i></div></div>`}).join('');
               html+=comp.categories.map(cat=>{
-                let items=data.items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
+                let items=data.items.filter(it=>gkey(it.code)===cat.category);
+                if(cat.category!=='c')items=items.slice().sort((a,b)=>csort(a.code,b.code));
                 if(assessFilter)items=items.filter(it=>it.verdict==='수동확인필요');
                 if(!items.length)return '';
                 return `<h3 class=grp>${esc(cat.label)}</h3>`+items.map(itemCard).join('')}).join('');
               if(assessFilter&&comp.pendingTotal===0)html+='<p class=st style="text-align:center;padding:20px">판정할 항목이 없습니다. 모두 확정되었습니다.</p>';
-              $('#assessview .body').innerHTML=html}
+              $('#assessview .body').innerHTML=html;syncEvtx($('#assessview'))}
+            // 증거 표에 …말줄임이 실제로 생긴 경우만 '펼쳐보기' 버튼 노출
+            function syncEvtx(root){(root||document).querySelectorAll('.evtwrap').forEach(w=>{
+              const cap=w.previousElementSibling, btn=cap&&cap.querySelector('.evtx'); if(!btn)return;
+              let tr=false; w.querySelectorAll('.evel,.evloc').forEach(c=>{if(c.scrollWidth>c.clientWidth+1)tr=true;});
+              btn.style.display=tr?'inline-block':'none';})}
 
             loadConfig();
             // 리포트의 '결과 목록' 링크(/#result)로 진입 시 결과·검수 탭으로 이동

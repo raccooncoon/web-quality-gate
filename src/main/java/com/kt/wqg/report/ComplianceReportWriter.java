@@ -182,12 +182,18 @@ public final class ComplianceReportWriter {
             /* 상세 설명 행 */
             .prov{color:var(--warn);font-size:10px;font-weight:700;border:1px solid var(--warn);border-radius:2px;padding:0 4px;vertical-align:middle}
             .note{font-size:11.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:9px 12px;margin:2px 0 8px}.note b{color:var(--fg)}
-            .drow>td{background:var(--bg);padding:0}
+            .drow>td{background:var(--bg);padding:0;border-top:1px solid var(--line2)}
             details.d{margin:0}
             details.d>summary{cursor:pointer;color:var(--gov);font-size:12px;font-weight:700;padding:7px 13px;list-style:none}
             details.d>summary::-webkit-details-marker{display:none}
             details.d>summary::before{content:"▸ "}
             details.d[open]>summary::before{content:"▾ "}
+            /* 펼치면 카드로 감싸 위 행과 명확히 구분 — 흰 패널 + 헤더 바 + 상하 여백 */
+            details.d[open]{margin:4px 10px 14px;border:1px solid var(--line2);border-radius:8px;
+              background:var(--paper);overflow:hidden;box-shadow:0 1px 3px rgba(15,35,64,.06)}
+            details.d[open]>summary{background:var(--govsoft);color:var(--navy);
+              border-bottom:1px solid var(--line2);padding:8px 14px}
+            details.d[open] .g:first-of-type{padding-top:10px}
             .viewbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:2px 0 12px}
             .vtabs{display:inline-flex;border:1px solid var(--gov);border-radius:5px;overflow:hidden}
             .vtab{font-size:12.5px;font-weight:700;color:var(--gov);background:#fff;border:none;padding:6px 14px;cursor:pointer;border-right:1px solid var(--gov)}
@@ -199,8 +205,52 @@ public final class ComplianceReportWriter {
             .docinfo .pathlist code{margin:1px 3px 1px 0;display:inline-block}
             .g{font-size:12px;color:var(--muted);padding:0 15px 12px}
             .g div{margin:4px 0}.g b{color:var(--ink);font-weight:700;margin-right:5px}
-            .ev{font-size:11.5px;color:var(--muted);margin-top:5px;font-family:ui-monospace,monospace;word-break:break-all;
-              padding-left:9px;border-left:2px solid var(--line2)}
+            /* 증거 — 규칙 캡션 + 각진 표(대상·요소·위치) */
+            .evsum{margin-top:7px;font-size:12px;color:var(--ink)}
+            .evcap{margin-top:9px;font-size:11.5px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+            .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
+              background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
+            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;border:1px solid var(--line2)}
+            .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
+              font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
+            .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
+            .evt .evno{width:38px!important;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evel{width:auto!important;font-family:ui-monospace,monospace;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .evt .evloc{width:112px!important;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            /* '넓게 보기' 누르면 셀 줄바꿈 표시(기본은 …말줄임 + 호버 title) */
+            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
+            .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
+              border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
+            .evcap .evtx:hover{background:var(--govsoft)}
+            /* KIWAC 서식: 대상 페이지 · 페이지별 평가 · 동영상 콘텐츠 */
+            .pgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:8px 0 10px}
+            .pcard{border:1px solid var(--line2);border-radius:4px;overflow:hidden;background:var(--paper)}
+            .pchd{background:var(--govsoft);border-bottom:1px solid var(--line2);padding:6px 10px;font-size:12.5px;font-weight:700;color:var(--navy)}
+            .pcno{display:inline-block;min-width:20px;text-align:center;background:var(--navy);color:#fff;border-radius:3px;font-size:11px;padding:0 5px;margin-right:4px}
+            .pcurl{padding:5px 10px;font-family:ui-monospace,monospace;font-size:11px;color:var(--muted);border-bottom:1px solid var(--line);word-break:break-all}
+            .pcimg{padding:8px;background:#f4f6f9;text-align:center}
+            .pcimg img{max-width:100%;border:1px solid var(--line);display:block;margin:0 auto}
+            .noshot{color:var(--muted);font-size:12px;padding:30px 0}
+            /* 열이 적으면 본문 폭을 꽉 채워 균등 분배, 많아 넘치면 표가 커지며 가로 스크롤 */
+            .mxwrap{overflow-x:auto;margin:8px 0}
+            .mx{width:100%;table-layout:auto;border-collapse:collapse;font-size:11px}
+            .mx th,.mx td{border:1px solid var(--line2);padding:4px 6px;text-align:center;white-space:nowrap}
+            .mx thead th{background:var(--govsoft);color:var(--navy);font-weight:700}
+            .mx .mxit{text-align:left;min-width:210px;max-width:280px;white-space:normal;position:sticky;left:0;background:var(--paper);z-index:1}
+            .mx thead .mxit{background:var(--govsoft)}
+            .mxno{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:5px;font-weight:700}
+            .mx .mxpg{width:28px}
+            .mx .mxr{background:#f4f6f9;font-variant-numeric:tabular-nums;font-weight:600;width:52px}
+            .mxc{font-weight:800}
+            .mxc.so{color:var(--ok)}.mxc.sx{color:var(--bad);background:var(--badbg)}
+            .mxc.sn{color:var(--muted)}.mxc.sr{color:var(--warn)}.mxc.se{color:var(--line2)}
+            .mx .mxgrp{text-align:left;background:var(--navy);color:#fff;font-weight:700;font-size:10.5px;position:static;letter-spacing:.02em}
+            .mx tfoot td{background:var(--govsoft);border-top:2px solid var(--navy);font-weight:700;text-align:right}
+            .mx tfoot .mxr{text-align:center}
+            .vidt{width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--line2);margin:8px 0}
+            .vidt th{background:var(--gov);color:#fff;padding:6px 10px;text-align:left;border:1px solid var(--line2)}
+            .vidt td{padding:6px 10px;border:1px solid var(--line);word-break:break-all}
+            .vidt .vidn{width:84px;text-align:center;white-space:nowrap}
             code{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--navy2)}
             .flash{animation:fl 1.6s ease}@keyframes fl{0%,40%{background:var(--govsoft)}100%{background:transparent}}
             /* 개선 필요 요약 */
@@ -247,6 +297,7 @@ public final class ComplianceReportWriter {
             /* 인쇄 전용 렌더링(#print)은 화면에선 숨김 — 화면은 #app(인터랙티브), PDF는 #print(평면·페이지 최적화) */
             #print{display:none}
             @page{size:A4;margin:14mm}
+            @page mxland{size:A4 landscape;margin:12mm}
             @media print{
               html,body{background:#fff}
               body{padding:0;max-width:none;font-size:10px;line-height:1.4;color:#111;
@@ -255,17 +306,24 @@ public final class ComplianceReportWriter {
               #app,.pbtn,.backbtn,.verstamp,#lb{display:none!important}
               #print{display:block}
               #print *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-              .pcover{text-align:center;padding:26mm 0 12mm;break-after:page}
+              /* 표지: 페이지 높이를 채워 제목은 위, 정보표는 가운데(약간 아래), 요약은 맨 아래 */
+              .pcover{text-align:center;padding:22mm 0 10mm;break-after:page;
+                min-height:250mm;display:flex;flex-direction:column}
               .pey{font-size:12px;letter-spacing:.03em;color:#556}
               .ph1{font-size:23px;margin:10px 0 2px;line-height:1.2}
               .psite{color:#667;font-size:12px}
               .pverd{margin:16px 0;font-size:14px}
               .pverd .badge{font-size:13px;padding:3px 12px}
               .pvlab{color:#556;margin-right:6px}
-              .pinfo{margin:16px auto 0;width:82%;border-collapse:collapse;font-size:11px;text-align:left}
+              .pinfo{margin:auto auto 0;width:82%;border-collapse:collapse;font-size:11px;text-align:left}
               .pinfo th{background:#eef1f5;border:1px solid #c7ced8;padding:5px 9px;width:110px;white-space:nowrap;font-weight:700}
               .pinfo td{border:1px solid #c7ced8;padding:5px 9px}
-              .pfoot0{margin-top:14px;font-size:11px;color:#333}
+              .pfoot0{margin-top:auto;padding-top:14px;font-size:11px;color:#333}
+              /* 종합판정 바로 아래 요약 — 은은한 칩 한 줄(튀지 않게) */
+              .psum{margin:8px auto 0;border-collapse:collapse;font-size:11px}
+              .psum td{border:1px solid #d4dbe4;background:#f4f6f9;padding:4px 12px;color:#556}
+              .psum b{color:#223;font-size:12px}
+              .psum .s-o{color:#1f7a44}.psum .s-x{color:#c02a2a}.psum .s-r{color:#a9781c}.psum .s-n{color:#667}
               #print h2.ph2{font-size:14px;border-bottom:2px solid #2a3442;padding-bottom:3px;margin:16px 0 8px;break-after:avoid}
               #print h3.ph3{font-size:12px;color:#1a3a6b;margin:11px 0 4px;break-after:avoid}
               .ptbl{width:100%;border-collapse:collapse;font-size:9.5px;margin-bottom:7px}
@@ -282,11 +340,29 @@ public final class ComplianceReportWriter {
               .pit{font-size:10px}.pit .badge{font-size:9px;padding:1px 6px;margin-left:4px}
               .psub{color:#667;font-size:8.5px;margin-top:1px}
               .pres{margin-top:2px}.pev{color:#445;font-size:8.5px;margin-top:1px}
+              .pev b{color:#223}.ptgt{color:#1b3b63;font-weight:600}
               .pg{margin-top:2px}.pg div{font-size:8.7px;color:#334;margin-top:1px;line-height:1.35}
               .pg b{color:#1a3a6b;margin-right:3px;font-weight:700}
               .pnote{font-size:8.5px;color:#556;margin:2px 0 5px}
               .pfooter{margin-top:16px;padding-top:6px;border-top:1px solid #cdd4dd;font-size:8px;color:#667}
               #print .badge{display:inline-block;border-radius:3px;padding:1px 6px;font-weight:700;font-size:9px}
+              /* KIWAC 인쇄: 대상 페이지 그리드 · 페이지별 평가(가로 페이지) · 동영상 */
+              .ppg{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-bottom:6px}
+              .ppcard{border:1px solid #c7ced8;break-inside:avoid}
+              .pphd{background:#eef1f5;padding:3px 6px;font-size:9px;font-weight:700}
+              .ppurl{color:#667;font-weight:400;font-family:ui-monospace,monospace;font-size:8px}
+              .ppcard img{width:100%;display:block}
+              /* 페이지별 평가는 가로 1장에 담기게 컴팩트하게(다음 장 넘김 방지) */
+              .pmxland{page:mxland;break-before:page;break-after:page;break-inside:avoid}
+              .pmxland h2.ph2{margin:0 0 4px}
+              .pmx{width:100%;border-collapse:collapse;font-size:7px;line-height:1.1;table-layout:auto}
+              .pmx th,.pmx td{border:1px solid #b9c1cc;padding:0.6px 2px;text-align:center}
+              .pmx thead th{background:#eef1f5;font-weight:700}
+              .pmx .pmxit{text-align:left;min-width:38mm;white-space:normal;padding-left:4px}
+              .pmx .pmxgrp{padding:1px 4px}
+              .pmx td.co{color:#1f7a44;font-weight:700}.pmx td.cx{color:#c02a2a;font-weight:700;background:#fbeaea}
+              .pmx td.cn{color:#889}.pmx td.cr{color:#a9781c;font-weight:700}.pmx td.ce{color:#bcc}
+              .pmx .pmxgrp{text-align:left;background:#2a3442;color:#fff;font-weight:700}
               a{color:inherit;text-decoration:none}
             }
             </style></head><body>
@@ -316,6 +392,68 @@ public final class ComplianceReportWriter {
             const c=R.compliance, vc=c.status, items=R.items||[];
             const basis='웹접근성 KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 웹호환성 3개 엔진 렌더링 비교';
             const cnt=v=>items.filter(it=>it.verdict===v).length;
+            // KIWAC WA인증 심사표 24 기준 순서(번호·코드·제목) — 페이지별 평가표의 행 순서·번호 기준
+            const KIWAC_ORDER=[['1','1.1.1','적절한 대체 텍스트 제공'],['2','1.2.1','자막 제공'],['3','1.4.1','색에 무관한 인식'],
+              ['4','1.3.3','명확한 지시사항 제공'],['5','1.4.3','텍스트 콘텐츠의 명도 대비'],['6','1.4.2','자동 재생 금지'],['7','1.4.4','콘텐츠 간의 구분'],
+              ['8-1','2.1.1','키보드 사용 보장'],['8-2','2.5.1','단일 포인터 입력'],['9','2.1.2','초점 이동과 표시'],['10','2.1.3','조작 가능(타깃 크기)'],
+              ['11','2.2.1','응답시간 조절'],['12','2.2.2','정지 기능 제공'],['13','2.3.1','깜빡임과 번쩍임 사용 제한'],['14','2.4.1','반복 영역 건너뛰기'],
+              ['15','2.4.2','제목 제공'],['16','2.4.3','적절한 링크 텍스트'],['17','3.1.1','기본 언어 표시'],['18','3.2.1','사용자 요구에 따른 실행'],
+              ['19','1.3.2','콘텐츠의 선형 구조'],['20','1.3.1','표의 구성'],['21','3.3.2','레이블 제공'],['22','3.3.1','오류 정정'],
+              ['23','4.1.1','마크업 오류 방지'],['24','4.2.1','웹 애플리케이션 접근성 준수']];
+            // 공통 분류: KWCAG 4원칙(코드 1/2/3/4) + 웹 호환성(c-*). 그룹 순서·그룹 내 코드 순서로 정렬.
+            const PRINCIPLES=[['1','인식의 용이성 (Perceivable)'],['2','운용의 용이성 (Operable)'],
+              ['3','이해의 용이성 (Understandable)'],['4','견고성 (Robustness)'],['c','웹 호환성']];
+            const grpKey=code=>code[0]==='c'?'c':(code[0]>='1'&&code[0]<='4'?code[0]:'4');
+            const codeSort=(a,b)=>{const na=a.split('.').map(Number),nb=b.split('.').map(Number);
+              for(let i=0;i<Math.max(na.length,nb.length);i++){const x=na[i]||0,y=nb[i]||0;if(x!==y)return x-y;}return 0;};
+            const KNUM={}; KIWAC_ORDER.forEach(([n,code])=>KNUM[code]=n);
+            // 페이지별 평가: 4원칙+웹호환성 그룹, 각 행 {번호(KIWAC or 코드),제목,셀[],통과,전체,준수율}
+            function mxData(pages, items){
+              const mkRow=it=>{let pass=0,total=0;
+                const cells=pages.map(p=>{const v=(p.cells&&p.cells[it.code])||'△';total++;if(v==='O'||v==='-')pass++;return v;});
+                return {n:it.code,title:it.title,cells,pass,total,rate:total?pass/total*100:100};};
+              const groups=[]; const scored=[];
+              PRINCIPLES.forEach(([g,label])=>{
+                let list=items.filter(it=>grpKey(it.code)===g);
+                if(g!=='c') list=list.slice().sort((a,b)=>codeSort(a.code,b.code));
+                if(!list.length) return;
+                const rows=list.map(mkRow); rows.forEach(r=>scored.push(r));
+                groups.push({label,rows});});
+              const overall=scored.length?scored.reduce((a,r)=>a+r.rate,0)/scored.length:100;
+              return {groups,overall};
+            }
+            // KIWAC 서식 3종: 대상 페이지(스크린샷) · 페이지별 평가(매트릭스) · 동영상 콘텐츠 URL
+            function kiwacSections(R,items){
+              const pages=R.pages||[];
+              if(!pages.length) return '';
+              let s='';
+              // 1) 대상 페이지 — 스크린샷 그리드
+              s+='<h2>대상 페이지</h2><div class="pgrid">';
+              pages.forEach(p=>{s+=`<div class="pcard"><div class="pchd"><span class="pcno">${p.no}</span> <code>${esc(p.path)}</code></div>`
+                +`<div class="pcurl">${esc(p.url)}</div>`
+                +`<div class="pcimg"><img loading="lazy" src="${esc(p.shot||'')}" alt="${esc(p.path)} 화면" onerror="this.parentNode.innerHTML='<div class=noshot>스크린샷 없음</div>'"></div></div>`;});
+              s+='</div>';
+              // 2) 페이지별 평가 — 항목 × 페이지 매트릭스
+              s+='<h2>페이지별 평가</h2><div class="mxwrap"><table class="mx"><thead><tr><th class="mxit">심사 기준</th>';
+              pages.forEach(p=>{s+=`<th class="mxpg" title="${esc(p.path)}">${p.no}</th>`;});
+              s+='<th class="mxr">통과</th><th class="mxr">전체</th><th class="mxr">준수율</th></tr></thead><tbody>';
+              const MD=mxData(pages, items);
+              MD.groups.forEach(g=>{
+                s+=`<tr><td class="mxit mxgrp" colspan="${pages.length+4}">${esc(g.label)}</td></tr>`;
+                g.rows.forEach(r=>{s+=`<tr><td class="mxit"><span class="mxno">${esc(r.n)}</span>${esc(r.title)}</td>`
+                  +r.cells.map(v=>`<td class="mxc s${v==='O'?'o':v==='X'?'x':v==='-'?'n':'r'}">${v}</td>`).join('')
+                  +`<td class="mxr">${r.pass}</td><td class="mxr">${r.total}</td><td class="mxr">${r.rate.toFixed(1)}</td></tr>`;});});
+              s+=`</tbody><tfoot><tr><td class="mxit"><b>종합 준수율 (잠정)</b></td>`
+                +`<td colspan="${pages.length+2}" class="mxc"></td><td class="mxr"><b>${MD.overall.toFixed(2)}%</b></td></tr></tfoot></table></div>`;
+              s+='<div class="note"><b>KWCAG 4원칙 + 웹 호환성</b>으로 그룹·코드순 정렬했습니다. <b>O</b> 적합 · <b>X</b> 부적합 · <b>-</b> 해당없음 · <b>△</b> 수동확인(잠정). 준수율 = (O + 해당없음) ÷ 전체 페이지 × 100. △(평가자 확정 전)는 통과에서 제외한 <b>잠정</b> 값입니다.</div>';
+              // 3) 심사 대상 동영상 콘텐츠 URL — 자막 대상(미디어) 페이지
+              const vids=pages.filter(p=>(p.media||0)>0);
+              s+='<h2>심사 대상 동영상 콘텐츠 URL</h2><table class="vidt"><thead><tr><th>경로</th><th class="vidn">준수개수</th><th class="vidn">선정개수</th></tr></thead><tbody>';
+              if(!vids.length) s+='<tr><td>없음</td><td class="vidn">0</td><td class="vidn">0</td></tr>';
+              else vids.forEach(p=>{s+=`<tr><td><code>${esc(p.path)}</code> <span class="prov">${esc(p.url)}</span></td><td class="vidn">—</td><td class="vidn">${p.media}</td></tr>`;});
+              s+='</tbody></table><div class="note">자막·수어 제공이 필요한 동영상(audio/video) 콘텐츠 대상입니다. 대상이 없으면 \\'없음\\'으로 표기합니다.</div>';
+              return s;
+            }
             let h=`<div class="cover">
                 <div class="ey">WEB ACCESSIBILITY &amp; COMPATIBILITY COMPLIANCE REPORT</div>
                 <div class="eyk">웹접근성 · 웹호환성 검수 결과보고서</div>
@@ -366,12 +504,35 @@ public final class ComplianceReportWriter {
               <tr><td><span class="badge 해당없음">해당없음</span></td><td>검사 대상 콘텐츠·요소가 페이지에 없어 평가 대상이 아님(준수율 분모에서 제외).</td></tr>
               </tbody></table>
               <div class="note"><b>준수율</b> = 적합 ÷ (적합 + 부적합) × 100 (해당없음·미확정 제외). 카테고리 판정 = 준수율 ≥ 기준(%)이면 <b>충족</b>, 미만이면 <b>미달</b>. 종합 판정 = 부적합 0 · 미확정 0 이면 <b>적합</b>. 근거: KWCAG 2.2(KS X OT0003:2022) · 전자정부 웹사이트 품질관리 지침 · 장애인차별금지법.</div>`;
+            // KIWAC 서식: 대상 페이지 · 페이지별 평가 · 동영상 콘텐츠 URL
+            h+=kiwacSections(R, items);
             // 상세 점검 결과 — 두 가지 보기(카테고리별 / KWCAG 항목순) + 상세 전체 열기/닫기
             h+=`<h2>상세 점검 결과</h2>
               <div class="viewbar noprint">
                 <div class="vtabs"><button type="button" class="vtab on" data-v="cat" onclick="setView('cat')">카테고리별</button><button type="button" class="vtab" data-v="kw" onclick="setView('kw')">KWCAG 항목순</button></div>
                 <button type="button" class="detbtn" onclick="toggleAllDetails(this)" data-open="0">상세 전체 열기</button>
               </div>`;
+            // 증거 파싱: detail 의 '· 예) A / B' 를 대상 요소 목록으로 분리
+            const evTargets=e=>{const p=(e.detail||'').split('· 예)');
+              let t=p.length>1?p[1].split(' / ').map(x=>x.trim()).filter(Boolean):[];
+              if(e.target)t.unshift(e.target);
+              return {desc:p[0].replace(/\\s+$/,''),targets:t}};
+            const urlPath=u=>{try{return new URL(u).pathname||u}catch(_){return u||''}};
+            // 항목의 증거를 규칙별 표로 통일 렌더: 대상 요소가 있으면 요소별 행, 없으면(요약형) 요약 한 행.
+            // 모든 증거를 동일한 [대상·요소·위치] 표로 보여 폭·형식을 일관되게 한다.
+            const evTables=evs=>{const byRule=new Map();
+              (evs||[]).forEach(e=>{const {desc,targets}=evTargets(e);const loc=e.url?urlPath(e.url):'전체 화면';
+                if(!byRule.has(e.rule))byRule.set(e.rule,{rows:[],hasEl:false});
+                const g=byRule.get(e.rule);
+                if(targets.length){targets.forEach(t=>g.rows.push({el:t,loc}));g.hasEl=true;}
+                else g.rows.push({el:desc||'—',loc});});
+              let h='';
+              byRule.forEach((g,rule)=>{h+=`<div class="evcap"><span class="evrule">${esc(rule)}</span>${g.hasEl?` 검사 대상 <b>${g.rows.length}</b>건`:''}`
+                +`<button type="button" class="evtx" onclick="this.parentNode.nextElementSibling.classList.toggle('wrap')">펼쳐보기</button></div>`
+                +`<div class="evtwrap"><table class="evt"><thead><tr><th class="evno">대상</th><th>요소</th><th class="evloc">위치</th></tr></thead><tbody>`
+                +g.rows.map((r,i)=>`<tr><td class="evno">${i+1}</td><td class="evel" title="${esc(r.el)}">${esc(r.el)}</td><td class="evloc" title="${esc(r.loc)}">${esc(r.loc)}</td></tr>`).join('')
+                +`</tbody></table></div>`;});
+              return h};
             const thead='<thead><tr><th>No</th><th>코드</th><th>검사 항목</th><th>세부 기준</th><th>판정</th><th>근거</th></tr></thead>';
             const itemRows=(list,withId)=>{let s='';list.forEach(it=>{const g=it.guide||{};
               s+=`<tr class="main"${withId?' id="it-'+esc(it.code)+'"':''}><td class="num r0">${it.no}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
@@ -387,12 +548,13 @@ public final class ComplianceReportWriter {
               s+=`<div class="g"><div><b>무엇</b>${esc(g.what)}</div><div><b>왜</b>${esc(g.why)}</div>
                 <div><b>근거</b>${esc(g.basis)}</div><div><b>개선 방법</b>${esc(g.fix)}</div>
                 ${g.limit?'<div><b>검사 한계</b>'+esc(g.limit)+'</div>':''}`;
-              (it.evidence||[]).forEach(e=>{s+=`<div class="ev">${esc(e.rule)} — ${esc(e.detail)}${e.target?' · 대상 <code>'+esc(e.target)+'</code>':''}${e.url?' ('+esc(e.url)+')':''}</div>`});
+              s+=evTables(it.evidence);
               s+='</div></details></td></tr>';});return s;};
             // 뷰1: 카테고리별
             let catHtml='';
             (c.categories||[]).forEach(cat=>{
-              const its=items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
+              let its=items.filter(it=>grpKey(it.code)===cat.category);
+              if(cat.category!=='c')its=its.slice().sort((a,b)=>codeSort(a.code,b.code));
               if(!its.length)return;
               catHtml+=`<h3 class="cathd">${esc(cat.label)}</h3><table class="dt items">${thead}<tbody>`+itemRows(its,true)+'</tbody></table>';
             });
@@ -428,15 +590,47 @@ public final class ComplianceReportWriter {
               KWCAG 2.2 항목은 자동 검사 결과를 매핑·집계한 것이며, 수동확인 항목은 평가자 확정을 거칩니다. 공식 인증 판정이 아닙니다.
               <div style="margin-top:6px">도구 버전 <b>__VERSION__</b> · 빌드/배포 <b>__BUILD_TIME__</b></div></footer>`;
             document.getElementById('app').innerHTML=h;
+            // 증거 표에 …말줄임이 실제로 생긴 경우만 '펼쳐보기' 버튼 노출(펼친 상세 안에서 폭 측정)
+            function syncEvtx(root){(root||document).querySelectorAll('.evtwrap').forEach(w=>{
+              const cap=w.previousElementSibling, btn=cap&&cap.querySelector('.evtx'); if(!btn)return;
+              let tr=false; w.querySelectorAll('.evel,.evloc').forEach(c=>{if(c.scrollWidth>c.clientWidth+1)tr=true;});
+              btn.style.display=tr?'inline-block':'none';});}
+            document.querySelectorAll('details.d').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)syncEvtx(d)}));
 
             // ── 인쇄/PDF 전용 렌더링 (화면과 별개: 접기 없이 평면, 페이지 넘김 최적화) ──
             function buildPrint(){
               const badge=v=>`<span class="badge ${esc(v)}">${esc(v)}</span>`;
+              // 인쇄(PDF)용 KIWAC 서식: 대상 페이지 + 페이지별 평가(가로) + 동영상 콘텐츠
+              function printKiwac(R, items){
+                const pages=R.pages||[];
+                if(!pages.length) return '';
+                let s='<h2 class="ph2">대상 페이지</h2><div class="ppg">';
+                pages.forEach(p=>{s+=`<div class="ppcard"><div class="pphd">${p.no}. ${esc(p.path)} <span class="ppurl">${esc(p.url)}</span></div>`
+                  +`<img src="${esc(p.shot||'')}" onerror="this.style.display='none'"></div>`;});
+                s+='</div>';
+                s+='<div class="pmxland"><h2 class="ph2">페이지별 평가</h2><table class="pmx"><thead><tr><th class="pmxit">심사 기준</th>';
+                pages.forEach(p=>{s+=`<th title="${esc(p.path)}">${p.no}</th>`;});
+                s+='<th>통과</th><th>전체</th><th>준수율</th></tr></thead><tbody>';
+                const MD=mxData(pages, items);
+                MD.groups.forEach(g=>{
+                  s+=`<tr><td class="pmxit pmxgrp" colspan="${pages.length+4}">${esc(g.label)}</td></tr>`;
+                  g.rows.forEach(r=>{s+=`<tr><td class="pmxit">${esc(r.n)}. ${esc(r.title)}</td>`
+                    +r.cells.map(v=>`<td class="c${v==='O'?'o':v==='X'?'x':v==='-'?'n':'r'}">${v}</td>`).join('')
+                    +`<td>${r.pass}</td><td>${r.total}</td><td>${r.rate.toFixed(1)}</td></tr>`;});});
+                s+=`</tbody></table><div class="pnote">KWCAG 4원칙 + 웹 호환성 그룹·코드순 · 종합 준수율(잠정) <b>${MD.overall.toFixed(2)}%</b> · O 적합 · X 부적합 · - 해당없음 · △ 수동확인(잠정, 통과 제외)</div></div>`;
+                const vids=pages.filter(p=>(p.media||0)>0);
+                s+='<h2 class="ph2">심사 대상 동영상 콘텐츠 URL</h2><table class="ptbl"><thead><tr><th class="l">경로</th><th>준수개수</th><th>선정개수</th></tr></thead><tbody>';
+                if(!vids.length) s+='<tr><td class="l">없음</td><td>0</td><td>0</td></tr>';
+                else vids.forEach(p=>{s+=`<tr><td class="l">${esc(p.path)} <span class="ppurl">${esc(p.url)}</span></td><td>—</td><td>${p.media}</td></tr>`;});
+                s+='</tbody></table>';
+                return s;
+              }
               let p=`<section class="pcover">
                   <div class="pey">웹접근성 · 웹호환성 검수 결과보고서</div>
                   <h1 class="ph1">${esc(R.displayName||R.site)}</h1>
                   <div class="psite">${esc(R.site)}</div>
                   <div class="pverd"><span class="pvlab">종합 판정</span>${badge(vc)}${c.pendingTotal>0?' <span class="prov">· 미확정 '+c.pendingTotal+'건</span>':''}</div>
+                  <table class="psum"><tbody><tr><td>전체 <b>${items.length}</b></td><td>적합 <b class="s-o">${cnt('적합')}</b></td><td>부적합 <b class="s-x">${cnt('부적합')}</b></td><td>수동확인 <b class="s-r">${cnt('수동확인필요')}</b></td><td>해당없음 <b class="s-n">${cnt('해당없음')}</b></td></tr></tbody></table>
                   <table class="pinfo"><tbody>
                     <tr><th>대상 시스템</th><td>${esc(R.displayName||R.site)} (${esc(R.site)})</td></tr>
                     ${R.target?`<tr><th>검사 대상 URL</th><td>${esc(R.target.baseUrl||'-')}</td></tr>
@@ -446,7 +640,6 @@ public final class ComplianceReportWriter {
                     <tr><th>검사 기준</th><td>KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 3개 엔진 렌더링 비교</td></tr>
                     <tr><th>검사 도구</th><td>web-quality-gate v__VERSION__ · axe-core + vnu.jar + Playwright(3-engine)</td></tr>
                   </tbody></table>
-                  <div class="pfoot0">전체 <b>${items.length}</b>건 · 적합 ${cnt('적합')} · 부적합 ${cnt('부적합')} · 수동확인 ${cnt('수동확인필요')} · 해당없음 ${cnt('해당없음')}</div>
                 </section>`;
               // 1. 카테고리별 준수율
               p+=`<h2 class="ph2">1. 카테고리별 준수율</h2><table class="ptbl"><thead><tr><th>구분</th><th>항목</th><th>적합</th><th>부적합</th><th>해당없음</th><th>대기</th><th>준수율</th><th>기준</th><th>판정</th></tr></thead><tbody>`;
@@ -457,6 +650,7 @@ public final class ComplianceReportWriter {
               const ptr=(PT.적합+PT.부적합)>0?(PT.적합/(PT.적합+PT.부적합)*100).toFixed(1):'0.0';
               p+=`<tr class="tot"><td class="l"><b>합계</b></td><td><b>${PT.total}</b></td><td><b>${PT.적합}</b></td><td><b>${PT.부적합}</b></td><td>${PT.na}</td><td>${PT.pending}</td><td>${PT.pending>0?'산정 전':'<b>'+ptr+'%</b>'}</td><td>—</td><td></td></tr>`;
               p+=`</tbody></table><div class="pnote">※ 준수율 = 적합 ÷ (적합 + 부적합) × 100. 해당없음·대기(미확정)는 분모에서 제외.</div>`;
+              p+=printKiwac(R, items);
               // 2. 평가 기준
               p+=`<h2 class="ph2">2. 평가 기준</h2><table class="ptbl kv"><tbody>
                 <tr><th>적합</th><td>해당 항목의 위반이 발견되지 않음.</td></tr>
@@ -467,7 +661,8 @@ public final class ComplianceReportWriter {
               // 3. 상세 점검 결과 — 카테고리별 평면(근거 항상 표시)
               p+=`<h2 class="ph2">3. 상세 점검 결과</h2>`;
               (c.categories||[]).forEach(cat=>{
-                const its=items.filter(it=>it.category===cat.category&&(it.siClassification==='auto')===cat.siAuto);
+                let its=items.filter(it=>grpKey(it.code)===cat.category);
+                if(cat.category!=='c')its=its.slice().sort((a,b)=>codeSort(a.code,b.code));
                 if(!its.length)return;
                 p+=`<h3 class="ph3">${esc(cat.label)}</h3><table class="ptbl det"><thead><tr><th>No</th><th>코드</th><th>검사 항목 · 판정 · 근거</th></tr></thead><tbody>`;
                 its.forEach(it=>{const g=it.guide||{};
@@ -476,7 +671,10 @@ public final class ComplianceReportWriter {
                     :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 해당없음.'
                     :it.verdict==='수동확인필요'?'자동 판정이 어려워 평가자 확인 필요.'
                     :'자동 검사에서 위반이 발견됨.';
-                  let ev='';(it.evidence||[]).forEach(e=>{ev+=`<div class="pev">· ${esc(e.rule)} — ${esc(e.detail)}${e.target?' · 대상 '+esc(e.target):''}${e.url?' ('+esc(e.url)+')':''}</div>`;});
+                  let ev='';(it.evidence||[]).forEach(e=>{const {desc,targets}=evTargets(e);
+                    ev+=`<div class="pev">· <b>${esc(e.rule)}</b> ${esc(desc)}`
+                      +(targets.length?` <span class="ptgt">대상: ${targets.map(esc).join(', ')}</span>`:'')
+                      +`${e.url?' ('+esc(e.url)+')':''}</div>`;});
                   // 부적합·수동확인은 전체 근거(무엇/왜/근거/개선/한계), 적합·해당없음은 한 줄
                   let detail=`<div class="pres">${rmsg}</div>`;
                   if(full){detail+='<div class="pg">'

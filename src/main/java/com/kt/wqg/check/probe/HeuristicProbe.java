@@ -84,18 +84,33 @@ public final class HeuristicProbe implements PageProbe {
           const q = s => document.querySelectorAll(s);
           const html = document.documentElement.innerHTML;
           const txt = e => ((e.innerText||e.value||e.getAttribute&&(e.getAttribute('aria-label')||e.getAttribute('title')||e.getAttribute('alt'))||'')+'').replace(/\\s+/g,' ').trim().slice(0,28);
+          // 요소의 고유 CSS 경로(위치를 정확히 짚기 위함) — id 있으면 즉시 종료, 없으면 class 1~2개 + nth-of-type
+          const sel = e => {
+            if (!e || e.nodeType !== 1) return '';
+            const seg = n => { let s = n.tagName.toLowerCase();
+              if (n.id) return s + '#' + n.id;
+              if (typeof n.className === 'string' && n.className.trim())
+                s += '.' + n.className.trim().split(/\\s+/).slice(0,2).join('.');
+              const p = n.parentElement;
+              if (p) { const same = [...p.children].filter(c => c.tagName === n.tagName);
+                if (same.length > 1) s += ':nth-of-type(' + (same.indexOf(n)+1) + ')'; }
+              return s; };
+            const parts = []; let cur = e, depth = 0;
+            while (cur && cur.nodeType === 1 && cur.tagName !== 'BODY' && depth < 4) {
+              parts.unshift(seg(cur)); if (cur.id) break; cur = cur.parentElement; depth++; }
+            return parts.join('>'); };
           const S = (list, fn, n=3) => list.slice(0,n).map(fn).filter(Boolean);
           const samples = {};
 
           const medias = [...q('video, audio')];
           const noTrack = medias.filter(m => !m.querySelector('track[kind="captions"], track[kind="subtitles"]')).length;
-          samples.media = S(medias, m => m.tagName.toLowerCase()+':'+(((m.currentSrc||m.getAttribute('src')||(m.querySelector('source')&&m.querySelector('source').getAttribute('src'))||'(src?)')+'').split('/').pop()));
+          samples.media = S(medias, m => sel(m)+' ('+(((m.currentSrc||m.getAttribute('src')||(m.querySelector('source')&&m.querySelector('source').getAttribute('src'))||'src?')+'').split('/').pop())+')');
 
           const nwLinks = [...q('a[target="_blank"], area[target="_blank"]')];
           let newWindow = nwLinks.length;
           const nwClick = [...q('[onclick]')].filter(e => /window\\.open|target\\s*=\\s*['"]?_blank/i.test(e.getAttribute('onclick')||''));
           newWindow += nwClick.length;
-          samples.newWindow = S([...nwLinks, ...nwClick], a => "'"+(txt(a)||'(무텍스트)')+"'→"+(a.getAttribute('href')||'onclick'));
+          samples.newWindow = S([...nwLinks, ...nwClick], a => sel(a)+" '"+(txt(a)||'무텍스트')+"'→"+(a.getAttribute('href')||'onclick'));
 
           const metaRefresh = [...q('meta[http-equiv]')].some(m =>
             (m.getAttribute('http-equiv')||'').toLowerCase()==='refresh' && /\\d/.test(m.getAttribute('content')||''));
@@ -104,16 +119,16 @@ public final class HeuristicProbe implements PageProbe {
 
           const blinkEls = [...q('blink, marquee')];
           const blinkMarquee = blinkEls.length;
-          samples.blink = S(blinkEls, e => e.tagName.toLowerCase()+" '"+txt(e)+"'");
+          samples.blink = S(blinkEls, e => sel(e)+" '"+txt(e)+"'");
 
           const akEls = [...q('[accesskey]')];
           const accesskey = akEls.length;
-          samples.accesskey = S(akEls, e => e.tagName.toLowerCase()+"[accesskey="+e.getAttribute('accesskey')+"] '"+txt(e)+"'");
+          samples.accesskey = S(akEls, e => sel(e)+"[accesskey="+e.getAttribute('accesskey')+"] '"+txt(e)+"'");
 
           const deviceMotion = /devicemotion|deviceorientation/i.test(html);
           const posEls = [...q('[tabindex]')].filter(e => (parseInt(e.getAttribute('tabindex'),10)||0) > 0);
           const posTabindex = posEls.length;
-          samples.posTabindex = S(posEls, e => e.tagName.toLowerCase()+"[tabindex="+e.getAttribute('tabindex')+"]");
+          samples.posTabindex = S(posEls, e => sel(e)+"[tabindex="+e.getAttribute('tabindex')+"]");
 
           const forms = [...q('form')];
           const form = forms.length>0 || q('input:not([type=hidden]), select, textarea').length>0;
@@ -137,11 +152,11 @@ public final class HeuristicProbe implements PageProbe {
             const focusable = NATIVE.has(tag) || e.hasAttribute('tabindex') || e.getAttribute('role');
             if (NATIVE.has(tag) || e.hasAttribute('onclick') || e.getAttribute('role')==='button' || e.getAttribute('role')==='link') interactive++;
             if (e.hasAttribute('onclick') && !focusable && !e.hasAttribute('onkeydown') && !e.hasAttribute('onkeypress')) {
-              mouseOnly++; if (moS.length<3) moS.push(tag.toLowerCase()+(e.className&&typeof e.className==='string'?'.'+e.className.split(' ')[0]:'')+" '"+txt(e)+"'");
+              mouseOnly++; if (moS.length<3) moS.push(sel(e)+" '"+txt(e)+"'");
             }
-            if ((tag==='VIDEO'||tag==='AUDIO') && e.hasAttribute('autoplay')) { autoAnim++; if(animS.length<3)animS.push(tag.toLowerCase()+'[autoplay]'); continue; }
+            if ((tag==='VIDEO'||tag==='AUDIO') && e.hasAttribute('autoplay')) { autoAnim++; if(animS.length<3)animS.push(sel(e)+' [autoplay]'); continue; }
             try { const cs = getComputedStyle(e);
-              if (cs.animationName && cs.animationName!=='none' && cs.animationIterationCount==='infinite') { autoAnim++; if(animS.length<3)animS.push(tag.toLowerCase()+' 무한 애니메이션'); }
+              if (cs.animationName && cs.animationName!=='none' && cs.animationIterationCount==='infinite') { autoAnim++; if(animS.length<3)animS.push(sel(e)+' · 무한 애니메이션'); }
             } catch(_) {}
           }
           samples.mouseOnly = moS; samples.autoAnim = animS;

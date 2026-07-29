@@ -22,13 +22,27 @@ public final class ComplianceEvaluator {
     /** 종합 판정. status: 적합 | 부적합 | 미완료. */
     public record Compliance(String status, List<CategoryScore> categories, int pendingTotal) {}
 
+    /** KWCAG 4원칙 + 웹 호환성 구분(기준·도구 탭과 동일). category 필드에 이 키를 담는다. */
+    private static final String[][] PRINCIPLES = {
+        {"1", "인식의 용이성 (Perceivable)"}, {"2", "운용의 용이성 (Operable)"},
+        {"3", "이해의 용이성 (Understandable)"}, {"4", "견고성 (Robustness)"}, {"c", "웹 호환성"}
+    };
+
+    /** 코드 → 구분 키. 1/2/3/4 = KWCAG 4원칙, c-* = 웹 호환성. */
+    public static String principleKey(String code) {
+        if (code == null || code.isEmpty()) return "4";
+        char c0 = code.charAt(0);
+        if (c0 == 'c') return "c";
+        if (c0 >= '1' && c0 <= '4') return String.valueOf(c0);
+        return "4";
+    }
+
     public Compliance evaluate(Map<String, ItemResult> resultsByCode) {
         List<CategoryScore> scores = new ArrayList<>();
-        scores.add(score("웹접근성 자동", "accessibility", true, resultsByCode));
-        scores.add(score("웹접근성 수동", "accessibility", false, resultsByCode));
-        scores.add(score("웹호환성 자동", "compatibility", true, resultsByCode));
-        scores.add(score("웹호환성 수동", "compatibility", false, resultsByCode));
-
+        for (String[] p : PRINCIPLES) {
+            CategoryScore cs = score(p[1], p[0], resultsByCode);
+            if (cs.total() > 0) scores.add(cs);
+        }
         int pendingTotal = scores.stream().mapToInt(CategoryScore::pending).sum();
         String status;
         if (pendingTotal > 0) {
@@ -39,11 +53,11 @@ public final class ComplianceEvaluator {
         return new Compliance(status, scores, pendingTotal);
     }
 
-    private CategoryScore score(String label, String category, boolean siAuto,
-                                Map<String, ItemResult> results) {
-        int adequate = 0, inadequate = 0, na = 0, pending = 0;
-        List<CatalogItem> bucket = catalog.byBucket(category, siAuto);
-        for (CatalogItem item : bucket) {
+    private CategoryScore score(String label, String key, Map<String, ItemResult> results) {
+        int adequate = 0, inadequate = 0, na = 0, pending = 0, total = 0;
+        for (CatalogItem item : catalog.items()) {
+            if (!principleKey(item.code()).equals(key)) continue;
+            total++;
             ItemResult r = results.get(item.code());
             ItemVerdict v = r == null ? ItemVerdict.수동확인필요 : r.verdict();
             switch (v) {
@@ -55,9 +69,9 @@ public final class ComplianceEvaluator {
         }
         int denom = adequate + inadequate;
         double rate = denom == 0 ? 100.0 : Math.round(adequate * 1000.0 / denom) / 10.0;
-        double threshold = "accessibility".equals(category) ? A11Y_THRESHOLD : COMPAT_THRESHOLD;
+        double threshold = "c".equals(key) ? COMPAT_THRESHOLD : A11Y_THRESHOLD;
         boolean pass = pending == 0 && rate >= threshold;
-        return new CategoryScore(label, category, siAuto, bucket.size(),
+        return new CategoryScore(label, key, false, total,
                 adequate, inadequate, na, pending, rate, threshold, pass);
     }
 }

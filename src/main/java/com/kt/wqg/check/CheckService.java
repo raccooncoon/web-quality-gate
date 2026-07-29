@@ -128,38 +128,93 @@ public final class CheckService {
                     + " (미확정 " + compliance.pendingTotal() + "건)");
             java.util.List<com.kt.wqg.compliance.ItemResult> ordered = catalog.items().stream()
                     .map(it -> itemMap.get(it.code())).toList();
+            // 페이지별 판정 — 대상 페이지·페이지별 평가표·동영상 콘텐츠 표의 근거 데이터
+            java.util.List<java.util.Map<String, Object>> pages =
+                    buildPages(site, catalog, results, probeFindings);
             com.kt.wqg.compliance.ComplianceStore.write(reportDir,
                     new com.kt.wqg.compliance.ComplianceDoc(site.name(), site.label(), timestamp,
-                            ordered, new java.util.ArrayList<>(excluded)));
+                            ordered, new java.util.ArrayList<>(excluded), pages));
 
             List<ReportWriter.EngineInfo> engines = engineVersions.entrySet().stream()
                     .map(en -> new ReportWriter.EngineInfo(en.getKey(), en.getValue()))
                     .toList();
             ReportWriter.write(config.output().dir(), site.name(), site.label(), timestamp,
                     STANDARD, engines, results);
-            // report.html 을 SI 검수결과표로 최종 생성. AssessmentView 가 compliance.json 의 excluded 로
-            // 스스로 필터링하므로 전체 카탈로그를 넘겨(제외 항목 제목 조회용) 일관성을 유지한다.
-            java.util.Map<String, Object> reportPayload = new java.util.LinkedHashMap<>(
-                    com.kt.wqg.compliance.AssessmentView.build(reportDir, fullCatalog));
-            // 대상 정보(리포트 헤더용) — 검사 URL·인증 방식·검사 계정(ID만)·검사 경로 목록
-            java.util.Map<String, Object> target = new java.util.LinkedHashMap<>();
-            target.put("baseUrl", site.baseUrl());
-            boolean formAuth = site.auth() != null && "form".equals(site.auth().type());
-            target.put("authType", site.auth() == null ? "none" : site.auth().type());
-            target.put("loginPath", site.auth() == null ? null : site.auth().loginPath());
-            String account = null;
-            if (formAuth) {
-                try { account = CheckRunner.credentialsOf(site.name(), credResolver).id(); }
-                catch (RuntimeException ignore) {
-                    account = "env WQG_" + site.name().toUpperCase(java.util.Locale.ROOT).replace('-', '_') + "_ID";
-                }
-            }
-            target.put("account", account);
-            target.put("paths", site.urls().stream().map(SitesConfig.Url::path).toList());
-            reportPayload.put("target", target);
-            com.kt.wqg.report.ComplianceReportWriter.write(reportDir, reportPayload);
-            return reportDir.resolve("report.html");
+            // report.html 을 SI 검수결과표로 최종 생성.
+            return writeComplianceReport(reportDir, site, credResolver);
         }
+    }
+
+    /** 페이지(URL)별 판정·스크린샷·미디어 정보를 만든다. 대상 페이지/페이지별 평가표/동영상 표에서 사용. */
+    private static java.util.List<java.util.Map<String, Object>> buildPages(
+            SitesConfig.Site site, com.kt.wqg.compliance.KwcagCatalog catalog,
+            List<com.kt.wqg.report.CheckResult> results,
+            List<com.kt.wqg.compliance.Finding> probeFindings) {
+        var perUrl = new com.kt.wqg.compliance.ComplianceMapper(catalog).mapByUrl(results, probeFindings);
+        java.util.List<java.util.Map<String, Object>> pages = new java.util.ArrayList<>();
+        int no = 1;
+        for (SitesConfig.Url u : site.urls()) {
+            String path = u.path();
+            String url = CheckRunner.resolveUrl(site.baseUrl(), path);
+            var vm = perUrl.get(url);
+            if (vm == null) continue;   // 결과 없는(건너뛴·다운로드) 페이지는 제외
+            java.util.Map<String, Object> pg = new java.util.LinkedHashMap<>();
+            pg.put("no", no++);
+            pg.put("path", path);
+            pg.put("url", url);
+            pg.put("shot", "screenshots/chromium-" + CompatibilityCheck.slug(path) + ".png");
+            java.util.Map<String, String> cells = new java.util.LinkedHashMap<>();
+            for (com.kt.wqg.compliance.CatalogItem it : catalog.items()) {
+                var r = vm.get(it.code());
+                cells.put(it.code(), symbol(r == null ? null : r.verdict()));
+            }
+            pg.put("cells", cells);
+            long media = probeFindings.stream()
+                    .filter(f -> url.equals(f.url()) && "media-captions".equals(f.rule())).count();
+            pg.put("media", media);
+            pages.add(pg);
+        }
+        return pages;
+    }
+
+    /** 판정 → 페이지별 평가표 기호. 수동확인은 잠정(△). */
+    private static String symbol(com.kt.wqg.compliance.ItemVerdict v) {
+        if (v == null) return "△";
+        return switch (v) {
+            case 적합 -> "O";
+            case 부적합 -> "X";
+            case 해당없음 -> "-";
+            default -> "△";
+        };
+    }
+
+    /**
+     * 저장된 compliance.json 으로 report.html 을 (재)생성한다. 재검사 없이 리포트 서식만 갱신할 때 사용.
+     * AssessmentView 가 compliance.json 의 excluded 로 스스로 필터링하므로 전체 카탈로그를 넘긴다.
+     */
+    public static Path writeComplianceReport(Path reportDir, SitesConfig.Site site,
+                                             UnaryOperator<String> credResolver) {
+        com.kt.wqg.compliance.KwcagCatalog fullCatalog = com.kt.wqg.compliance.KwcagCatalog.load();
+        java.util.Map<String, Object> reportPayload = new java.util.LinkedHashMap<>(
+                com.kt.wqg.compliance.AssessmentView.build(reportDir, fullCatalog));
+        // 대상 정보(리포트 헤더용) — 검사 URL·인증 방식·검사 계정(ID만)·검사 경로 목록
+        java.util.Map<String, Object> target = new java.util.LinkedHashMap<>();
+        target.put("baseUrl", site.baseUrl());
+        boolean formAuth = site.auth() != null && "form".equals(site.auth().type());
+        target.put("authType", site.auth() == null ? "none" : site.auth().type());
+        target.put("loginPath", site.auth() == null ? null : site.auth().loginPath());
+        String account = null;
+        if (formAuth) {
+            try { account = CheckRunner.credentialsOf(site.name(), credResolver).id(); }
+            catch (RuntimeException ignore) {
+                account = "env WQG_" + site.name().toUpperCase(java.util.Locale.ROOT).replace('-', '_') + "_ID";
+            }
+        }
+        target.put("account", account);
+        target.put("paths", site.urls().stream().map(SitesConfig.Url::path).toList());
+        reportPayload.put("target", target);
+        com.kt.wqg.report.ComplianceReportWriter.write(reportDir, reportPayload);
+        return reportDir.resolve("report.html");
     }
 
     /** 헬스체크 한 단계 결과. */

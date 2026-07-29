@@ -98,7 +98,8 @@ public final class AssessmentView {
         return Map.of("items", items,
                 "compliance", Map.of("status", c.status(), "pendingTotal", c.pendingTotal(), "categories", cats),
                 "site", n(doc.site()), "displayName", n(doc.displayName()), "timestamp", n(doc.timestamp()),
-                "excluded", excluded, "screenshots", screenshots);
+                "excluded", excluded, "screenshots", screenshots,
+                "pages", doc.pages() == null ? List.of() : doc.pages());
     }
 
     private static String n(String s) { return s == null ? "" : s; }
