@@ -29,9 +29,10 @@ final class WebConsoleUI {
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             nav{align-items:center}
             .navsp{flex:1 1 auto}.navsp2{flex:0 0 22px}
-            /* 매핑표: KIWAC 심사기준 pill 열은 가운데 정렬 */
-            #mapPr td:nth-child(2),#mapPr th:nth-child(2){text-align:center}
-            #mapPr td:nth-child(2) .pill{margin-right:0}
+            /* 매핑표: KIWAC·카도와·웹와치 pill 열은 가운데 정렬 */
+            #mapPr td:nth-child(2),#mapPr td:nth-child(3),#mapPr td:nth-child(4),
+            #mapPr th:nth-child(2),#mapPr th:nth-child(3),#mapPr th:nth-child(4){text-align:center}
+            #mapPr td:nth-child(2) .pill,#mapPr td:nth-child(3) .pill,#mapPr td:nth-child(4) .pill{margin-right:0}
             nav button.util{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#b7c6db;font-weight:600}
             nav button.util.on{background:#fff;color:var(--navy);border-color:#fff;font-weight:700}
             main{max-width:920px;margin:0 auto;padding:22px}
@@ -350,12 +351,12 @@ final class WebConsoleUI {
                 :(String(code)[0]==='c'
                   ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
                   :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 항목 — KWCAG 2.1(=KIWAC 24) 밖">2.2 추가</span>');
-              const grpHd=l=>'<tr><td colspan=3 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
-              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
+              const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
+              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
-              const theadMap='<tr><th style="min-width:200px">검사항목</th><th style="background:var(--govsoft);white-space:nowrap">KIWAC 심사기준 (KWCAG 2.1)</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
+              const theadMap='<tr><th style="min-width:190px">검사항목</th><th style="background:var(--govsoft);white-space:nowrap">KIWAC (KWCAG 2.1)</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
               // 뷰2: 자동·수동별 — 실제 점검 항목(/api/items) 기준으로 그룹핑(④ 점검 항목 탭과 동일 분류)
               const modeCats=[['accessibility',true,'웹접근성 · 자동 판정'],['accessibility',false,'웹접근성 · 수동 확인 (AI 초안·평가자)'],
                 ['compatibility',true,'웹호환성 · 자동 판정'],['compatibility',false,'웹호환성 · 수동 확인']];
@@ -373,7 +374,8 @@ final class WebConsoleUI {
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
                 +'<td style="vertical-align:top">명확한지시(1.3.3)·색무관인식(1.4.1)·콘텐츠구분(1.4.4)·키보드(2.1.1)·초점표시(2.1.2)·도움정보(3.2.2)·오류정정(3.3.1)·반복입력(3.3.4)·접근가능인증(3.3.3)</td></tr></table>';
-              const note='<div class="cardsteps" style="margin-top:18px">카도와·웹와치의 <b>항목별</b> 지원 여부는 도구·버전마다 달라 이 표에선 표기하지 않습니다(위 <b>2. 도구 성격 비교</b>는 개요 수준). '
+              const note='<div class="cardsteps" style="margin-top:18px">표시: <span class="pill ok">자동</span> 도구가 자동 검출 · <span class="pill wait">수동</span> 항목은 있고 사람이 확인 · <span class="pill wait">부분</span> 부분 지원 · <span class="pill na">—</span> 해당 도구 미지원. '
+                +'카도와·웹와치 표기는 <b>근사치</b>(제품 버전·설정별로 다름)이므로 참고용이며, 실제 대조는 각 도구를 직접 실행하세요. '
                 +'<b>WQG "적합"이 공식 인증 통과를 보장하지 않습니다</b> — 납품·인증은 카도와(또는 발주처 지정 도구)+전문가 수동평가로 최종 확인.</div>';
               const engInfo='<div class=grouphd style="margin-top:22px">WQG 검사 엔진</div>'
                 +'<table><tr><th style="width:26%">엔진</th><th>무엇을 검사하나</th></tr>'
@@ -649,13 +651,15 @@ final class WebConsoleUI {
             async function captureSession(name,el){const box=el.querySelector('.sessbox');
               const base=el.querySelector('[name=baseUrl]').value.trim();
               if(!base||base.includes('TODO')){toast('baseUrl 먼저 입력');return}
+              const lpEl=el.querySelector('[name=loginPath]');const lp=lpEl?lpEl.value.trim():'';
               box.innerHTML=busy('브라우저를 띄웠습니다…','열린 창에서 로그인을 완료하세요. 폼이 사라지면 자동 저장(최대 3분)');
-              let r;try{r=await api('/api/capture-session/'+name,'POST',{})}catch(e){r={ok:false,detail:String(e)}}
+              let r;try{r=await api('/api/capture-session/'+name,'POST',{baseUrl:base,loginPath:lp})}catch(e){r={ok:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${esc(r.detail||'')}</div>`}
             // 세션 유효성 확인 — 저장 세션으로 보호 페이지 접근 시 로그인으로 안 튕기면 유효
             async function checkSession(name,el){const box=el.querySelector('.sessbox');
+              const base=el.querySelector('[name=baseUrl]').value.trim();
               box.innerHTML=busy('세션 확인 중…','저장 세션으로 보호 페이지 접근 점검');
-              let r;try{r=await api('/api/session-check/'+name,'POST',{})}catch(e){r={valid:false,detail:String(e)}}
+              let r;try{r=await api('/api/session-check/'+name,'POST',{baseUrl:base})}catch(e){r={valid:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.valid?'ok':'no'}">${r.valid?'✓ 유효':'✗ 무효/만료'} — ${esc(r.detail||'')}${r.valid?'':'<div class=hint>[세션 로그인(수동)]으로 다시 저장하세요.</div>'}</div>`}
             // 검사 경로 자동 수집 — 로그인 후 내부 링크를 훑어 후보 제시 → 선택 → 검사 경로에 추가
             async function discoverUrls(name,el){const box=el.querySelector('.discovered');

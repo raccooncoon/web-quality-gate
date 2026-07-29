@@ -396,10 +396,24 @@ public final class WebConsole {
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
     }
 
+    /** 저장된 시스템에 요청 body 의 baseUrl/loginPath 를 덮어써 즉시 반영(설정 저장 전에도 동작). */
+    private SitesConfig.Site effectiveSite(String name, JsonNode b) {
+        SitesConfig.Site s = siteOf(name);
+        String baseUrl = b.path("baseUrl").asText("").trim();
+        if (baseUrl.isEmpty()) return s;
+        SitesConfig.Auth a = s.auth();
+        SitesConfig.Auth a2 = a;
+        String lp = b.path("loginPath").asText("").trim();
+        if (a != null && !lp.isEmpty())
+            a2 = new SitesConfig.Auth(a.type(), lp, a.idSelector(), a.pwSelector(), a.submitSelector());
+        return new SitesConfig.Site(s.name(), s.displayName(), s.type(), baseUrl, a2, s.urls());
+    }
+
     /** 세션 캡처 — 헤드풀 브라우저를 띄워 사람이 로그인, 완료되면 storageState 저장(최대 3분 블로킹). */
     private void captureSession(HttpExchange ex, String name) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
         try {
-            CheckService.captureSession(siteOf(name), msg -> {});
+            CheckService.captureSession(effectiveSite(name, b), msg -> {});
             sendJson(ex, Map.of("ok", true, "detail", "로그인 세션이 저장되었습니다. 이제 이 세션으로 검사합니다."));
         } catch (RuntimeException e) {
             sendJson(ex, Map.of("ok", false, "detail", String.valueOf(e.getMessage())));
@@ -408,7 +422,8 @@ public final class WebConsole {
 
     /** 저장된 세션 유효성 확인. */
     private void sessionCheck(HttpExchange ex, String name) throws IOException {
-        CheckService.SessionStatus st = CheckService.checkSession(siteOf(name));
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        CheckService.SessionStatus st = CheckService.checkSession(effectiveSite(name, b));
         sendJson(ex, Map.of("valid", st.valid(), "detail", st.detail()));
     }
 
