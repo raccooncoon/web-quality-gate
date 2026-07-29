@@ -29,10 +29,9 @@ final class WebConsoleUI {
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             nav{align-items:center}
             .navsp{flex:1 1 auto}.navsp2{flex:0 0 22px}
-            /* 매핑표: KIWAC·카도와·웹와치 pill 열은 가운데 정렬 */
-            #mapPr td:nth-child(2),#mapPr td:nth-child(3),#mapPr td:nth-child(4),
-            #mapPr th:nth-child(2),#mapPr th:nth-child(3),#mapPr th:nth-child(4){text-align:center}
-            #mapPr td:nth-child(2) .pill,#mapPr td:nth-child(3) .pill,#mapPr td:nth-child(4) .pill{margin-right:0}
+            /* 매핑표: KIWAC 심사기준 pill 열은 가운데 정렬 */
+            #mapPr td:nth-child(2),#mapPr th:nth-child(2){text-align:center}
+            #mapPr td:nth-child(2) .pill{margin-right:0}
             nav button.util{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#b7c6db;font-weight:600}
             nav button.util.on{background:#fff;color:var(--navy);border-color:#fff;font-weight:700}
             main{max-width:920px;margin:0 auto;padding:22px}
@@ -350,13 +349,13 @@ final class WebConsoleUI {
                 ?'<span class="pill ok" title="KWCAG 2.1 기준 24개 심사항목(KIWAC WA인증 심사표) '+KIWAC[code]+'번">KIWAC '+KIWAC[code]+'</span>'
                 :(String(code)[0]==='c'
                   ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
-                  :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 9개 항목 — KWCAG 2.1 기준 24개(KIWAC 심사표) 밖">2.2 추가</span>');
-              const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
-              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
+                  :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 항목 — KWCAG 2.1(=KIWAC 24) 밖">2.2 추가</span>');
+              const grpHd=l=>'<tr><td colspan=3 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
+              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
-              const theadMap='<tr><th style="min-width:190px">검사항목</th><th style="background:var(--govsoft)">KIWAC 심사기준</th><th>카도와</th><th>웹와치</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
+              const theadMap='<tr><th style="min-width:200px">검사항목</th><th style="background:var(--govsoft);white-space:nowrap">KIWAC 심사기준 (KWCAG 2.1)</th><th style="background:var(--govsoft)">WQG 엔진</th></tr>';
               // 뷰2: 자동·수동별 — 실제 점검 항목(/api/items) 기준으로 그룹핑(④ 점검 항목 탭과 동일 분류)
               const modeCats=[['accessibility',true,'웹접근성 · 자동 판정'],['accessibility',false,'웹접근성 · 수동 확인 (AI 초안·평가자)'],
                 ['compatibility',true,'웹호환성 · 자동 판정'],['compatibility',false,'웹호환성 · 수동 확인']];
@@ -366,17 +365,15 @@ final class WebConsoleUI {
                 rowsMd+=grpHd(mc[2]+' ('+list.length+')')
                   +list.map(it=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
               const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (KWCAG 4원칙 + 웹 호환성)</div>'
-                +'<div class="cardsteps"><b>KWCAG 버전</b> — <b>KWCAG 2.1</b> 시절의 <b>24개 심사항목</b>이 KIWAC WA 품질인증 심사표 기준(<span class="pill ok">KIWAC N</span>)이고, '
-                +'<b>2022년 개정 KWCAG 2.2(KS X OT0003)</b>에서 <b>9개 항목이 추가</b>되어 총 <b>33개</b>가 됐습니다. '
-                +'<span class="pill wait">2.2 추가</span>가 그 9개(2.1 기준 24 밖), <span class="pill na">웹 호환성</span>은 KWCAG 밖 WQG 확장(3엔진·확대 등)입니다. '
-                +'이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.</div>'
+                +'<div class="cardsteps"><b>KWCAG 버전</b> — <b>KIWAC WA 품질인증 심사표의 24개 심사기준 = KWCAG 2.1 항목</b>(<span class="pill ok">KIWAC N</span>)입니다. '
+                +'<b>2022년 개정 KWCAG 2.2(KS X OT0003)</b>에서 항목이 추가되어 총 <b>33개</b>가 됐고, 그 추가분이 <span class="pill wait">2.2 추가</span>(= 2.1/KIWAC 24 밖). '
+                +'<span class="pill na">웹 호환성</span>은 KWCAG 밖 WQG 확장(3엔진·확대 등)입니다. 이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.</div>'
                 +'<table id="mapPr">'+theadMap+rowsPr+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
                 +'<td style="vertical-align:top">명확한지시(1.3.3)·색무관인식(1.4.1)·콘텐츠구분(1.4.4)·키보드(2.1.1)·초점표시(2.1.2)·도움정보(3.2.2)·오류정정(3.3.1)·반복입력(3.3.4)·접근가능인증(3.3.3)</td></tr></table>';
-              const note='<div class="cardsteps" style="margin-top:18px">표시: <span class="pill ok">자동</span> 도구가 자동 검출 · <span class="pill wait">수동</span> 항목은 있고 사람이 확인 · <span class="pill wait">부분</span> 부분 지원 · <span class="pill na">—</span> <b>해당 도구 미지원</b>(항목 자체가 없음 — 주로 <b>KWCAG 2.2 신설</b> 항목이거나 웹호환성). '
-                +'예: <code>2.1.3 조작 가능(타깃 크기)</code>는 2.2 신설이라 구버전 기준의 카도와엔 없어 <span class="pill na">—</span>. 카도와·웹와치 표기는 <b>근사치</b>(제품 버전·설정별 상이)로 실제 대조는 각 도구 직접 실행. '
+              const note='<div class="cardsteps" style="margin-top:18px">카도와·웹와치의 <b>항목별</b> 지원 여부는 도구·버전마다 달라 이 표에선 표기하지 않습니다(위 <b>2. 도구 성격 비교</b>는 개요 수준). '
                 +'<b>WQG "적합"이 공식 인증 통과를 보장하지 않습니다</b> — 납품·인증은 카도와(또는 발주처 지정 도구)+전문가 수동평가로 최종 확인.</div>';
               const engInfo='<div class=grouphd style="margin-top:22px">WQG 검사 엔진</div>'
                 +'<table><tr><th style="width:26%">엔진</th><th>무엇을 검사하나</th></tr>'

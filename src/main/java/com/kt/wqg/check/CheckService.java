@@ -162,6 +162,15 @@ public final class CheckService {
         try { page.waitForTimeout(300); } catch (RuntimeException ignore) { }
     }
 
+    /** baseUrl 미설정(공란/TODO) 이면 세션 작업 전에 명확한 오류로 막는다. */
+    private static void requireBaseUrl(SitesConfig.Site site) {
+        String b = site.baseUrl();
+        if (b == null || b.isBlank() || b.toUpperCase(java.util.Locale.ROOT).contains("TODO")) {
+            throw new IllegalStateException(
+                    "baseUrl 이 설정되지 않았습니다(현재: " + b + "). 설정 탭에서 baseUrl 을 먼저 입력·저장한 뒤 다시 시도하세요.");
+        }
+    }
+
     /** 저장된 로그인 세션(storageState) 파일 경로. 계정처럼 config/ 로컬에만 두고 git 제외. */
     public static Path sessionFile(String siteName) {
         return Path.of("config", "storage-" + siteName + ".json");
@@ -173,6 +182,7 @@ public final class CheckService {
      * 폼이 사라지면(로그인 완료) storageState 를 파일로 저장한다.
      */
     public static void captureSession(SitesConfig.Site site, java.util.function.Consumer<String> progress) {
+        requireBaseUrl(site);
         Path file = sessionFile(site.name());
         try (Playwright pw = Playwright.create()) {
             Browser browser = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
@@ -206,6 +216,7 @@ public final class CheckService {
 
     /** 저장된 세션이 아직 유효한지 확인 — 세션 로드 후 보호 페이지가 로그인으로 튕기지 않으면 유효. */
     public static SessionStatus checkSession(SitesConfig.Site site) {
+        requireBaseUrl(site);
         Path file = sessionFile(site.name());
         if (!java.nio.file.Files.isRegularFile(file)) return new SessionStatus(false, "저장된 세션 없음");
         try (Playwright pw = Playwright.create()) {
