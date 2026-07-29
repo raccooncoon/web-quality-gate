@@ -29,6 +29,10 @@ final class WebConsoleUI {
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             nav{align-items:center}
             .navsp{flex:1 1 auto}.navsp2{flex:0 0 22px}
+            /* 매핑표: KIWAC·카도와·웹와치 pill 열은 가운데 정렬 */
+            #mapPr td:nth-child(2),#mapPr td:nth-child(3),#mapPr td:nth-child(4),
+            #mapPr th:nth-child(2),#mapPr th:nth-child(3),#mapPr th:nth-child(4){text-align:center}
+            #mapPr td:nth-child(2) .pill,#mapPr td:nth-child(3) .pill,#mapPr td:nth-child(4) .pill{margin-right:0}
             nav button.util{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#b7c6db;font-weight:600}
             nav button.util.on{background:#fff;color:var(--navy);border-color:#fff;font-weight:700}
             main{max-width:920px;margin:0 auto;padding:22px}
