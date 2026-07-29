@@ -81,6 +81,8 @@ public final class WebConsole {
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
             if (path.startsWith("/api/credentials/")) { saveCredentials(ex, path.substring("/api/credentials/".length())); return; }
             if (path.startsWith("/api/health/")) { health(ex, path.substring("/api/health/".length())); return; }
+            if (path.startsWith("/api/capture-session/")) { captureSession(ex, path.substring("/api/capture-session/".length())); return; }
+            if (path.startsWith("/api/session-check/")) { sessionCheck(ex, path.substring("/api/session-check/".length())); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
             if (path.equals("/api/assessment")) { assessment(ex); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
@@ -110,6 +112,7 @@ public final class WebConsole {
             m.put("submitSelector", s.auth() == null ? null : s.auth().submitSelector());
             m.put("hasCredentials", credentials.has(s.name()));
             m.put("credId", credentials.savedId(s.name()));
+            m.put("hasSession", java.nio.file.Files.isRegularFile(CheckService.sessionFile(s.name())));
             // 비밀번호는 브라우저로 내려보내지 않는다(노출 방지 + 옛 값 재저장 방지). 저장 여부만 hasCredentials 로 표시.
             m.put("urls", s.urls().stream().map(SitesConfig.Url::path).toList());
             m.put("auto", s.auto() == null ? List.of() : s.auto());
@@ -387,6 +390,28 @@ public final class WebConsole {
     }
 
     /** 설정 확인(헬스체크) — baseUrl 접속·로그인·첫 화면 렌더를 빠르게 점검. 동기 응답. */
+    private SitesConfig.Site siteOf(String name) {
+        return configStore.load().sites().stream()
+                .filter(s -> s.name().equals(name)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
+    }
+
+    /** 세션 캡처 — 헤드풀 브라우저를 띄워 사람이 로그인, 완료되면 storageState 저장(최대 3분 블로킹). */
+    private void captureSession(HttpExchange ex, String name) throws IOException {
+        try {
+            CheckService.captureSession(siteOf(name), msg -> {});
+            sendJson(ex, Map.of("ok", true, "detail", "로그인 세션이 저장되었습니다. 이제 이 세션으로 검사합니다."));
+        } catch (RuntimeException e) {
+            sendJson(ex, Map.of("ok", false, "detail", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 저장된 세션 유효성 확인. */
+    private void sessionCheck(HttpExchange ex, String name) throws IOException {
+        CheckService.SessionStatus st = CheckService.checkSession(siteOf(name));
+        sendJson(ex, Map.of("valid", st.valid(), "detail", st.detail()));
+    }
+
     private void health(HttpExchange ex, String name) throws IOException {
         SitesConfig config = configStore.load();
         SitesConfig.Site site = config.sites().stream()

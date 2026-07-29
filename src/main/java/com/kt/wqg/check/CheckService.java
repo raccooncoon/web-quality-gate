@@ -65,11 +65,19 @@ public final class CheckService {
             progress.accept("브라우저 기동…");
             Browser chromium = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions().setHeadless(true));
-            try (BrowserContext context = chromium.newContext()) {
+            // storage(세션 재사용) 방식: 저장된 storageState 를 컨텍스트에 로드하고 폼 로그인은 생략
+            boolean useStored = site.auth() != null && site.auth().isStorage()
+                    && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
+            Browser.NewContextOptions ctxOpts = new Browser.NewContextOptions();
+            if (useStored) ctxOpts.setStorageStatePath(sessionFile(site.name()));
+            try (BrowserContext context = chromium.newContext(ctxOpts)) {
                 Page page = context.newPage();
                 if (site.auth() != null && site.auth().required()) {
                     progress.accept("로그인 중…");
                     CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
+                    storageState = context.storageState();
+                } else if (useStored) {
+                    progress.accept("저장된 로그인 세션 재사용");
                     storageState = context.storageState();
                 }
                 int i = 0;
@@ -144,6 +152,80 @@ public final class CheckService {
             return writeComplianceReport(reportDir, site, credResolver);
         }
     }
+
+    /** SPA 렌더/데이터 로드 대기(네트워크 유휴 + 짧은 정착). 타임아웃은 무시. */
+    private static void waitRender(Page page) {
+        try {
+            page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
+                    new Page.WaitForLoadStateOptions().setTimeout(5000));
+        } catch (RuntimeException ignore) { /* 타임아웃 무시 */ }
+        try { page.waitForTimeout(300); } catch (RuntimeException ignore) { }
+    }
+
+    /** 저장된 로그인 세션(storageState) 파일 경로. 계정처럼 config/ 로컬에만 두고 git 제외. */
+    public static Path sessionFile(String siteName) {
+        return Path.of("config", "storage-" + siteName + ".json");
+    }
+
+    /**
+     * 사람이 직접 로그인(OASIS SSO→포탈→시스템)한 뒤의 세션을 저장한다.
+     * 헤드풀 브라우저를 띄워 로그인 폼이 뜨면(비번 필드 등장) 사용자가 로그인,
+     * 폼이 사라지면(로그인 완료) storageState 를 파일로 저장한다.
+     */
+    public static void captureSession(SitesConfig.Site site, java.util.function.Consumer<String> progress) {
+        Path file = sessionFile(site.name());
+        try (Playwright pw = Playwright.create()) {
+            Browser browser = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
+            try (BrowserContext ctx = browser.newContext()) {
+                Page page = ctx.newPage();
+                String lp = site.auth() != null && site.auth().loginPath() != null && !site.auth().loginPath().isBlank()
+                        ? site.auth().loginPath() : "/";
+                page.navigate(CheckRunner.resolveUrl(site.baseUrl(), lp));
+                progress.accept("열린 브라우저에서 로그인을 완료하세요 — 로그인 폼이 사라지면 자동 저장됩니다(최대 3분).");
+                // 로그인 폼(비번 필드) 등장 대기(최대 90초) → 소멸 대기(최대 180초)
+                try {
+                    page.waitForSelector("input[type=password]",
+                            new Page.WaitForSelectorOptions().setTimeout(90000));
+                } catch (RuntimeException ignore) { /* 이미 로그인됐거나 비번폼이 아닌 흐름 */ }
+                long end = System.currentTimeMillis() + 180000;
+                boolean done = false;
+                while (System.currentTimeMillis() < end) {
+                    if (page.querySelector("input[type=password]") == null) { done = true; break; }
+                    page.waitForTimeout(2000);
+                }
+                if (!done) throw new IllegalStateException("시간 초과 — 로그인이 완료되지 않았습니다.");
+                page.waitForTimeout(1000);
+                java.nio.file.Files.createDirectories(file.getParent());
+                java.nio.file.Files.writeString(file, ctx.storageState());
+                progress.accept("로그인 세션 저장 완료: " + file);
+            } finally { browser.close(); }
+        } catch (java.io.IOException e) {
+            throw new java.io.UncheckedIOException("세션 저장 실패: " + file, e);
+        }
+    }
+
+    /** 저장된 세션이 아직 유효한지 확인 — 세션 로드 후 보호 페이지가 로그인으로 튕기지 않으면 유효. */
+    public static SessionStatus checkSession(SitesConfig.Site site) {
+        Path file = sessionFile(site.name());
+        if (!java.nio.file.Files.isRegularFile(file)) return new SessionStatus(false, "저장된 세션 없음");
+        try (Playwright pw = Playwright.create()) {
+            Browser browser = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+            try (BrowserContext ctx = browser.newContext(
+                    new Browser.NewContextOptions().setStorageStatePath(file))) {
+                Page page = ctx.newPage();
+                String probe = site.urls().isEmpty() ? "/" : site.urls().get(0).path();
+                page.navigate(CheckRunner.resolveUrl(site.baseUrl(), probe));
+                page.waitForLoadState(com.microsoft.playwright.options.LoadState.LOAD);
+                boolean login = page.querySelector("input[type=password]") != null;
+                return login
+                        ? new SessionStatus(false, "세션 만료 — 로그인 화면으로 돌아감(" + page.url() + ")")
+                        : new SessionStatus(true, "유효 — 인증 상태로 접근됨(" + page.url() + ")");
+            } finally { browser.close(); }
+        }
+    }
+
+    /** 세션 유효성 결과. */
+    public record SessionStatus(boolean valid, String detail) {}
 
     /** 페이지(URL)별 판정·스크린샷·미디어 정보를 만든다. 대상 페이지/페이지별 평가표/동영상 표에서 사용. */
     private static java.util.List<java.util.Map<String, Object>> buildPages(
@@ -302,7 +384,21 @@ public final class CheckService {
                 } else {
                     page.navigate(CheckRunner.resolveUrl(site.baseUrl(), "/"));
                 }
-                return CheckRunner.harvestPaths(page, site.baseUrl());
+                // 렌더(SPA 포함) 대기 후 랜딩 링크 수집 → 발견한 경로를 한 단계 더 방문해 링크 병합(1-depth 크롤)
+                java.util.LinkedHashSet<String> found = new java.util.LinkedHashSet<>();
+                waitRender(page);
+                found.addAll(CheckRunner.harvestPaths(page, site.baseUrl()));
+                java.util.List<String> seeds = new java.util.ArrayList<>(found);
+                for (String p : seeds) {
+                    if (found.size() >= 60) break;
+                    try {
+                        page.navigate(CheckRunner.resolveUrl(site.baseUrl(), p),
+                                new Page.NavigateOptions().setTimeout(12000));
+                        waitRender(page);
+                        found.addAll(CheckRunner.harvestPaths(page, site.baseUrl()));
+                    } catch (RuntimeException ignore) { /* 개별 경로 실패는 건너뜀 */ }
+                }
+                return found.stream().sorted().toList();
             } finally {
                 browser.close();
             }
@@ -355,9 +451,22 @@ public final class CheckService {
                     page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
                             new Page.WaitForLoadStateOptions().setTimeout(6000));
                 } catch (RuntimeException ignore) { /* 타임아웃 무시 */ }
-                Object rt = page.evaluate(
-                        "() => document.body ? document.body.innerText.replace(/\\s+/g,' ').trim().length : 0");
-                int renderedLen = rt instanceof Number ? ((Number) rt).intValue() : 0;
+                Object rt = page.evaluate("""
+                        () => {
+                          const q = s => !!document.querySelector(s);
+                          const mount = q('#root, #app, #__next, [data-reactroot], [data-reactid], [data-v-app], [ng-version]');
+                          const bundle = [...document.scripts].some(s => /assets\\/|static\\/js\\/|chunk|bundle|runtime|vendor|\\.[a-f0-9]{6,}\\.js/i.test(s.src||''));
+                          const fw = !!(window.React||window.__NEXT_DATA__||window.__NUXT__||window.Vue||window.ng||window.__vite_plugin_react_preamble_installed__);
+                          const textLen = document.body ? document.body.innerText.replace(/\\s+/g,' ').trim().length : 0;
+                          return {textLen, mount, bundle, fw};
+                        }""");
+                @SuppressWarnings("unchecked")
+                java.util.Map<String, Object> sig = rt instanceof java.util.Map
+                        ? (java.util.Map<String, Object>) rt : java.util.Map.of();
+                int renderedLen = sig.get("textLen") instanceof Number n ? n.intValue() : 0;
+                boolean mount = rootDiv || Boolean.TRUE.equals(sig.get("mount"));
+                boolean bundle = Boolean.TRUE.equals(sig.get("bundle"));
+                boolean fw = Boolean.TRUE.equals(sig.get("fw"));
                 // 로그인 벽 감지: 요청 경로가 로그인 경로가 아닌데 최종 URL이 로그인 페이지면 앱을 못 본 것
                 String loginPath = site != null && site.auth() != null ? site.auth().loginPath() : "/login";
                 String finalPath = pathOfUrl(page.url());
@@ -366,7 +475,7 @@ public final class CheckService {
                             "요청한 경로가 로그인 페이지(" + finalPath + ")로 리다이렉트됨 — 로그인 뒤 화면을 못 봐 자동 판정 불가. "
                             + "계정을 저장한 뒤 다시 시도하거나 유형을 직접 지정하세요.");
                 }
-                return classifyType(rawLen, renderedLen, rootDiv);
+                return classifyType(rawLen, renderedLen, mount, bundle, fw);
             } finally {
                 br.close();
             }
@@ -393,13 +502,17 @@ public final class CheckService {
         return s.length();
     }
 
-    /** 서버 텍스트(raw) 대비 렌더 텍스트(rendered) 증가폭으로 판정. 애매하면 MPA(안전측). */
-    static DetectedType classifyType(int rawLen, int renderedLen, boolean rootDiv) {
-        // SPA: 서버가 준 본문은 빈약(<300자)한데 JS 실행 후 본문이 크게 늘어남(2배 이상 & +400자)
-        boolean spa = rawLen < 300 && renderedLen > rawLen * 2 + 400;
-        if (!spa && rawLen < 60 && rootDiv && renderedLen > 400) spa = true; // 완전 빈 셸 + 마운트 지점
-        String reason = String.format("서버 본문 %d자 → 렌더 후 %d자 · root/app 마운트 %s → %s",
-                rawLen, renderedLen, rootDiv ? "있음" : "없음",
+    /**
+     * SPA/MPA 판정. 마운트 지점(#root 등) + JS 번들/프레임워크 전역이 있으면 SPA(React/Vue 등),
+     * 없더라도 서버 본문 대비 렌더 후 본문이 크게 늘면 SPA. 그 외 MPA(서버 렌더링).
+     */
+    static DetectedType classifyType(int rawLen, int renderedLen, boolean mount, boolean bundle, boolean fw) {
+        boolean spa;
+        if (mount && (bundle || fw)) spa = true;                                   // 클라이언트 프레임워크 마운트
+        else if (mount && renderedLen > 400 && renderedLen > rawLen * 1.5 + 200) spa = true; // 마운트 + 렌더 급증
+        else spa = rawLen < 300 && renderedLen > rawLen * 2 + 400;                 // 빈 셸 급증
+        String reason = String.format("서버 본문 %d자 → 렌더 %d자 · 마운트 %s · JS번들 %s · 프레임워크 %s → %s",
+                rawLen, renderedLen, mount ? "O" : "X", bundle ? "O" : "X", fw ? "O" : "X",
                 spa ? "SPA(클라이언트 렌더링)" : "MPA(서버 렌더링)");
         return new DetectedType(spa ? "spa" : "mpa", reason);
     }

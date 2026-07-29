@@ -211,7 +211,7 @@ public final class ComplianceReportWriter {
             .evcap{margin-top:0;font-size:11.5px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
-            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;border:1px solid var(--line2)}
+            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}

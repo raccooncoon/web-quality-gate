@@ -28,7 +28,7 @@ final class WebConsoleUI {
               padding:7px 16px;border-radius:4px;cursor:pointer}
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             nav{align-items:center}
-            .navsp{flex:1 1 auto}
+            .navsp{flex:1 1 auto}.navsp2{flex:0 0 22px}
             nav button.util{background:rgba(255,255,255,.05);border-color:rgba(255,255,255,.12);color:#b7c6db;font-weight:600}
             nav button.util.on{background:#fff;color:var(--navy);border-color:#fff;font-weight:700}
             main{max-width:920px;margin:0 auto;padding:22px}
@@ -97,6 +97,7 @@ final class WebConsoleUI {
             th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px}
             th{font-size:11px;color:var(--navy);background:var(--govsoft);font-weight:700}tr:last-child td{border-bottom:none}
             a{color:var(--gov)}.auth-only{display:none}.auth-form .auth-only{display:block}
+            .storage-only{display:none}.auth-storage .storage-only{display:block}
             .hbox{margin-top:10px;padding:10px 12px;border-radius:4px;font-size:13px;border:1px solid var(--line)}
             .hbox.ok{background:var(--okbg);border-color:var(--ok)}.hbox.no{background:var(--badbg);border-color:var(--bad)}
             .hbox b{display:block;margin-bottom:5px}.hstep{padding:2px 0;font-size:12.5px}
@@ -151,7 +152,7 @@ final class WebConsoleUI {
             .evcap{margin-top:0;font-size:11.5px;color:var(--fg);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
-            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;border:1px solid var(--line2)}
+            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
@@ -224,13 +225,14 @@ final class WebConsoleUI {
             .eye svg{width:18px;height:18px;display:block}
             </style></head><body>
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
-            <nav><button data-tab="config" class="on">① 설정</button>
+            <nav><button data-tab="stdref" class="util">ⓘ 기준·도구</button>
+              <span class="navsp2"></span>
+              <button data-tab="config" class="on">① 설정</button>
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
               <span class="navsp"></span>
               <button data-tab="syscfg" class="util">⚙ 시스템 관리</button>
               <button data-tab="items" class="util">✓ 점검 항목</button>
-              <button data-tab="aicfg" class="util">✦ AI 설정</button>
-              <button data-tab="stdref" class="util">ⓘ 기준·도구</button></nav></header>
+              <button data-tab="aicfg" class="util">✦ AI 설정</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
               <div id="syscfg" style="display:none"></div>
@@ -447,9 +449,13 @@ final class WebConsoleUI {
               systems.forEach(s=>{const el=document.getElementById('sys-'+s.name);
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
                 el.querySelectorAll('.autoval').forEach(attachAutoClear);
-                if(s.authType==='form'||s.authType==='sso')el.querySelector('.body').classList.add('auth-form');
-                el.querySelector('[name=authType]').onchange=e=>
-                  el.querySelector('.body').classList.toggle('auth-form',e.target.value==='form'||e.target.value==='sso');
+                const setAuthCls=t=>{const b=el.querySelector('.body');
+                  b.classList.toggle('auth-form',t==='form'||t==='sso');
+                  b.classList.toggle('auth-storage',t==='storage');};
+                setAuthCls(s.authType);
+                el.querySelector('[name=authType]').onchange=e=>setAuthCls(e.target.value);
+                el.querySelector('.capsess').onclick=()=>captureSession(s.name,el);
+                el.querySelector('.chksess').onclick=()=>checkSession(s.name,el);
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
@@ -541,9 +547,19 @@ final class WebConsoleUI {
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
                   <div><label>로그인 방식</label><select name="authType">
-                  <option value="none" ${s.authType!=='form'&&s.authType!=='sso'?'selected':''}>없음</option>
+                  <option value="none" ${s.authType!=='form'&&s.authType!=='sso'&&s.authType!=='storage'?'selected':''}>없음</option>
                   <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option>
-                  <option value="sso" ${s.authType==='sso'?'selected':''}>SSO (Keycloak/OIDC)</option></select></div></div>
+                  <option value="sso" ${s.authType==='sso'?'selected':''}>SSO (Keycloak/OIDC)</option>
+                  <option value="storage" ${s.authType==='storage'?'selected':''}>세션 재사용 (수동 로그인)</option></select></div></div>
+                <div class="storage-only">
+                  <div class="cardsteps"><b>세션 재사용</b> — OASIS SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
+                    한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
+                    baseUrl 을 채운 뒤 <b>① 세션 로그인(수동)</b> → 열리는 브라우저에서 로그인 완료 → 자동 저장,
+                    이후 <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.</div>
+                  <div class="actbar"><button class="act ghost capsess">① 세션 로그인(수동)</button>
+                    <button class="act ghost chksess">② 세션 유효성 확인</button></div>
+                  <div class="sessbox" id="sess-${s.name}">${s.hasSession?'<div class="hbox ok">저장된 세션이 있습니다 — [세션 유효성 확인]으로 점검하세요.</div>':'<div class=st>저장된 세션이 없습니다. [세션 로그인]으로 저장하세요.</div>'}</div>
+                </div>
                 <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
                 <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
                 <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
@@ -622,6 +638,18 @@ final class WebConsoleUI {
             async function saveCred(name,el){const cid=el.querySelector('[name=cid]').value,
               cpw=el.querySelector('[name=cpw]').value;if(!cid||!cpw){toast('ID/PW 입력');return}
               await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});markCredSaved(el);toast('계정 저장됨')}
+            // 세션 로그인(수동) — 서버가 헤드풀 브라우저를 띄우고, 사용자가 로그인 완료하면 세션 저장(최대 3분)
+            async function captureSession(name,el){const box=el.querySelector('.sessbox');
+              const base=el.querySelector('[name=baseUrl]').value.trim();
+              if(!base||base.includes('TODO')){toast('baseUrl 먼저 입력');return}
+              box.innerHTML=busy('브라우저를 띄웠습니다…','열린 창에서 로그인을 완료하세요. 폼이 사라지면 자동 저장(최대 3분)');
+              let r;try{r=await api('/api/capture-session/'+name,'POST',{})}catch(e){r={ok:false,detail:String(e)}}
+              box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${esc(r.detail||'')}</div>`}
+            // 세션 유효성 확인 — 저장 세션으로 보호 페이지 접근 시 로그인으로 안 튕기면 유효
+            async function checkSession(name,el){const box=el.querySelector('.sessbox');
+              box.innerHTML=busy('세션 확인 중…','저장 세션으로 보호 페이지 접근 점검');
+              let r;try{r=await api('/api/session-check/'+name,'POST',{})}catch(e){r={valid:false,detail:String(e)}}
+              box.innerHTML=`<div class="hbox ${r.valid?'ok':'no'}">${r.valid?'✓ 유효':'✗ 무효/만료'} — ${esc(r.detail||'')}${r.valid?'':'<div class=hint>[세션 로그인(수동)]으로 다시 저장하세요.</div>'}</div>`}
             // 검사 경로 자동 수집 — 로그인 후 내부 링크를 훑어 후보 제시 → 선택 → 검사 경로에 추가
             async function discoverUrls(name,el){const box=el.querySelector('.discovered');
               box.innerHTML='<div class=st>로그인(필요 시) 후 내부 경로 수집 중… (최대 30초)</div>';

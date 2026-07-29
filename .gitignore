@@ -13,3 +13,6 @@ secrets.properties
 vnu.jar
 excluded-items.txt
 llm.properties
+
+# 로그인 세션 재사용(storageState) — 로컬 전용, 절대 커밋 금지
+config/storage-*.json

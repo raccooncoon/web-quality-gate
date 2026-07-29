@@ -30,10 +30,13 @@ public record SitesConfig(List<Site> sites, Checks checks, Output output) {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Auth(String type, String loginPath,
                        String idSelector, String pwSelector, String submitSelector) {
+        /** 폼/SSO 는 매 검사 시 로그인이 필요. storage(세션 재사용)는 별도 처리. */
         public boolean required() {
             return "form".equalsIgnoreCase(type) || "sso".equalsIgnoreCase(type);
         }
         public boolean isSso() { return "sso".equalsIgnoreCase(type); }
+        /** 저장된 로그인 세션(storageState)을 재사용하는 방식. */
+        public boolean isStorage() { return "storage".equalsIgnoreCase(type); }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
