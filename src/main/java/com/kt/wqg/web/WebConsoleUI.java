@@ -308,6 +308,7 @@ final class WebConsoleUI {
                 +'<tr><td><b>제정</b></td><td>W3C · 국제 권고</td><td>국가표준 KS X OT0003 · TTA</td></tr>'
                 +'<tr><td><b>최신</b></td><td>2.0·2.1·2.2</td><td>2.0·2.1·<b>2.2 (2022)</b></td></tr>'
                 +'<tr><td><b>구조</b></td><td>4원칙 → 13지침 → 78 성공기준 (A/AA/AAA)</td><td>4원칙 → 14지침 → <b>33 검사항목</b></td></tr>'
+                +'<tr><td><b>검사항목 수</b></td><td>2.1: 50 SC · 2.2: 78 SC</td><td><b>2.1: 24항목</b> → <b>2.2(2022): 33항목</b> <span class="pill wait">+9 추가</span><br><small class=st>KIWAC WA 심사표는 2.1 기준 24항목, KWCAG 2.2 개정에서 9항목 신설(문자 단축키·포인터 취소/제스처·레이블과 네임·동작 기반·도움 정보·접근 가능한 인증·반복 입력 정보 등)</small></td></tr>'
                 +'<tr><td><b>4원칙</b></td><td colspan=2 style="text-align:center">인식의 용이성 · 운용의 용이성 · 이해의 용이성 · 견고성 <small class=st>(양쪽 동일)</small></td></tr>'
                 +'<tr><td><b>법적 근거</b></td><td>직접 의무 아님(원본 기준)</td><td><b>장애인차별금지법 · 지능정보화기본법</b> → 공공기관 의무 · WA 품질인증 심사</td></tr>'
                 +'<tr><td><b>WQG에서</b></td><td>측정 엔진(axe-core)의 언어</td><td>판정·리포트의 언어(집계 단위)</td></tr></table>'
@@ -346,8 +347,10 @@ final class WebConsoleUI {
                 '2.4.1':'14','2.4.2':'15','2.4.3':'16','3.1.1':'17','3.2.1':'18','1.3.2':'19','1.3.1':'20',
                 '3.3.2':'21','3.3.1':'22','4.1.1':'23','4.2.1':'24'};
               const kiwacCell=code=>KIWAC[code]
-                ?'<span class="pill ok" title="KIWAC WA인증 심사 기준 '+KIWAC[code]+'번">KIWAC '+KIWAC[code]+'</span>'
-                :'<span class="pill na" title="KIWAC 24 심사 기준 외(KWCAG 2.2 확장·웹호환성)">대상 아님</span>';
+                ?'<span class="pill ok" title="KWCAG 2.1 기준 24개 심사항목(KIWAC WA인증 심사표) '+KIWAC[code]+'번">KIWAC '+KIWAC[code]+'</span>'
+                :(String(code)[0]==='c'
+                  ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
+                  :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 9개 항목 — KWCAG 2.1 기준 24개(KIWAC 심사표) 밖">2.2 추가</span>');
               const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
               const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
@@ -363,8 +366,10 @@ final class WebConsoleUI {
                 rowsMd+=grpHd(mc[2]+' ('+list.length+')')
                   +list.map(it=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
               const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (KWCAG 4원칙 + 웹 호환성)</div>'
-                +'<div class="cardsteps"><b>KIWAC 심사기준</b> — 한국웹접근성인증평가원(KIWAC) WA 품질인증 심사표의 <b>24개 심사 기준</b>과 우리 항목의 대응입니다. '
-                +'<span class="pill ok">KIWAC N</span>은 심사표 N번 항목, <span class="pill na">대상 아님</span>은 KWCAG 2.2 확장 항목이거나 웹호환성(심사표 밖)입니다. 이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.</div>'
+                +'<div class="cardsteps"><b>KWCAG 버전</b> — <b>KWCAG 2.1</b> 시절의 <b>24개 심사항목</b>이 KIWAC WA 품질인증 심사표 기준(<span class="pill ok">KIWAC N</span>)이고, '
+                +'<b>2022년 개정 KWCAG 2.2(KS X OT0003)</b>에서 <b>9개 항목이 추가</b>되어 총 <b>33개</b>가 됐습니다. '
+                +'<span class="pill wait">2.2 추가</span>가 그 9개(2.1 기준 24 밖), <span class="pill na">웹 호환성</span>은 KWCAG 밖 WQG 확장(3엔진·확대 등)입니다. '
+                +'이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.</div>'
                 +'<table id="mapPr">'+theadMap+rowsPr+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
