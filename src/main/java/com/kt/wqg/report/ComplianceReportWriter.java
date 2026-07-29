@@ -246,6 +246,7 @@ public final class ComplianceReportWriter {
             .mxc.so{color:var(--ok)}.mxc.sx{color:var(--bad);background:var(--badbg)}
             .mxc.sn{color:var(--muted)}.mxc.sr{color:var(--warn)}.mxc.se{color:var(--line2)}
             .mx .mxgrp{text-align:left;background:var(--navy);color:#fff;font-weight:700;font-size:10.5px;position:static;letter-spacing:.02em}
+            .mxc.mxmerge{text-align:center;color:var(--muted);background:var(--bg);font-weight:400}
             .mx tfoot td{background:var(--govsoft);border-top:2px solid var(--navy);font-weight:700;text-align:right}
             .mx tfoot .mxr{text-align:center}
             .vidt{width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--line2);margin:8px 0}
@@ -364,6 +365,7 @@ public final class ComplianceReportWriter {
               .pmx td.co{color:#1f7a44;font-weight:700}.pmx td.cx{color:#c02a2a;font-weight:700;background:#fbeaea}
               .pmx td.cn{color:#889}.pmx td.cr{color:#a9781c;font-weight:700}.pmx td.ce{color:#bcc}
               .pmx .pmxgrp{text-align:left;background:#2a3442;color:#fff;font-weight:700}
+              .pmx .pmxmerge{text-align:center;color:#667;background:#f4f6f9}
               a{color:inherit;text-decoration:none}
             }
             </style></head><body>
@@ -409,8 +411,11 @@ public final class ComplianceReportWriter {
               for(let i=0;i<Math.max(na.length,nb.length);i++){const x=na[i]||0,y=nb[i]||0;if(x!==y)return x-y;}return 0;};
             const KNUM={}; KIWAC_ORDER.forEach(([n,code])=>KNUM[code]=n);
             // 페이지별 평가: 4원칙+웹호환성 그룹, 각 행 {번호(KIWAC or 코드),제목,셀[],통과,전체,준수율}
+            const CONTENT_CODES=new Set(['1.2.1']); // 자막 등 콘텐츠(동영상) 단위 진단 — 페이지 매트릭스에서 병합 표기
             function mxData(pages, items){
-              const mkRow=it=>{let pass=0,total=0;
+              const mkRow=it=>{
+                if(CONTENT_CODES.has(it.code)) return {n:it.code,title:it.title,content:true,cells:[],pass:'-',total:'-',rate:null};
+                let pass=0,total=0;
                 const cells=pages.map(p=>{const v=(p.cells&&p.cells[it.code])||'△';total++;if(v==='O'||v==='-')pass++;return v;});
                 return {n:it.code,title:it.title,cells,pass,total,rate:total?pass/total*100:100};};
               const groups=[]; const scored=[];
@@ -441,7 +446,11 @@ public final class ComplianceReportWriter {
               const MD=mxData(pages, items);
               MD.groups.forEach(g=>{
                 s+=`<tr><td class="mxit mxgrp" colspan="${pages.length+4}">${esc(g.label)}</td></tr>`;
-                g.rows.forEach(r=>{s+=`<tr><td class="mxit"><span class="mxno">${esc(r.n)}</span>${esc(r.title)}</td>`
+                g.rows.forEach(r=>{
+                  if(r.content){s+=`<tr><td class="mxit"><span class="mxno">${esc(r.n)}</span>${esc(r.title)}</td>`
+                    +`<td class="mxc mxmerge" colspan="${pages.length}">개별 콘텐츠 선정 후 진단 — 대상은 아래 <b>심사 대상 동영상 콘텐츠 URL</b> 참조</td>`
+                    +`<td class="mxr">-</td><td class="mxr">-</td><td class="mxr">-</td></tr>`;return;}
+                  s+=`<tr><td class="mxit"><span class="mxno">${esc(r.n)}</span>${esc(r.title)}</td>`
                   +r.cells.map(v=>`<td class="mxc s${v==='O'?'o':v==='X'?'x':v==='-'?'n':'r'}">${v}</td>`).join('')
                   +`<td class="mxr">${r.pass}</td><td class="mxr">${r.total}</td><td class="mxr">${r.rate.toFixed(1)}</td></tr>`;});});
               s+=`</tbody><tfoot><tr><td class="mxit"><b>종합 준수율 (잠정)</b></td>`
@@ -611,7 +620,10 @@ public final class ComplianceReportWriter {
                 const MD=mxData(pages, items);
                 MD.groups.forEach(g=>{
                   s+=`<tr><td class="pmxit pmxgrp" colspan="${pages.length+4}">${esc(g.label)}</td></tr>`;
-                  g.rows.forEach(r=>{s+=`<tr><td class="pmxit">${esc(r.n)}. ${esc(r.title)}</td>`
+                  g.rows.forEach(r=>{
+                    if(r.content){s+=`<tr><td class="pmxit">${esc(r.n)}. ${esc(r.title)}</td>`
+                      +`<td class="pmxmerge" colspan="${pages.length}">개별 콘텐츠 선정 후 진단</td><td>-</td><td>-</td><td>-</td></tr>`;return;}
+                    s+=`<tr><td class="pmxit">${esc(r.n)}. ${esc(r.title)}</td>`
                     +r.cells.map(v=>`<td class="c${v==='O'?'o':v==='X'?'x':v==='-'?'n':'r'}">${v}</td>`).join('')
                     +`<td>${r.pass}</td><td>${r.total}</td><td>${r.rate.toFixed(1)}</td></tr>`;});});
                 s+=`</tbody></table><div class="pnote">KWCAG 4원칙 + 웹 호환성 그룹·코드순 · 종합 준수율(잠정) <b>${MD.overall.toFixed(2)}%</b> · O 적합 · X 부적합 · - 해당없음 · △ 수동확인(잠정, 통과 제외)</div></div>`;
