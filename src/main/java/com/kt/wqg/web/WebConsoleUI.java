@@ -297,7 +297,7 @@ final class WebConsoleUI {
             // ── 기준·도구 탭 (정적 참조: 도구 비교 + KWCAG 매핑 + 체크리스트) ──
             async function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
               const {items:realItems}=await api('/api/items');
-              const P={a:'<span class="pill ok">자동</span>',m:'<span class="pill wait">수동</span>',p:'<span class="pill wait">부분</span>',n:'<span class="pill na">—</span>'};
+              const P={a:'<span class="pill ok" title="해당 도구가 자동 검출">자동</span>',m:'<span class="pill wait" title="도구에 항목은 있고 사람이 최종 확인">수동</span>',p:'<span class="pill wait" title="부분 지원(제품 버전·설정에 따라 다름)">부분</span>',n:'<span class="pill na" title="해당 도구 미지원 — 항목 자체가 없음(주로 KWCAG 2.2 신설 항목이거나 웹호환성 등 도구 범위 밖)">—</span>'};
               const intro='<div class="tabintro">세 도구 모두 KWCAG를 보지만 <b>목적·엔진·공신력이 달라 대체가 아니라 보완</b>입니다. '
                 +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 표준 관계·도구 비교·항목 매핑·체크리스트(참조).</div>';
               const std='<div class=grouphd>1. 표준 관계 · WCAG ↔ KWCAG</div>'
@@ -375,7 +375,8 @@ final class WebConsoleUI {
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
                 +'<tr><td style="vertical-align:top">대체텍스트(1.1.1)·표구성(1.3.1)·<b>명도대비(1.4.3)</b>·건너뛰기(2.4.1)·제목(2.4.2)·링크텍스트(2.4.3)·기본언어(3.1.1)·레이블(3.3.2)·마크업오류(4.1.1)·ARIA(4.2.1) + WQG 전용 크로스브라우저·200%확대</td>'
                 +'<td style="vertical-align:top">명확한지시(1.3.3)·색무관인식(1.4.1)·콘텐츠구분(1.4.4)·키보드(2.1.1)·초점표시(2.1.2)·도움정보(3.2.2)·오류정정(3.3.1)·반복입력(3.3.4)·접근가능인증(3.3.3)</td></tr></table>';
-              const note='<div class="cardsteps" style="margin-top:18px">카도와·웹와치의 자동/수동 표기는 <b>근사치</b>(제품 버전·설정에 따라 다름). 실제 대조는 각 도구를 로그인된 브라우저에서 직접 실행. '
+              const note='<div class="cardsteps" style="margin-top:18px">표시: <span class="pill ok">자동</span> 도구가 자동 검출 · <span class="pill wait">수동</span> 항목은 있고 사람이 확인 · <span class="pill wait">부분</span> 부분 지원 · <span class="pill na">—</span> <b>해당 도구 미지원</b>(항목 자체가 없음 — 주로 <b>KWCAG 2.2 신설</b> 항목이거나 웹호환성). '
+                +'예: <code>2.1.3 조작 가능(타깃 크기)</code>는 2.2 신설이라 구버전 기준의 카도와엔 없어 <span class="pill na">—</span>. 카도와·웹와치 표기는 <b>근사치</b>(제품 버전·설정별 상이)로 실제 대조는 각 도구 직접 실행. '
                 +'<b>WQG "적합"이 공식 인증 통과를 보장하지 않습니다</b> — 납품·인증은 카도와(또는 발주처 지정 도구)+전문가 수동평가로 최종 확인.</div>';
               const engInfo='<div class=grouphd style="margin-top:22px">WQG 검사 엔진</div>'
                 +'<table><tr><th style="width:26%">엔진</th><th>무엇을 검사하나</th></tr>'
