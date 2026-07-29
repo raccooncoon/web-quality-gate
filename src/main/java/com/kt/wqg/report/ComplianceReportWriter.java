@@ -205,9 +205,10 @@ public final class ComplianceReportWriter {
             .docinfo .pathlist code{margin:1px 3px 1px 0;display:inline-block}
             .g{font-size:12px;color:var(--muted);padding:0 15px 12px}
             .g div{margin:4px 0}.g b{color:var(--ink);font-weight:700;margin-right:5px}
-            /* 증거 — 규칙 캡션 + 각진 표(대상·요소·위치) */
+            /* 증거 — 규칙별 카드(구분) + 규칙 캡션 + 각진 표(대상·요소·위치) */
+            .evgrp{margin-top:8px;border:1px solid var(--line2);border-radius:6px;padding:8px 10px;background:var(--bg)}
             .evsum{margin-top:7px;font-size:12px;color:var(--ink)}
-            .evcap{margin-top:9px;font-size:11.5px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+            .evcap{margin-top:0;font-size:11.5px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
             .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;border:1px solid var(--line2)}
@@ -526,11 +527,11 @@ public final class ComplianceReportWriter {
                 if(targets.length){targets.forEach(t=>g.rows.push({el:t,loc}));g.hasEl=true;}
                 else g.rows.push({el:desc||'—',loc});});
               let h='';
-              byRule.forEach((g,rule)=>{h+=`<div class="evcap"><span class="evrule">${esc(rule)}</span>${g.hasEl?` 검사 대상 <b>${g.rows.length}</b>건`:''}`
+              byRule.forEach((g,rule)=>{h+=`<div class="evgrp"><div class="evcap"><span class="evrule">${esc(rule)}</span>${g.hasEl?` 검사 대상 <b>${g.rows.length}</b>건`:''}`
                 +`<button type="button" class="evtx" onclick="this.parentNode.nextElementSibling.classList.toggle('wrap')">펼쳐보기</button></div>`
                 +`<div class="evtwrap"><table class="evt"><thead><tr><th class="evno">대상</th><th>요소</th><th class="evloc">위치</th></tr></thead><tbody>`
                 +g.rows.map((r,i)=>`<tr><td class="evno">${i+1}</td><td class="evel" title="${esc(r.el)}">${esc(r.el)}</td><td class="evloc" title="${esc(r.loc)}">${esc(r.loc)}</td></tr>`).join('')
-                +`</tbody></table></div>`;});
+                +`</tbody></table></div></div>`;});
               return h};
             const thead='<thead><tr><th>No</th><th>코드</th><th>검사 항목</th><th>세부 기준</th><th>판정</th><th>근거</th></tr></thead>';
             const itemRows=(list,withId)=>{let s='';list.forEach(it=>{const g=it.guide||{};

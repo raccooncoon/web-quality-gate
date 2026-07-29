@@ -146,8 +146,9 @@ final class WebConsoleUI {
             .linkbtn{background:none;border:none;color:var(--gov);font-size:12px;cursor:pointer;padding:0;font-weight:700}
             .ev{font-size:12px;color:var(--muted);margin:2px 0}
             /* 증거 — 규칙 캡션 + 각진 표(대상·요소·위치) */
+            .evgrp{margin-top:8px;border:1px solid var(--line2);border-radius:6px;padding:8px 10px;background:var(--bg)}
             .evsum{margin-top:7px;font-size:12px;color:var(--fg)}
-            .evcap{margin-top:9px;font-size:11.5px;color:var(--fg);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+            .evcap{margin-top:0;font-size:11.5px;color:var(--fg);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
             .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;border:1px solid var(--line2)}
@@ -259,11 +260,11 @@ final class WebConsoleUI {
                 if(targets.length){targets.forEach(t=>g.rows.push({el:t,loc}));g.hasEl=true;}
                 else g.rows.push({el:desc||'—',loc});});
               let h='';
-              byRule.forEach((g,rule)=>{h+=`<div class="evcap"><span class="evrule">${esc(rule)}</span>${g.hasEl?` 검사 대상 <b>${g.rows.length}</b>건`:''}`
+              byRule.forEach((g,rule)=>{h+=`<div class="evgrp"><div class="evcap"><span class="evrule">${esc(rule)}</span>${g.hasEl?` 검사 대상 <b>${g.rows.length}</b>건`:''}`
                 +`<button type="button" class="evtx" onclick="this.parentNode.nextElementSibling.classList.toggle('wrap')">펼쳐보기</button></div>`
                 +`<div class="evtwrap"><table class="evt"><thead><tr><th class="evno">대상</th><th>요소</th><th class="evloc">위치</th></tr></thead><tbody>`
                 +g.rows.map((r,i)=>`<tr><td class="evno">${i+1}</td><td class="evel" title="${esc(r.el)}">${esc(r.el)}</td><td class="evloc" title="${esc(r.loc)}">${esc(r.loc)}</td></tr>`).join('')
-                +`</tbody></table></div>`;});
+                +`</tbody></table></div></div>`;});
               return h};
             let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');
               clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('show'),1800)}
