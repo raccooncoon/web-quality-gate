@@ -509,7 +509,6 @@ public final class ComplianceReportWriter {
             // 상세 점검 결과 — 두 가지 보기(카테고리별 / KWCAG 항목순) + 상세 전체 열기/닫기
             h+=`<h2>상세 점검 결과</h2>
               <div class="viewbar noprint">
-                <div class="vtabs"><button type="button" class="vtab on" data-v="cat" onclick="setView('cat')">카테고리별</button><button type="button" class="vtab" data-v="kw" onclick="setView('kw')">KWCAG 항목순</button></div>
                 <button type="button" class="detbtn" onclick="toggleAllDetails(this)" data-open="0">상세 전체 열기</button>
               </div>`;
             // 증거 파싱: detail 의 '· 예) A / B' 를 대상 요소 목록으로 분리
@@ -558,10 +557,7 @@ public final class ComplianceReportWriter {
               if(!its.length)return;
               catHtml+=`<h3 class="cathd">${esc(cat.label)}</h3><table class="dt items">${thead}<tbody>`+itemRows(its,true)+'</tbody></table>';
             });
-            // 뷰2: KWCAG 항목순 (1.x→2.x→3.x→4.x→c-*)
-            const kwKey=code=>{const m=String(code).match(/^(\\d+)\\.(\\d+)\\.?(\\d+)?/);return m?[0,+m[1],+m[2],+(m[3]||0),'']:[1,0,0,0,String(code)];};
-            const kwSorted=items.slice().sort((a,b)=>{const x=kwKey(a.code),y=kwKey(b.code);for(let i=0;i<5;i++){if(x[i]<y[i])return -1;if(x[i]>y[i])return 1;}return 0;});
-            h+=`<div id="viewCat">${catHtml}</div><div id="viewKw" style="display:none"><table class="dt items">${thead}<tbody>${itemRows(kwSorted,false)}</tbody></table></div>`;
+            h+=`<div id="viewCat">${catHtml}</div>`;
             // 개선 필요 요약(클릭 → 위 항목표 상세로 이동)
             const detail=items.filter(it=>it.verdict==='부적합'||it.verdict==='수동확인필요')
               .sort((a,b)=>(a.verdict==='부적합'?0:1)-(b.verdict==='부적합'?0:1));
