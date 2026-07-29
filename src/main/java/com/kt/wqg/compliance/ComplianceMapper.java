@@ -56,15 +56,19 @@ public final class ComplianceMapper {
                         .map(v -> new Finding(r.url(), "markup", v.help(), null)))
                 .toList();
 
-        // 규칙별 통과(검사) 요소 수 — 전체(해당없음 판정용) + URL별(적합 근거를 페이지별로 표기)
+        // 규칙별 통과(검사) 요소 — 전체(해당없음 판정용) + URL별 실제 요소(적합 근거를 페이지·요소별로 표기)
         Map<String, Integer> passByRule = new java.util.HashMap<>();
-        Map<String, Map<String, Integer>> passByUrlRule = new LinkedHashMap<>();
+        Map<String, Map<String, CheckResult.Pass>> passByUrlRule = new LinkedHashMap<>();
         results.stream().filter(r -> "accessibility".equals(r.checkType()) && r.passes() != null)
                 .forEach(r -> {
-                    Map<String, Integer> byRule = passByUrlRule.computeIfAbsent(r.url(), k -> new java.util.HashMap<>());
+                    Map<String, CheckResult.Pass> byRule = passByUrlRule.computeIfAbsent(r.url(), k -> new LinkedHashMap<>());
                     r.passes().forEach(p -> {
                         passByRule.merge(p.rule(), p.nodes(), Integer::sum);
-                        byRule.merge(p.rule(), p.nodes(), Integer::sum);
+                        byRule.merge(p.rule(), p, (a, b) -> {
+                            List<String> t = new java.util.ArrayList<>(a.targets());
+                            b.targets().forEach(x -> { if (t.size() < 3 && !t.contains(x)) t.add(x); });
+                            return new CheckResult.Pass(a.rule(), a.nodes() + b.nodes(), t);
+                        });
                     });
                 });
 
@@ -89,9 +93,17 @@ public final class ComplianceMapper {
      * '적합'이 아니라 '해당없음'으로 정정한다 — 검사할 대상 자체가 없었기 때문.
      * 단, 이 실행에 통과 데이터가 전혀 없으면(axe pass 미수집) 판단 불가로 기존 적합을 유지한다.
      */
+    /** 통과 근거 문구: 실제 요소 셀렉터가 있으면 그걸(외 N개), 없으면 개수만. */
+    private static String passDetail(CheckResult.Pass p) {
+        if (p.targets() == null || p.targets().isEmpty())
+            return p.nodes() + "개 요소 검사 · 위반 0 · 통과";
+        int extra = p.nodes() - p.targets().size();
+        return String.join(" / ", p.targets()) + (extra > 0 ? " 외 " + extra + "개" : "") + " · 위반 0 · 통과";
+    }
+
     private static ItemResult withPassEvidence(CatalogItem item, ItemResult res,
                                                Map<String, Integer> passByRule,
-                                               Map<String, Map<String, Integer>> passByUrlRule) {
+                                               Map<String, Map<String, CheckResult.Pass>> passByUrlRule) {
         if (res.verdict() != ItemVerdict.적합 || !res.evidence().isEmpty()) return res;
         List<ItemResult.Evidence> ev = new java.util.ArrayList<>();
         if ("axe".equals(item.resolver().type()) && item.resolver().rules() != null) {
@@ -103,12 +115,11 @@ public final class ComplianceMapper {
                         List.of(new ItemResult.Evidence("전체 화면", rules.get(0),
                                 "검사 대상 요소 없음 · 해당없음")), res.memo());
             }
-            // 페이지(URL)별로 '무엇을 몇 개 검사해 통과인지' — 위치가 화면별로 나오게
-            for (Map.Entry<String, Map<String, Integer>> e : passByUrlRule.entrySet()) {
+            // 페이지(URL)별로 '어떤 요소를 검사해 통과인지' — 위치는 화면별, 요소는 실제 셀렉터
+            for (Map.Entry<String, Map<String, CheckResult.Pass>> e : passByUrlRule.entrySet()) {
                 for (String rule : rules) {
-                    Integer n = e.getValue().get(rule);
-                    if (n != null && n > 0) ev.add(new ItemResult.Evidence(e.getKey(), rule,
-                            n + "개 요소 검사 · 위반 0 · 통과"));
+                    CheckResult.Pass p = e.getValue().get(rule);
+                    if (p != null && p.nodes() > 0) ev.add(new ItemResult.Evidence(e.getKey(), rule, passDetail(p)));
                 }
             }
         } else if ("markup".equals(item.resolver().type())) {

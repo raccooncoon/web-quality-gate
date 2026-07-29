@@ -23,8 +23,10 @@ public record CheckResult(
         Double diffRatio,                   // 호환성: 기준 엔진 대비 픽셀 차이 비율
         List<Pass> passes) {                // 접근성: 통과한 규칙과 검사 요소 수(적합 근거)
 
-    /** 통과 규칙 하나 — 검사해서 정상이었던 요소 수. */
-    public record Pass(String rule, int nodes) {}
+    /** 통과 규칙 하나 — 검사해서 정상이었던 요소 수 + 실제 요소(대상) 샘플 셀렉터. */
+    public record Pass(String rule, int nodes, List<String> targets) {
+        public Pass(String rule, int nodes) { this(rule, nodes, List.of()); }
+    }
 
     /** 스크린샷·diff 가 없는 검사(마크업)용 생성자. */
     public CheckResult(String site, String url, String checkType, String timestamp,

@@ -215,9 +215,9 @@ public final class ComplianceReportWriter {
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
-            .evt .evno{width:38px!important;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evno{width:32px!important;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
             .evt .evel{width:auto!important;font-family:ui-monospace,monospace;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-            .evt .evloc{width:112px!important;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .evt .evloc{width:88px!important;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
             /* '넓게 보기' 누르면 셀 줄바꿈 표시(기본은 …말줄임 + 호버 title) */
             .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;

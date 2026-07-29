@@ -40,7 +40,12 @@ public final class AccessibilityCheck {
     static List<CheckResult.Pass> toPasses(List<Rule> rules) {
         if (rules == null) return List.of();
         return rules.stream()
-                .map(r -> new CheckResult.Pass(r.getId(), r.getNodes() == null ? 0 : r.getNodes().size()))
+                .map(r -> {
+                    List<CheckedNode> nodes = r.getNodes() == null ? List.of() : r.getNodes();
+                    List<String> targets = nodes.stream().limit(3)
+                            .map(n -> targetOf(n.getTarget())).filter(java.util.Objects::nonNull).toList();
+                    return new CheckResult.Pass(r.getId(), nodes.size(), targets);
+                })
                 .filter(p -> p.nodes() > 0)
                 .toList();
     }
