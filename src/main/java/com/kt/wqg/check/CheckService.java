@@ -67,8 +67,7 @@ public final class CheckService {
             Browser chromium = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions().setHeadless(true));
             // storage(세션 재사용) 방식: 저장된 storageState 를 컨텍스트에 로드하고 폼 로그인은 생략
-            boolean useStored = site.auth() != null && site.auth().isStorage()
-                    && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
+            boolean useStored = useStoredSession(site);
             Browser.NewContextOptions ctxOpts = new Browser.NewContextOptions();
             if (useStored) ctxOpts.setStorageStatePath(sessionFile(site.name()));
             try (BrowserContext context = chromium.newContext(ctxOpts)) {
@@ -176,6 +175,13 @@ public final class CheckService {
     /** 저장된 로그인 세션(storageState) 파일 경로. 계정처럼 config/ 로컬에만 두고 git 제외. */
     public static Path sessionFile(String siteName) {
         return Path.of("config", "storage-" + siteName + ".json");
+    }
+
+    /** 저장된 세션을 로드해야 하나? 폼/SSO(실시간 로그인)가 아니고 세션 파일이 있으면 사용. */
+    private static boolean useStoredSession(SitesConfig.Site site) {
+        SitesConfig.Auth a = site.auth();
+        return (a == null || !a.required())
+                && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
     }
 
     /**
@@ -434,9 +440,8 @@ public final class CheckService {
         try (Playwright playwright = Playwright.create()) {
             Browser browser = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions().setHeadless(true));
-            // storage(세션 재사용) 방식이면 저장 세션으로 접속(로그인 벽 통과)
-            boolean useStored = site.auth() != null && site.auth().isStorage()
-                    && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
+            // 세션 파일이 있으면(폼/SSO 아니면) 저장 세션으로 접속(로그인 벽 통과)
+            boolean useStored = useStoredSession(site);
             Browser.NewContextOptions opts = new Browser.NewContextOptions();
             if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
             try (BrowserContext context = browser.newContext(opts)) {
@@ -506,8 +511,7 @@ public final class CheckService {
         try (Playwright pw = Playwright.create()) {
             Browser br = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
             // storage(세션 재사용) 방식이면 저장 세션을 로드해 실제 앱 화면으로 판정
-            boolean useStored = site != null && site.auth() != null && site.auth().isStorage()
-                    && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
+            boolean useStored = site != null && useStoredSession(site);
             Browser.NewContextOptions opts = new Browser.NewContextOptions();
             if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
             try (BrowserContext ctx = br.newContext(opts)) {

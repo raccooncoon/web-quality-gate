@@ -337,8 +337,9 @@ public final class WebConsole {
         CheckService.DetectedType d;
         SitesConfig.Site site = name.isEmpty() ? null : configStore.load().sites().stream()
                 .filter(s -> s.name().equals(name)).findFirst().orElse(null);
+        boolean hasSession = site != null && java.nio.file.Files.isRegularFile(CheckService.sessionFile(site.name()));
         if (site != null && site.baseUrl() != null && !site.baseUrl().contains("TODO")
-                && site.auth() != null && (site.auth().required() || site.auth().isStorage())) {
+                && site.auth() != null && (site.auth().required() || site.auth().isStorage() || hasSession)) {
             d = CheckService.detectType(site, credentials.resolver());
         } else {
             d = CheckService.detectType(baseUrl);

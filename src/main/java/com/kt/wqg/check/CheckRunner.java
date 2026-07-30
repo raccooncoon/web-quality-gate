@@ -247,10 +247,17 @@ public final class CheckRunner {
 
     /** baseUrl과 path의 슬래시 유무에 상관없이 슬래시 하나로 이어붙인다. */
     static String resolveUrl(String baseUrl, String path) {
-        String base = baseUrl.endsWith("/")
-                ? baseUrl.substring(0, baseUrl.length() - 1)
-                : baseUrl;
-        String suffix = path.startsWith("/") ? path : "/" + path;
+        // 절대 경로(/…)는 origin(scheme+host) 기준으로 해석한다 — baseUrl 에 경로(/app 등)가 있어도
+        // 수집된 경로가 이미 origin 기준(/app/w/1/)이므로 중복(/app/app/…)을 막는다.
+        if (path != null && path.startsWith("/")) {
+            try {
+                java.net.URI b = java.net.URI.create(baseUrl);
+                if (b.getScheme() != null && b.getAuthority() != null)
+                    return b.getScheme() + "://" + b.getAuthority() + path;
+            } catch (RuntimeException ignore) { /* 파싱 실패 시 아래 기본 로직 */ }
+        }
+        String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        String suffix = path == null ? "/" : (path.startsWith("/") ? path : "/" + path);
         return base + suffix;
     }
 }

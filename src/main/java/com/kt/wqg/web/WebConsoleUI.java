@@ -462,7 +462,7 @@ final class WebConsoleUI {
                 const setAuthCls=t=>{const b=el.querySelector('.body');
                   b.classList.toggle('auth-form',t==='form'||t==='sso');
                   b.classList.toggle('auth-storage',t==='storage');};
-                setAuthCls(s.authType);
+                setAuthCls((s.authType==='form'||s.authType==='sso')?s.authType:'storage');
                 el.querySelector('[name=authType]').onchange=e=>setAuthCls(e.target.value);
                 el.querySelector('.capsess').onclick=()=>captureSession(s.name,el);
                 el.querySelector('.chksess').onclick=()=>checkSession(s.name,el);
@@ -557,10 +557,10 @@ final class WebConsoleUI {
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
                   <div><label>로그인 방식</label><select name="authType">
-                  <option value="none" ${s.authType!=='form'&&s.authType!=='sso'&&s.authType!=='storage'?'selected':''}>없음</option>
+                  <option value="storage" ${s.authType!=='form'&&s.authType!=='sso'?'selected':''}>세션 재사용 (수동 로그인)</option>
                   <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option>
                   <option value="sso" ${s.authType==='sso'?'selected':''}>SSO (Keycloak/OIDC)</option>
-                  <option value="storage" ${s.authType==='storage'?'selected':''}>세션 재사용 (수동 로그인)</option></select></div></div>
+                  <option value="none">없음</option></select></div></div>
                 <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
                 <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
                 <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
