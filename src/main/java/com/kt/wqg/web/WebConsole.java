@@ -32,12 +32,16 @@ public final class WebConsole {
 
     private final Path configPath;
     private final int port;
+    private final String host;
     private final ConfigStore configStore;
     private final CredentialStore credentials;
     private final ItemExclusionStore exclusions;
     private final JobRunner jobs = new JobRunner();
 
-    public WebConsole(Path configPath, int port) {
+    public WebConsole(Path configPath, int port) { this(configPath, port, "127.0.0.1"); }
+
+    public WebConsole(Path configPath, int port, String host) {
+        this.host = host == null || host.isBlank() ? "127.0.0.1" : host;
         this.configPath = configPath;
         this.port = port;
         this.configStore = new ConfigStore(configPath);
@@ -49,14 +53,18 @@ public final class WebConsole {
     private final LlmConfigStore llmStore;
 
     public void start() throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
+        HttpServer server = HttpServer.create(new InetSocketAddress(host, port), 0);
         server.createContext("/", this::route);
         // 헬스체크(수초 소요)와 상태 폴링이 서로 막지 않도록 소규모 풀 사용
         server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(4));
         server.start();
-        String url = "http://localhost:" + port + "/";
+        boolean localOnly = host.equals("127.0.0.1") || host.equalsIgnoreCase("localhost");
+        String url = "http://" + (localOnly ? "localhost" : host) + ":" + port + "/";
         System.out.println("웹 콘솔 시작: " + url + "  (종료: Ctrl+C)");
-        openBrowser(url);
+        if (!localOnly)
+            System.out.println("  ⚠ 외부 접근 허용(host=" + host + ") — 폐쇄망 내부에서만 노출하세요. "
+                    + "다른 PC에서 세션 전송 시 이 주소를 '서버 콘솔 주소'로 입력합니다.");
+        if (localOnly) openBrowser(url);
     }
 
     private void route(HttpExchange ex) throws IOException {
@@ -84,6 +92,8 @@ public final class WebConsole {
             if (path.startsWith("/api/health/")) { health(ex, path.substring("/api/health/".length())); return; }
             if (path.startsWith("/api/capture-session/")) { captureSession(ex, path.substring("/api/capture-session/".length())); return; }
             if (path.startsWith("/api/session-check/")) { sessionCheck(ex, path.substring("/api/session-check/".length())); return; }
+            if (path.startsWith("/api/session-push/")) { sessionPush(ex, path.substring("/api/session-push/".length())); return; }
+            if (path.startsWith("/api/session-import/")) { sessionImport(ex, path.substring("/api/session-import/".length())); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
             if (path.equals("/api/assessment")) { assessment(ex); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
@@ -451,6 +461,58 @@ public final class WebConsole {
         JsonNode b = JSON.readTree(ex.getRequestBody());
         CheckService.SessionStatus st = CheckService.checkSession(effectiveSite(name, b));
         sendJson(ex, Map.of("valid", st.valid(), "detail", st.detail()));
+    }
+
+    /** (GUI PC) 이 PC에 저장된 세션을 서버 콘솔로 전송 — body {serverUrl}. 서버의 /api/session-import 로 POST. */
+    private void sessionPush(HttpExchange ex, String name) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        String serverUrl = b.path("serverUrl").asText("").trim();
+        if (serverUrl.isEmpty()) { sendJson(ex, Map.of("ok", false, "detail", "서버 콘솔 주소를 입력하세요(예: http://10.0.0.5:8091)")); return; }
+        if (!serverUrl.matches("(?i)https?://.+")) serverUrl = "http://" + serverUrl;
+        java.nio.file.Path file = CheckService.sessionFile(name);
+        if (!Files.isRegularFile(file)) {
+            sendJson(ex, Map.of("ok", false, "detail", "이 PC에 저장된 세션이 없습니다 — 먼저 [① 세션 로그인(수동)]으로 캡처하세요.")); return;
+        }
+        String base = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
+        String target = base + "/api/session-import/" + name;
+        try {
+            byte[] payload = Files.readAllBytes(file);
+            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
+                    .connectTimeout(java.time.Duration.ofSeconds(5)).build();
+            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create(target)).timeout(java.time.Duration.ofSeconds(15))
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(payload)).build();
+            java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() != 200) {
+                sendJson(ex, Map.of("ok", false, "detail",
+                        "서버 응답 오류 HTTP " + resp.statusCode() + " — 주소·포트와 서버가 host 0.0.0.0(또는 LAN IP)로 기동됐는지 확인하세요.")); return;
+            }
+            String detail = "서버로 전송 완료 (" + base + ") — 이제 서버에서 검사를 실행하면 이 세션을 재사용합니다.";
+            try { JsonNode r = JSON.readTree(resp.body());
+                if (!r.path("ok").asBoolean(true)) { sendJson(ex, Map.of("ok", false, "detail", "서버 거부: " + r.path("detail").asText(""))); return; }
+            } catch (RuntimeException ignore) { /* 서버 응답 파싱 실패는 200 이면 성공으로 간주 */ }
+            sendJson(ex, Map.of("ok", true, "detail", detail));
+        } catch (java.io.IOException | InterruptedException e) {
+            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+            sendJson(ex, Map.of("ok", false, "detail",
+                    "전송 실패: " + e.getMessage() + " — 서버 콘솔이 해당 주소로 접근 가능한지(방화벽·host 바인딩) 확인하세요."));
+        }
+    }
+
+    /** (서버) 다른 PC가 전송한 세션(storageState JSON)을 config/storage-&lt;name&gt;.json 으로 저장. */
+    private void sessionImport(HttpExchange ex, String name) throws IOException {
+        if (!name.matches("[A-Za-z0-9_-]+")) { sendJson(ex, Map.of("ok", false, "detail", "잘못된 시스템명")); return; }
+        byte[] body = ex.getRequestBody().readAllBytes();
+        JsonNode node;
+        try { node = JSON.readTree(body); } catch (RuntimeException | java.io.IOException e) {
+            sendJson(ex, Map.of("ok", false, "detail", "JSON 파싱 실패")); return; }
+        if (node == null || !node.isObject() || (!node.has("cookies") && !node.has("origins"))) {
+            sendJson(ex, Map.of("ok", false, "detail", "storageState 형식이 아닙니다(cookies/origins 없음)")); return; }
+        java.nio.file.Path file = CheckService.sessionFile(name);
+        Files.createDirectories(file.getParent());
+        Files.write(file, body);
+        sendJson(ex, Map.of("ok", true, "detail", "세션 저장됨: " + file.getFileName()));
     }
 
     private void health(HttpExchange ex, String name) throws IOException {

@@ -98,6 +98,10 @@ final class WebConsoleUI {
             .pathbtns button{margin-top:0}
             .shotstatus{margin-top:7px}
             .shotstatus:empty{margin-top:0}
+            /* 세션 서버 전송 행 */
+            .pushrow{display:flex;gap:7px;margin-top:7px}
+            .pushrow .srvurl{font-family:ui-monospace,monospace;font-size:12px}
+            .pushrow button{margin-top:0;white-space:nowrap}
             .pathadd{display:flex;gap:7px;margin-top:7px}
             .pathadd input{font-family:ui-monospace,monospace;font-size:12px}
             .pathadd button{margin-top:0;white-space:nowrap}
@@ -487,6 +491,8 @@ final class WebConsoleUI {
                 el.querySelector('[name=authType]').onchange=e=>setAuthCls(e.target.value);
                 el.querySelector('.capsess').onclick=()=>captureSession(s.name,el);
                 el.querySelector('.chksess').onclick=()=>checkSession(s.name,el);
+                {const su=el.querySelector('.srvurl');if(su){su.value=localStorage.getItem('wqg-srvurl')||'';
+                  el.querySelector('.pushsess').onclick=()=>pushSession(s.name,el);}}
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
@@ -591,9 +597,13 @@ final class WebConsoleUI {
                   <div class="cardsteps"><b>세션 재사용</b> — OASIS SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
                     한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
                     baseUrl 을 채운 뒤 <b>① 세션 로그인(수동)</b> → 열리는 브라우저에서 로그인 완료 → 자동 저장,
-                    이후 <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.</div>
+                    이후 <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.
+                    <br>화면이 없는 <b>서버에서 검사</b>한다면, GUI가 있는 이 PC에서 로그인한 뒤 <b>③ 서버로 전송</b>으로 세션만 서버 콘솔에 보내면 됩니다(파일 복사 불필요).</div>
                   <div class="actbar"><button class="act ghost capsess">① 세션 로그인(수동)</button>
                     <button class="act ghost chksess">② 세션 유효성 확인</button></div>
+                  <div class="pushrow"><input class="srvurl" placeholder="서버 콘솔 주소 (예: http://10.0.0.5:8091)">
+                    <button class="act ghost pushsess" type="button">③ 서버로 전송 ▶</button></div>
+                  <div class="hint">서버 콘솔은 <code>serve 8091 0.0.0.0</code>(또는 LAN IP)로 기동해야 이 PC에서 전송할 수 있습니다.</div>
                   <div class="sessbox" id="sess-${s.name}">${s.hasSession?'<div class="hbox ok">저장된 세션이 있습니다 — [세션 유효성 확인]으로 점검하세요.</div>':'<div class=st>저장된 세션이 없습니다. [세션 로그인]으로 저장하세요.</div>'}</div>
                 </div>
                 <div class="auth-only">
@@ -689,6 +699,14 @@ final class WebConsoleUI {
               box.innerHTML=busy('세션 확인 중…','저장 세션으로 보호 페이지 접근 점검');
               let r;try{r=await api('/api/session-check/'+name,'POST',{baseUrl:base})}catch(e){r={valid:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.valid?'ok':'no'}">${r.valid?'✓ 유효':'✗ 무효/만료'} — ${esc(r.detail||'')}${r.valid?'':'<div class=hint>[세션 로그인(수동)]으로 다시 저장하세요.</div>'}</div>`}
+            // (GUI PC) 이 PC에 저장된 세션을 서버 콘솔로 전송 — 파일 복사 없이 원클릭
+            async function pushSession(name,el){const box=el.querySelector('.sessbox');
+              const su=el.querySelector('.srvurl');const url=su.value.trim();
+              if(!url){toast('서버 콘솔 주소를 입력하세요');su.focus();return}
+              localStorage.setItem('wqg-srvurl',url);
+              box.innerHTML=busy('서버로 전송 중…','이 PC의 세션을 서버 콘솔로 보냅니다');
+              let r;try{r=await api('/api/session-push/'+name,'POST',{serverUrl:url})}catch(e){r={ok:false,detail:String(e)}}
+              box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${esc(r.detail||'')}</div>`}
             // 검사 경로 화면 미리보기 — 각 경로를 실제로 열어 스크린샷을 찍고, 해당 경로 행 아래에 붙인다
             function setRowShot(el,idx,url){const rows=[...el.querySelectorAll('.pathlist .pathrow')];
               const row=rows[idx];if(!row)return;

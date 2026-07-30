@@ -12,7 +12,9 @@ import java.util.List;
  * web-quality-gate 진입점.
  *
  * 실행:
- *   java -jar web-quality-gate.jar serve [포트]           웹 콘솔 기동 (설정·실행·결과)
+ *   java -jar web-quality-gate.jar serve [포트] [호스트]    웹 콘솔 기동 (설정·실행·결과)
+ *      호스트 생략 시 127.0.0.1(로컬 전용). 0.0.0.0 또는 LAN IP 지정 시 다른 PC에서 접근 가능
+ *      (GUI PC → 서버 세션 전송용). 폐쇄망 내부에서만 노출하세요.
  *   java -jar web-quality-gate.jar [sites.yaml] [시스템명]  CLI 검사 (시스템명 없으면 전체)
  *
  * 필수 환경변수: PLAYWRIGHT_BROWSERS_PATH (반입한 브라우저 번들 경로).
@@ -23,7 +25,8 @@ public class Main {
     public static void main(String[] args) throws Exception {
         if (args.length > 0 && args[0].equals("serve")) {
             int port = args.length > 1 ? Integer.parseInt(args[1]) : 8080;
-            new WebConsole(Path.of("config/sites.yaml"), port).start();
+            String host = args.length > 2 ? args[2] : "127.0.0.1";
+            new WebConsole(Path.of("config/sites.yaml"), port, host).start();
             return;
         }
 
