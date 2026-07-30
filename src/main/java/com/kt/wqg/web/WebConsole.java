@@ -94,8 +94,6 @@ public final class WebConsole {
             if (path.startsWith("/api/health/")) { health(ex, path.substring("/api/health/".length())); return; }
             if (path.startsWith("/api/capture-session/")) { captureSession(ex, path.substring("/api/capture-session/".length())); return; }
             if (path.startsWith("/api/session-check/")) { sessionCheck(ex, path.substring("/api/session-check/".length())); return; }
-            if (path.startsWith("/api/session-push/")) { sessionPush(ex, path.substring("/api/session-push/".length())); return; }
-            if (path.startsWith("/api/session-import/")) { sessionImport(ex, path.substring("/api/session-import/".length())); return; }
             if (path.startsWith("/api/rlogin/start/")) { rloginStart(ex, path.substring("/api/rlogin/start/".length())); return; }
             if (path.startsWith("/api/rlogin/frame/")) { rloginFrame(ex, path.substring("/api/rlogin/frame/".length())); return; }
             if (path.startsWith("/api/rlogin/input/")) { rloginInput(ex, path.substring("/api/rlogin/input/".length())); return; }
@@ -468,58 +466,6 @@ public final class WebConsole {
         JsonNode b = JSON.readTree(ex.getRequestBody());
         CheckService.SessionStatus st = CheckService.checkSession(effectiveSite(name, b));
         sendJson(ex, Map.of("valid", st.valid(), "detail", st.detail()));
-    }
-
-    /** (GUI PC) 이 PC에 저장된 세션을 서버 콘솔로 전송 — body {serverUrl}. 서버의 /api/session-import 로 POST. */
-    private void sessionPush(HttpExchange ex, String name) throws IOException {
-        JsonNode b = JSON.readTree(ex.getRequestBody());
-        String serverUrl = b.path("serverUrl").asText("").trim();
-        if (serverUrl.isEmpty()) { sendJson(ex, Map.of("ok", false, "detail", "서버 콘솔 주소를 입력하세요(예: http://10.0.0.5:8091)")); return; }
-        if (!serverUrl.matches("(?i)https?://.+")) serverUrl = "http://" + serverUrl;
-        java.nio.file.Path file = CheckService.sessionFile(name);
-        if (!Files.isRegularFile(file)) {
-            sendJson(ex, Map.of("ok", false, "detail", "이 PC에 저장된 세션이 없습니다 — 먼저 [① 세션 로그인(수동)]으로 캡처하세요.")); return;
-        }
-        String base = serverUrl.endsWith("/") ? serverUrl.substring(0, serverUrl.length() - 1) : serverUrl;
-        String target = base + "/api/session-import/" + name;
-        try {
-            byte[] payload = Files.readAllBytes(file);
-            java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
-                    .connectTimeout(java.time.Duration.ofSeconds(5)).build();
-            java.net.http.HttpRequest req = java.net.http.HttpRequest.newBuilder()
-                    .uri(java.net.URI.create(target)).timeout(java.time.Duration.ofSeconds(15))
-                    .header("Content-Type", "application/json")
-                    .POST(java.net.http.HttpRequest.BodyPublishers.ofByteArray(payload)).build();
-            java.net.http.HttpResponse<String> resp = client.send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
-            if (resp.statusCode() != 200) {
-                sendJson(ex, Map.of("ok", false, "detail",
-                        "서버 응답 오류 HTTP " + resp.statusCode() + " — 주소·포트와 서버가 host 0.0.0.0(또는 LAN IP)로 기동됐는지 확인하세요.")); return;
-            }
-            String detail = "서버로 전송 완료 (" + base + ") — 이제 서버에서 검사를 실행하면 이 세션을 재사용합니다.";
-            try { JsonNode r = JSON.readTree(resp.body());
-                if (!r.path("ok").asBoolean(true)) { sendJson(ex, Map.of("ok", false, "detail", "서버 거부: " + r.path("detail").asText(""))); return; }
-            } catch (RuntimeException ignore) { /* 서버 응답 파싱 실패는 200 이면 성공으로 간주 */ }
-            sendJson(ex, Map.of("ok", true, "detail", detail));
-        } catch (java.io.IOException | InterruptedException e) {
-            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
-            sendJson(ex, Map.of("ok", false, "detail",
-                    "전송 실패: " + e.getMessage() + " — 서버 콘솔이 해당 주소로 접근 가능한지(방화벽·host 바인딩) 확인하세요."));
-        }
-    }
-
-    /** (서버) 다른 PC가 전송한 세션(storageState JSON)을 config/storage-&lt;name&gt;.json 으로 저장. */
-    private void sessionImport(HttpExchange ex, String name) throws IOException {
-        if (!name.matches("[A-Za-z0-9_-]+")) { sendJson(ex, Map.of("ok", false, "detail", "잘못된 시스템명")); return; }
-        byte[] body = ex.getRequestBody().readAllBytes();
-        JsonNode node;
-        try { node = JSON.readTree(body); } catch (RuntimeException | java.io.IOException e) {
-            sendJson(ex, Map.of("ok", false, "detail", "JSON 파싱 실패")); return; }
-        if (node == null || !node.isObject() || (!node.has("cookies") && !node.has("origins"))) {
-            sendJson(ex, Map.of("ok", false, "detail", "storageState 형식이 아닙니다(cookies/origins 없음)")); return; }
-        java.nio.file.Path file = CheckService.sessionFile(name);
-        Files.createDirectories(file.getParent());
-        Files.write(file, body);
-        sendJson(ex, Map.of("ok", true, "detail", "세션 저장됨: " + file.getFileName()));
     }
 
     // ── 콘솔 내 원격 로그인(화면 없는 서버용) ──────────────────────────────────

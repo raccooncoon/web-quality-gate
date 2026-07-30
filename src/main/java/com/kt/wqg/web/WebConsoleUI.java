@@ -98,10 +98,11 @@ final class WebConsoleUI {
             .pathbtns button{margin-top:0}
             .shotstatus{margin-top:7px}
             .shotstatus:empty{margin-top:0}
-            /* 세션 서버 전송 행 */
-            .pushrow{display:flex;gap:7px;margin-top:7px}
-            .pushrow .srvurl{font-family:ui-monospace,monospace;font-size:12px}
-            .pushrow button{margin-top:0;white-space:nowrap}
+            /* 원격 로그인 폴백(접기) */
+            .rlfallback{margin-top:9px;border-top:1px dashed var(--line2);padding-top:8px}
+            .rlfallback summary{cursor:pointer;font-size:12px;color:var(--muted)}
+            .rlfallback button{margin-top:7px}
+            .rlpaste{width:auto;font-size:12px;padding:6px 9px}
             .pathadd{display:flex;gap:7px;margin-top:7px}
             .pathadd input{font-family:ui-monospace,monospace;font-size:12px}
             .pathadd button{margin-top:0;white-space:nowrap}
@@ -502,8 +503,6 @@ final class WebConsoleUI {
                 el.querySelector('.capsess').onclick=()=>captureSession(s.name,el);
                 el.querySelector('.chksess').onclick=()=>checkSession(s.name,el);
                 {const rb=el.querySelector('.rlogin');if(rb)rb.onclick=()=>remoteLogin(s.name,el);}
-                {const su=el.querySelector('.srvurl');if(su){su.value=localStorage.getItem('wqg-srvurl')||'';
-                  el.querySelector('.pushsess').onclick=()=>pushSession(s.name,el);}}
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
@@ -606,19 +605,17 @@ final class WebConsoleUI {
                 <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="storage-only">
                   <div class="cardsteps"><b>세션 재사용</b> — OASIS SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
-                    <b>전용 브라우저</b>에서 한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
-                    baseUrl 을 채운 뒤 <b>① 세션 로그인(수동)</b> → 열리는 브라우저에서 로그인 완료 → 자동 저장.
-                    <br>이 창은 <b>로그인을 기억</b>하므로 <u>최초 1회만 로그인</u>하면 이후엔 재로그인 없이 바로 저장됩니다.
-                    <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션·프로필은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.
-                    <br>화면이 없는 <b>서버에서 검사</b>한다면, GUI가 있는 이 PC에서 로그인한 뒤 <b>③ 서버로 전송</b>으로 세션만 서버 콘솔에 보내면 됩니다(파일 복사 불필요).</div>
-                  <div class="actbar"><button class="act rlogin">🖥️ 콘솔에서 로그인(원격)</button>
-                    <button class="act ghost capsess">① 세션 로그인(수동·이 PC)</button>
+                    한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
+                    baseUrl 을 채운 뒤 <b>① 세션 로그인</b> → 열리는 <b>전용 브라우저</b>에서 로그인 완료 → 자동 저장.
+                    이 창은 <b>로그인을 기억</b>하므로 <u>최초 1회만</u> 로그인하면 됩니다.
+                    이후 <b>② 세션 유효성 확인</b>으로 점검하세요. 세션·프로필은 이 PC 로컬에만 저장됩니다.</div>
+                  <div class="actbar"><button class="act capsess">① 세션 로그인</button>
                     <button class="act ghost chksess">② 세션 유효성 확인</button></div>
-                  <div class="hint"><b>콘솔에서 로그인(원격)</b> — 화면이 없는 <b>서버</b>에서도 이 콘솔 안에서 바로 로그인합니다(서버가 브라우저를 대신 띄우고 화면을 여기로 보여줌). <b>수동·이 PC</b>는 이 콘솔이 실행 중인 PC에 창을 띄우는 방식입니다.</div>
-                  <div class="pushrow"><input class="srvurl" placeholder="서버 콘솔 주소 (예: http://10.0.0.5:8091)">
-                    <button class="act ghost pushsess" type="button">③ 서버로 전송 ▶</button></div>
-                  <div class="hint">서버 콘솔은 <code>serve 8091 0.0.0.0</code>(또는 LAN IP)로 기동해야 이 PC에서 전송할 수 있습니다.</div>
                   <div class="sessbox" id="sess-${s.name}">${s.hasSession?'<div class="hbox ok">저장된 세션이 있습니다 — [세션 유효성 확인]으로 점검하세요.</div>':'<div class=st>저장된 세션이 없습니다. [세션 로그인]으로 저장하세요.</div>'}</div>
+                  <details class="rlfallback"><summary>브라우저 창이 안 뜨나요? (화면 없는 서버에서 실행 중일 때)</summary>
+                    <div class="hint">이 콘솔이 <b>화면 없는 서버</b>에서 돌고 있으면 <b>① 세션 로그인</b>은 창을 못 띄웁니다.
+                      그럴 때만 아래 <b>원격 로그인</b>을 쓰세요 — 서버가 브라우저를 대신 띄우고 그 화면을 이 콘솔 안에 보여줍니다.</div>
+                    <button class="act ghost rlogin">🖥️ 콘솔에서 로그인(원격)</button></details>
                 </div>
                 <div class="auth-only">
                   <div class="row3"><div><label>로그인 경로</label><input name="loginPath" value="${esc(s.loginPath||'/login')}"></div>
@@ -713,14 +710,6 @@ final class WebConsoleUI {
               box.innerHTML=busy('세션 확인 중…','저장 세션으로 보호 페이지 접근 점검');
               let r;try{r=await api('/api/session-check/'+name,'POST',{baseUrl:base})}catch(e){r={valid:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.valid?'ok':'no'}">${r.valid?'✓ 유효':'✗ 무효/만료'} — ${esc(r.detail||'')}${r.valid?'':'<div class=hint>[세션 로그인(수동)]으로 다시 저장하세요.</div>'}</div>`}
-            // (GUI PC) 이 PC에 저장된 세션을 서버 콘솔로 전송 — 파일 복사 없이 원클릭
-            async function pushSession(name,el){const box=el.querySelector('.sessbox');
-              const su=el.querySelector('.srvurl');const url=su.value.trim();
-              if(!url){toast('서버 콘솔 주소를 입력하세요');su.focus();return}
-              localStorage.setItem('wqg-srvurl',url);
-              box.innerHTML=busy('서버로 전송 중…','이 PC의 세션을 서버 콘솔로 보냅니다');
-              let r;try{r=await api('/api/session-push/'+name,'POST',{serverUrl:url})}catch(e){r={ok:false,detail:String(e)}}
-              box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${esc(r.detail||'')}</div>`}
             // ── 콘솔 내 원격 로그인 — 서버 headless 브라우저 화면을 스트리밍 + 클릭/키 전달 ──
             let rl={name:null,w:0,h:0,timer:null};
             async function remoteLogin(name,el){const box=el.querySelector('.sessbox');
@@ -737,17 +726,30 @@ final class WebConsoleUI {
               if(!ov){ov=document.createElement('div');ov.id='rlov';document.body.appendChild(ov)}
               ov.innerHTML=`<div class="rlpanel"><div class="rlbar">
                   <b>🖥️ 원격 로그인</b><span class=st>화면을 클릭·입력해 로그인한 뒤 저장하세요</span><span class=grow></span>
+                  <input class="rlpaste" type="password" placeholder="붙여넣기 후 [입력] — 화면에서 필드 먼저 클릭">
+                  <button class="act ghost" onclick="remotePaste()">붙여넣기 입력</button>
                   <button class="act" onclick="remoteDone()">✓ 로그인 완료·저장</button>
                   <button class="act ghost" onclick="remoteRefresh()">↻ 새로고침</button>
                   <button class="act ghost" onclick="remoteCancel()">✕ 닫기</button></div>
                 <div class="rlwrap"><img id="rlimg" class="rlimg" tabindex="0" draggable="false" alt="원격 화면"></div>
-                <div class="rlhint">클릭으로 입력 필드를 고른 뒤 타이핑하세요. Enter·Tab·Backspace·방향키 지원. 입력(비밀번호 포함)은 HTTPS로 서버를 거칩니다.</div></div>`;
+                <div class="rlhint">클릭으로 입력 필드를 고른 뒤 타이핑하세요. <b>붙여넣기</b>는 필드 클릭 후 Ctrl/⌘+V, 또는 위 칸에 붙여넣고 <b>[붙여넣기 입력]</b>. Enter·Tab·Backspace·방향키 지원. 입력(비밀번호 포함)은 HTTPS로 서버를 거칩니다.</div></div>`;
               ov.style.display='flex';
               const img=document.getElementById('rlimg');
               img.onmousedown=e=>{e.preventDefault();img.focus();rlSend('click',rlX(e,img),rlY(e,img))};
               img.ondblclick=e=>{e.preventDefault();rlSend('dblclick',rlX(e,img),rlY(e,img))};
               img.onwheel=e=>{e.preventDefault();rlSend('scroll',0,e.deltaY)};
-              img.onkeydown=rlKey;img.focus();startFrames()}
+              img.onkeydown=rlKey;
+              document.addEventListener('paste',rlPaste);   // 화면 포커스 상태에서 ⌘/Ctrl+V 붙여넣기 전달
+              img.focus();startFrames()}
+            // 클립보드 붙여넣기(⌘/Ctrl+V) → 원격 브라우저의 포커스된 필드에 그대로 입력
+            function rlPaste(e){if(!rl.name)return;
+              const t=(e.clipboardData||window.clipboardData).getData('text');
+              if(t){e.preventDefault();rlSend('text',0,0,t,'')}}
+            // 툴바 붙여넣기 칸 → [붙여넣기 입력] (⌘+V 가 막힌 환경용 확실한 대안)
+            function remotePaste(){const box=document.querySelector('#rlov .rlpaste');if(!box)return;
+              const v=box.value;if(!v){toast('붙여넣기 칸에 먼저 붙여넣으세요');box.focus();return}
+              rlSend('text',0,0,v,'');box.value='';
+              const img=document.getElementById('rlimg');if(img)img.focus();toast('입력 전송됨')}
             function rlX(e,img){const r=img.getBoundingClientRect();return (e.clientX-r.left)/r.width*rl.w}
             function rlY(e,img){const r=img.getBoundingClientRect();return (e.clientY-r.top)/r.height*rl.h}
             function frameUrl(){return '/api/rlogin/frame/'+encodeURIComponent(rl.name)+'?t='+Date.now()}
@@ -756,7 +758,10 @@ final class WebConsoleUI {
             function stopFrames(){if(rl.timer){clearInterval(rl.timer);rl.timer=null}}
             function remoteRefresh(){const img=document.getElementById('rlimg');if(img)img.src=frameUrl()}
             async function rlSend(type,x,y,text,key){try{await api('/api/rlogin/input/'+encodeURIComponent(rl.name),'POST',{type,x,y,text,key})}catch(e){}}
-            function rlKey(e){e.preventDefault();const k=e.key;
+            function rlKey(e){
+              // ⌘/Ctrl/Alt 조합(붙여넣기·전체선택 등)은 브라우저 기본 동작에 맡겨 paste 이벤트가 뜨게 한다
+              if(e.metaKey||e.ctrlKey||e.altKey)return;
+              e.preventDefault();const k=e.key;
               if(k.length===1){rlSend('text',0,0,k,'')}
               else{const M={Enter:'Enter',Backspace:'Backspace',Tab:'Tab',Delete:'Delete',Escape:'Escape',
                 ArrowUp:'ArrowUp',ArrowDown:'ArrowDown',ArrowLeft:'ArrowLeft',ArrowRight:'ArrowRight',Home:'Home',End:'End'};
@@ -767,7 +772,8 @@ final class WebConsoleUI {
               if(el){const box=el.querySelector('.sessbox');if(box)box.innerHTML='<div class="hbox '+(r.ok?'ok':'no')+'">'+(r.ok?'✓ ':'✗ ')+esc(r.detail||'')+'</div>'}
               if(r.ok)toast('세션 저장됨')}
             async function remoteCancel(){stopFrames();const name=rl.name;try{await api('/api/rlogin/cancel/'+encodeURIComponent(name),'POST',{})}catch(e){}closeRemote()}
-            function closeRemote(){stopFrames();const ov=document.getElementById('rlov');if(ov)ov.style.display='none';rl.name=null}
+            function closeRemote(){stopFrames();document.removeEventListener('paste',rlPaste);
+              const ov=document.getElementById('rlov');if(ov)ov.style.display='none';rl.name=null}
             // 검사 경로 화면 미리보기 — 각 경로를 실제로 열어 스크린샷을 찍고, 해당 경로 행 아래에 붙인다
             function setRowShot(el,idx,url){const rows=[...el.querySelectorAll('.pathlist .pathrow')];
               const row=rows[idx];if(!row)return;
