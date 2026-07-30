@@ -3,6 +3,7 @@ package com.kt.wqg.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kt.wqg.check.CheckService;
+import com.kt.wqg.check.RemoteLoginService;
 import com.kt.wqg.compliance.AssessmentView;
 import com.kt.wqg.compliance.KwcagCatalog;
 import com.kt.wqg.config.SitesConfig;
@@ -37,6 +38,7 @@ public final class WebConsole {
     private final CredentialStore credentials;
     private final ItemExclusionStore exclusions;
     private final JobRunner jobs = new JobRunner();
+    private final RemoteLoginService rlogin = new RemoteLoginService();
 
     public WebConsole(Path configPath, int port) { this(configPath, port, "127.0.0.1"); }
 
@@ -94,6 +96,11 @@ public final class WebConsole {
             if (path.startsWith("/api/session-check/")) { sessionCheck(ex, path.substring("/api/session-check/".length())); return; }
             if (path.startsWith("/api/session-push/")) { sessionPush(ex, path.substring("/api/session-push/".length())); return; }
             if (path.startsWith("/api/session-import/")) { sessionImport(ex, path.substring("/api/session-import/".length())); return; }
+            if (path.startsWith("/api/rlogin/start/")) { rloginStart(ex, path.substring("/api/rlogin/start/".length())); return; }
+            if (path.startsWith("/api/rlogin/frame/")) { rloginFrame(ex, path.substring("/api/rlogin/frame/".length())); return; }
+            if (path.startsWith("/api/rlogin/input/")) { rloginInput(ex, path.substring("/api/rlogin/input/".length())); return; }
+            if (path.startsWith("/api/rlogin/done/")) { rloginDone(ex, path.substring("/api/rlogin/done/".length())); return; }
+            if (path.startsWith("/api/rlogin/cancel/")) { rloginCancel(ex, path.substring("/api/rlogin/cancel/".length())); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
             if (path.equals("/api/assessment")) { assessment(ex); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
@@ -513,6 +520,57 @@ public final class WebConsole {
         Files.createDirectories(file.getParent());
         Files.write(file, body);
         sendJson(ex, Map.of("ok", true, "detail", "세션 저장됨: " + file.getFileName()));
+    }
+
+    // ── 콘솔 내 원격 로그인(화면 없는 서버용) ──────────────────────────────────
+    /** headless 브라우저를 띄워 로그인 페이지로 이동 — 화면은 /api/rlogin/frame 로 스트리밍. */
+    private void rloginStart(HttpExchange ex, String name) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        try {
+            RemoteLoginService.Started st = rlogin.start(effectiveSite(name, b));
+            sendJson(ex, Map.of("ok", true, "w", st.w(), "h", st.h()));
+        } catch (RuntimeException e) {
+            sendJson(ex, Map.of("ok", false, "detail", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 현재 원격 브라우저 화면(PNG). */
+    private void rloginFrame(HttpExchange ex, String name) throws IOException {
+        try {
+            byte[] png = rlogin.frame(name);
+            send(ex, 200, "image/png", png);
+        } catch (RuntimeException e) {
+            send(ex, 410, "text/plain; charset=utf-8",
+                    String.valueOf(e.getMessage()).getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /** 클릭·키 입력 전달. body {type,x,y,text,key}. */
+    private void rloginInput(HttpExchange ex, String name) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        try {
+            rlogin.input(name, b.path("type").asText(""), b.path("x").asDouble(0), b.path("y").asDouble(0),
+                    b.path("text").asText(""), b.path("key").asText(""));
+            sendJson(ex, Map.of("ok", true));
+        } catch (RuntimeException e) {
+            sendJson(ex, Map.of("ok", false, "detail", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 로그인 완료 — storageState 저장 후 세션 종료. */
+    private void rloginDone(HttpExchange ex, String name) throws IOException {
+        try {
+            java.nio.file.Path f = rlogin.done(name);
+            sendJson(ex, Map.of("ok", true, "detail", "로그인 세션 저장됨: " + f.getFileName() + " — 이제 검사에 재사용합니다."));
+        } catch (RuntimeException e) {
+            sendJson(ex, Map.of("ok", false, "detail", String.valueOf(e.getMessage())));
+        }
+    }
+
+    /** 저장 없이 원격 로그인 종료. */
+    private void rloginCancel(HttpExchange ex, String name) throws IOException {
+        rlogin.cancel(name);
+        sendJson(ex, Map.of("ok", true));
     }
 
     private void health(HttpExchange ex, String name) throws IOException {

@@ -244,6 +244,16 @@ final class WebConsoleUI {
             .aithumb:hover{box-shadow:0 2px 8px rgba(20,40,80,.18);border-color:var(--gov)}
             #lbov{position:fixed;inset:0;background:rgba(10,20,40,.82);display:none;align-items:center;justify-content:center;z-index:9999;cursor:zoom-out;padding:24px}
             #lbov img{max-width:96vw;max-height:94vh;box-shadow:0 8px 40px rgba(0,0,0,.5);border-radius:6px;background:#fff}
+            /* 원격 로그인 오버레이 */
+            #rlov{position:fixed;inset:0;background:rgba(10,20,40,.86);display:none;align-items:center;justify-content:center;z-index:10000;padding:18px}
+            .rlpanel{display:flex;flex-direction:column;max-width:96vw;max-height:96vh;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 12px 48px rgba(0,0,0,.55)}
+            .rlbar{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--govsoft);border-bottom:1px solid var(--line2)}
+            .rlbar .grow{flex:1}
+            .rlbar button{margin-top:0}
+            .rlwrap{overflow:auto;background:#0b1424;display:flex;align-items:flex-start;justify-content:center}
+            .rlimg{display:block;max-width:92vw;height:auto;cursor:crosshair;outline:none}
+            .rlimg:focus{box-shadow:inset 0 0 0 2px var(--gov)}
+            .rlhint{padding:8px 14px;font-size:11.5px;color:var(--muted);background:var(--card);border-top:1px solid var(--line)}
             .sparkle{background:linear-gradient(135deg,#4285f4,#9b72cb,#d96570);-webkit-background-clip:text;background-clip:text;
               -webkit-text-fill-color:transparent;color:transparent;font-weight:800;animation:spk 2.4s ease-in-out infinite;display:inline-block}
             @keyframes spk{0%,100%{filter:drop-shadow(0 0 1px rgba(120,120,255,.4)) saturate(1)}
@@ -491,6 +501,7 @@ final class WebConsoleUI {
                 el.querySelector('[name=authType]').onchange=e=>setAuthCls(e.target.value);
                 el.querySelector('.capsess').onclick=()=>captureSession(s.name,el);
                 el.querySelector('.chksess').onclick=()=>checkSession(s.name,el);
+                {const rb=el.querySelector('.rlogin');if(rb)rb.onclick=()=>remoteLogin(s.name,el);}
                 {const su=el.querySelector('.srvurl');if(su){su.value=localStorage.getItem('wqg-srvurl')||'';
                   el.querySelector('.pushsess').onclick=()=>pushSession(s.name,el);}}
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
@@ -600,8 +611,10 @@ final class WebConsoleUI {
                     <br>이 창은 <b>로그인을 기억</b>하므로 <u>최초 1회만 로그인</u>하면 이후엔 재로그인 없이 바로 저장됩니다.
                     <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션·프로필은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.
                     <br>화면이 없는 <b>서버에서 검사</b>한다면, GUI가 있는 이 PC에서 로그인한 뒤 <b>③ 서버로 전송</b>으로 세션만 서버 콘솔에 보내면 됩니다(파일 복사 불필요).</div>
-                  <div class="actbar"><button class="act ghost capsess">① 세션 로그인(수동)</button>
+                  <div class="actbar"><button class="act rlogin">🖥️ 콘솔에서 로그인(원격)</button>
+                    <button class="act ghost capsess">① 세션 로그인(수동·이 PC)</button>
                     <button class="act ghost chksess">② 세션 유효성 확인</button></div>
+                  <div class="hint"><b>콘솔에서 로그인(원격)</b> — 화면이 없는 <b>서버</b>에서도 이 콘솔 안에서 바로 로그인합니다(서버가 브라우저를 대신 띄우고 화면을 여기로 보여줌). <b>수동·이 PC</b>는 이 콘솔이 실행 중인 PC에 창을 띄우는 방식입니다.</div>
                   <div class="pushrow"><input class="srvurl" placeholder="서버 콘솔 주소 (예: http://10.0.0.5:8091)">
                     <button class="act ghost pushsess" type="button">③ 서버로 전송 ▶</button></div>
                   <div class="hint">서버 콘솔은 <code>serve 8091 0.0.0.0</code>(또는 LAN IP)로 기동해야 이 PC에서 전송할 수 있습니다.</div>
@@ -708,6 +721,53 @@ final class WebConsoleUI {
               box.innerHTML=busy('서버로 전송 중…','이 PC의 세션을 서버 콘솔로 보냅니다');
               let r;try{r=await api('/api/session-push/'+name,'POST',{serverUrl:url})}catch(e){r={ok:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${esc(r.detail||'')}</div>`}
+            // ── 콘솔 내 원격 로그인 — 서버 headless 브라우저 화면을 스트리밍 + 클릭/키 전달 ──
+            let rl={name:null,w:0,h:0,timer:null};
+            async function remoteLogin(name,el){const box=el.querySelector('.sessbox');
+              const base=el.querySelector('[name=baseUrl]').value.trim();
+              if(!base||base.includes('TODO')){toast('baseUrl 먼저 입력');return}
+              const lpEl=el.querySelector('[name=loginPath]');const lp=lpEl?lpEl.value.trim():'';
+              box.innerHTML=busy('원격 로그인 준비 중…','서버에서 브라우저를 띄워 로그인 화면을 가져옵니다');
+              let r;try{r=await api('/api/rlogin/start/'+name,'POST',{baseUrl:base,loginPath:lp})}catch(e){r={ok:false,detail:String(e)}}
+              if(!r.ok){box.innerHTML='<div class="hbox no">✗ '+esc(r.detail||'시작 실패')+'</div>';return}
+              box.innerHTML='<div class=st>원격 로그인 창을 열었습니다. 로그인 후 [로그인 완료·저장]을 누르세요.</div>';
+              openRemote(name,r.w,r.h)}
+            function openRemote(name,w,h){rl.name=name;rl.w=w;rl.h=h;
+              let ov=document.getElementById('rlov');
+              if(!ov){ov=document.createElement('div');ov.id='rlov';document.body.appendChild(ov)}
+              ov.innerHTML=`<div class="rlpanel"><div class="rlbar">
+                  <b>🖥️ 원격 로그인</b><span class=st>화면을 클릭·입력해 로그인한 뒤 저장하세요</span><span class=grow></span>
+                  <button class="act" onclick="remoteDone()">✓ 로그인 완료·저장</button>
+                  <button class="act ghost" onclick="remoteRefresh()">↻ 새로고침</button>
+                  <button class="act ghost" onclick="remoteCancel()">✕ 닫기</button></div>
+                <div class="rlwrap"><img id="rlimg" class="rlimg" tabindex="0" draggable="false" alt="원격 화면"></div>
+                <div class="rlhint">클릭으로 입력 필드를 고른 뒤 타이핑하세요. Enter·Tab·Backspace·방향키 지원. 입력(비밀번호 포함)은 HTTPS로 서버를 거칩니다.</div></div>`;
+              ov.style.display='flex';
+              const img=document.getElementById('rlimg');
+              img.onmousedown=e=>{e.preventDefault();img.focus();rlSend('click',rlX(e,img),rlY(e,img))};
+              img.ondblclick=e=>{e.preventDefault();rlSend('dblclick',rlX(e,img),rlY(e,img))};
+              img.onwheel=e=>{e.preventDefault();rlSend('scroll',0,e.deltaY)};
+              img.onkeydown=rlKey;img.focus();startFrames()}
+            function rlX(e,img){const r=img.getBoundingClientRect();return (e.clientX-r.left)/r.width*rl.w}
+            function rlY(e,img){const r=img.getBoundingClientRect();return (e.clientY-r.top)/r.height*rl.h}
+            function frameUrl(){return '/api/rlogin/frame/'+encodeURIComponent(rl.name)+'?t='+Date.now()}
+            function startFrames(){stopFrames();const img=document.getElementById('rlimg');
+              const tick=()=>{if(img)img.src=frameUrl()};tick();rl.timer=setInterval(tick,600)}
+            function stopFrames(){if(rl.timer){clearInterval(rl.timer);rl.timer=null}}
+            function remoteRefresh(){const img=document.getElementById('rlimg');if(img)img.src=frameUrl()}
+            async function rlSend(type,x,y,text,key){try{await api('/api/rlogin/input/'+encodeURIComponent(rl.name),'POST',{type,x,y,text,key})}catch(e){}}
+            function rlKey(e){e.preventDefault();const k=e.key;
+              if(k.length===1){rlSend('text',0,0,k,'')}
+              else{const M={Enter:'Enter',Backspace:'Backspace',Tab:'Tab',Delete:'Delete',Escape:'Escape',
+                ArrowUp:'ArrowUp',ArrowDown:'ArrowDown',ArrowLeft:'ArrowLeft',ArrowRight:'ArrowRight',Home:'Home',End:'End'};
+                if(M[k])rlSend('key',0,0,'',M[k])}}
+            async function remoteDone(){stopFrames();let r;try{r=await api('/api/rlogin/done/'+encodeURIComponent(rl.name),'POST',{})}catch(e){r={ok:false,detail:String(e)}}
+              const name=rl.name;closeRemote();
+              const el=document.getElementById('sys-'+name);
+              if(el){const box=el.querySelector('.sessbox');if(box)box.innerHTML='<div class="hbox '+(r.ok?'ok':'no')+'">'+(r.ok?'✓ ':'✗ ')+esc(r.detail||'')+'</div>'}
+              if(r.ok)toast('세션 저장됨')}
+            async function remoteCancel(){stopFrames();const name=rl.name;try{await api('/api/rlogin/cancel/'+encodeURIComponent(name),'POST',{})}catch(e){}closeRemote()}
+            function closeRemote(){stopFrames();const ov=document.getElementById('rlov');if(ov)ov.style.display='none';rl.name=null}
             // 검사 경로 화면 미리보기 — 각 경로를 실제로 열어 스크린샷을 찍고, 해당 경로 행 아래에 붙인다
             function setRowShot(el,idx,url){const rows=[...el.querySelectorAll('.pathlist .pathrow')];
               const row=rows[idx];if(!row)return;
