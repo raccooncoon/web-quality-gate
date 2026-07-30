@@ -275,17 +275,35 @@ public final class CheckService {
                     new Browser.NewContextOptions().setStorageStatePath(file))) {
                 Page page = ctx.newPage();
                 String probe = site.urls().isEmpty() ? "/" : site.urls().get(0).path();
-                page.navigate(CheckRunner.resolveUrl(site.baseUrl(), probe));
+                String requested = CheckRunner.resolveUrl(site.baseUrl(), probe);
+                page.navigate(requested);
                 page.waitForLoadState(com.microsoft.playwright.options.LoadState.LOAD);
                 waitRender(page);   // 리다이렉트/SPA 정착 대기(컨텍스트 파괴 방지)
                 boolean login;
                 try { login = page.querySelector("input[type=password]") != null; }
                 catch (RuntimeException nav) { page.waitForTimeout(1500); login = page.querySelector("input[type=password]") != null; }
-                return login
-                        ? new SessionStatus(false, "세션 만료 — 로그인 화면으로 돌아감(" + page.url() + ")")
-                        : new SessionStatus(true, "유효 — 인증 상태로 접근됨(" + page.url() + ")");
+                String finalUrl = page.url();
+                if (login)
+                    return new SessionStatus(false, "세션 만료 — 로그인 화면으로 돌아감(" + finalUrl + ")");
+                // 앱이 다른 경로로 이동(SPA 리다이렉트)시켰다면 요청→도착을 함께 보여준다(예: /w/1 → /w/3).
+                boolean redirected = !sameUrl(requested, finalUrl);
+                return new SessionStatus(true, redirected
+                        ? "인증 상태로 접근됨. 단, 요청한 " + requested + " 이(가) 앱에 의해 " + finalUrl
+                          + " 로 이동됨 — 원하는 경로가 아니면 로그인 계정의 워크스페이스/권한을 확인하세요."
+                        : "인증 상태로 접근됨(" + finalUrl + ")");
             } finally { browser.close(); }
         }
+    }
+
+    /** 끝 슬래시·프래그먼트 차이를 무시하고 URL 이 같은지 비교. */
+    private static boolean sameUrl(String a, String b) {
+        return norm(a).equals(norm(b));
+    }
+    private static String norm(String u) {
+        if (u == null) return "";
+        int h = u.indexOf('#');
+        if (h >= 0) u = u.substring(0, h);
+        return u.endsWith("/") ? u.substring(0, u.length() - 1) : u;
     }
 
     /** 세션 유효성 결과. */
