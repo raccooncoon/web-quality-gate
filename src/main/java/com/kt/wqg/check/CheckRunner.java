@@ -207,7 +207,17 @@ public final class CheckRunner {
         if (f >= 0) cut = Math.min(cut, f);
         path = path.substring(0, cut);
 
-        return EXCLUDED_PATHS.contains(path) ? null : path;
+        return (EXCLUDED_PATHS.contains(path) || isAuthSystemPath(path)) ? null : path;
+    }
+
+    /** Keycloak·OAuth·로그인 시스템 경로는 검사 대상 페이지가 아니므로 후보에서 제외. */
+    static boolean isAuthSystemPath(String path) {
+        String s = path.toLowerCase(Locale.ROOT);
+        return s.contains("/realms/") || s.contains("/oauth2") || s.contains("login-actions")
+                || s.contains("/protocol/openid") || s.contains("registration")
+                || s.contains("reset-credentials") || s.contains("/sso/") || s.endsWith("/sso")
+                || s.contains("/login") || s.contains("/logout") || s.contains("/signin")
+                || s.contains("/signout") || s.contains("/auth/realms");
     }
 
     /** baseUrl과 path의 슬래시 유무에 상관없이 슬래시 하나로 이어붙인다. */

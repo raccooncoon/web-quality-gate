@@ -304,7 +304,7 @@ final class WebConsoleUI {
                 +'<div class="tabintro"><b>WCAG</b>가 국제 원본(W3C 권고), <b>KWCAG</b>는 이를 한국 실정에 맞게 추린·재구성한 국가표준(KS X OT0003)입니다. '
                 +'KWCAG 항목은 대부분 WCAG 성공기준(SC)에 대응하지만 <b>1:1이 아니라</b> 여러 WCAG 기준을 하나로 묶거나 일부(주로 AAA)를 제외한 <b>부분집합</b>입니다. '
                 +'WQG는 엔진(axe-core)이 내는 <b>WCAG 태그 결과를 KWCAG 33항목으로 매핑·집계</b>합니다(아래 3번 표).</div>'
-                +'<table><tr><th style="width:15%">구분</th><th>WCAG</th><th style="background:var(--govsoft)">KWCAG</th></tr>'
+                +'<table><tr><th style="width:14%">구분</th><th style="width:43%">WCAG</th><th style="width:43%;background:var(--govsoft)">KWCAG</th></tr>'
                 +'<tr><td><b>제정</b></td><td>W3C · 국제 권고</td><td>국가표준 KS X OT0003 · TTA</td></tr>'
                 +'<tr><td><b>최신</b></td><td>2.0·2.1·2.2</td><td>2.0·2.1·<b>2.2 (2022)</b></td></tr>'
                 +'<tr><td><b>구조</b></td><td>4원칙 → 13지침 → 78 성공기준 (A/AA/AAA)</td><td>4원칙 → 14지침 → <b>33 검사항목</b></td></tr>'
@@ -662,14 +662,25 @@ final class WebConsoleUI {
               box.innerHTML=busy('세션 확인 중…','저장 세션으로 보호 페이지 접근 점검');
               let r;try{r=await api('/api/session-check/'+name,'POST',{baseUrl:base})}catch(e){r={valid:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.valid?'ok':'no'}">${r.valid?'✓ 유효':'✗ 무효/만료'} — ${esc(r.detail||'')}${r.valid?'':'<div class=hint>[세션 로그인(수동)]으로 다시 저장하세요.</div>'}</div>`}
-            // 검사 경로 자동 수집 — 로그인 후 내부 링크를 훑어 후보 제시 → 선택 → 검사 경로에 추가
+            // 검사 경로 자동 수집 — 백그라운드 잡 시작 → /api/status 폴링으로 진행 표시 → 완료 시 후보 제시
             async function discoverUrls(name,el){const box=el.querySelector('.discovered');
-              box.innerHTML='<div class=st>로그인(필요 시) 후 내부 경로 수집 중… (최대 30초)</div>';
-              let r;try{r=await api('/api/discover-paths/'+name,'POST',{})}catch(e){r={error:String(e)}}
-              if(r.error){box.innerHTML='<div class="hbox no">✗ 수집 실패 — '+esc(r.error)+'<div class=hint>baseUrl·로그인 설정을 먼저 저장했는지 확인하세요.</div></div>';return}
+              box.innerHTML=busy('경로 수집 시작…','로그인/접속 후 내부 링크를 크롤합니다');
+              try{await api('/api/discover-paths/'+name,'POST',{})}catch(e){box.innerHTML='<div class="hbox no">✗ 시작 실패 — '+esc(String(e))+'</div>';return}
+              const key='discover:'+name;
+              let msg='',paths=null,err=null;
+              for(let t=0;t<150;t++){
+                await new Promise(r=>setTimeout(r,1500));
+                let s;try{s=await api('/api/status')}catch(e){continue}
+                const j=(s.status||{})[key]; if(!j)continue;
+                if(j.state==='RUNNING'){msg=j.message||'';box.innerHTML=busy('경로 수집 중…',msg);}
+                else if(j.state==='DONE'){paths=(j.message||'').split('\\n').map(x=>x.trim()).filter(Boolean);break;}
+                else if(j.state==='ERROR'){err=j.message||'실패';break;}
+              }
+              if(err){box.innerHTML='<div class="hbox no">✗ 수집 실패 — '+esc(err)+'<div class=hint>로그인/세션 설정을 먼저 확인하세요(SSO는 세션 재사용).</div></div>';return}
+              if(paths===null){box.innerHTML='<div class="hbox no">✗ 시간 초과 — 다시 시도하세요.</div>';return}
               const cur=new Set(parseUrls(el.querySelector('[name=urls]').value).map(u=>u.path));
-              const cand=(r.paths||[]).filter(p=>!cur.has(p));
-              if(!cand.length){box.innerHTML='<div class="hbox ok">수집 '+(r.paths||[]).length+'건 — 새로 추가할 경로가 없습니다(이미 목록에 있음).</div>';return}
+              const cand=paths.filter(p=>!cur.has(p));
+              if(!cand.length){box.innerHTML='<div class="hbox ok">수집 '+paths.length+'건 — 새로 추가할 경로가 없습니다(이미 목록에 있음).</div>';return}
               box.innerHTML=`<div class="hbox ok"><b>후보 경로 ${cand.length}건</b> — 추가할 항목을 선택하세요.
                 <div class="candtools"><button class="linkbtn" onclick="candAll('${name}',true)">전체 선택</button>
                   <button class="linkbtn" onclick="candAll('${name}',false)">전체 해제</button></div>
@@ -717,7 +728,9 @@ final class WebConsoleUI {
               runConfigured.forEach(n=>setRunBtn(n,true));
               for(const n of runConfigured){await api('/api/run/'+n,'POST',{})}
               toast('전체 검사 시작 ('+runConfigured.length+')');refreshStatus()}
-            async function refreshStatus(){const {status}=await api('/api/status');
+            async function refreshStatus(){const {status:raw}=await api('/api/status');
+              // 경로 수집(discover:*) 잡은 실행 탭 상태에서 제외
+              const status={};Object.entries(raw).forEach(([k,v])=>{if(!k.startsWith('discover:'))status[k]=v;});
               const anyRunning=Object.values(status).some(st=>st.state==='RUNNING');
               const rab=document.getElementById('runall-btn');
               if(rab)rab.disabled=anyRunning||runConfigured.length===0;

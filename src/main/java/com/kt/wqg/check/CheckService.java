@@ -425,14 +425,27 @@ public final class CheckService {
      * 콘솔 설정 탭의 '검사 경로 자동 수집'에서 사용 — 사용자가 후보를 검토·선택해 urls 에 넣는다.
      */
     public static List<String> discoverPaths(SitesConfig.Site site, UnaryOperator<String> credResolver) {
+        return discoverPaths(site, credResolver, msg -> { });
+    }
+
+    /** 진행 보고 버전 — 크롤 단계(로그인·랜딩·하위 페이지 순회)를 progress 로 알린다. */
+    public static List<String> discoverPaths(SitesConfig.Site site, UnaryOperator<String> credResolver,
+                                             java.util.function.Consumer<String> progress) {
         try (Playwright playwright = Playwright.create()) {
             Browser browser = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions().setHeadless(true));
-            try (BrowserContext context = browser.newContext()) {
+            // storage(세션 재사용) 방식이면 저장 세션으로 접속(로그인 벽 통과)
+            boolean useStored = site.auth() != null && site.auth().isStorage()
+                    && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
+            Browser.NewContextOptions opts = new Browser.NewContextOptions();
+            if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
+            try (BrowserContext context = browser.newContext(opts)) {
                 Page page = context.newPage();
                 if (site.auth() != null && site.auth().required()) {
+                    progress.accept("로그인 중…");
                     CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
                 } else {
+                    progress.accept(useStored ? "저장된 세션으로 접속 중…" : "접속 중…");
                     page.navigate(CheckRunner.resolveUrl(site.baseUrl(), "/"));
                 }
                 // 렌더(SPA 포함) 대기 후 랜딩 링크 수집 → 발견한 경로를 한 단계 더 방문해 링크 병합(1-depth 크롤)
@@ -440,8 +453,13 @@ public final class CheckService {
                 waitRender(page);
                 found.addAll(CheckRunner.harvestPaths(page, site.baseUrl()));
                 java.util.List<String> seeds = new java.util.ArrayList<>(found);
+                progress.accept("랜딩에서 " + found.size() + "개 발견 — 하위 페이지 탐색 시작");
+                int idx = 0;
                 for (String p : seeds) {
                     if (found.size() >= 60) break;
+                    idx++;
+                    progress.accept(String.format("하위 페이지 탐색 %d/%d: %s (누적 %d개)",
+                            idx, seeds.size(), p, found.size()));
                     try {
                         page.navigate(CheckRunner.resolveUrl(site.baseUrl(), p),
                                 new Page.NavigateOptions().setTimeout(12000));
@@ -449,6 +467,7 @@ public final class CheckService {
                         found.addAll(CheckRunner.harvestPaths(page, site.baseUrl()));
                     } catch (RuntimeException ignore) { /* 개별 경로 실패는 건너뜀 */ }
                 }
+                progress.accept("완료 — 총 " + found.size() + "개 경로");
                 return found.stream().sorted().toList();
             } finally {
                 browser.close();

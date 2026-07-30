@@ -352,8 +352,10 @@ public final class WebConsole {
         SitesConfig.Site site = config.sites().stream()
                 .filter(s -> s.name().equals(name)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
-        List<String> paths = CheckService.discoverPaths(site, credentials.resolver());
-        sendJson(ex, Map.of("paths", paths));
+        // 백그라운드 잡으로 실행 — 진행 상황은 /api/status 의 'discover:<name>' 로 폴링, 완료 시 결과(경로, 개행 구분)
+        jobs.submit("discover:" + name, report ->
+                String.join("\n", CheckService.discoverPaths(site, credentials.resolver(), report)));
+        sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
     }
 
     private void run(HttpExchange ex, String name) throws IOException {
