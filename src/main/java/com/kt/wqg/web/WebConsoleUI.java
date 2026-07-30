@@ -474,7 +474,8 @@ final class WebConsoleUI {
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
               let html='<div class="tabintro">설정된 <b>검사 대상</b>의 baseUrl·계정·검사 경로를 편집하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
-                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.</div>'
+                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.'
+                +'<br><span class=st>기준: 웹접근성 <b>KWCAG 2.2</b>(KS X OT0003:2022) — <b>KWCAG 2.1 항목 24개</b>에 <b>2022년 개정 KWCAG 2.2</b> 신설 9개 추가(총 33) · 웹 호환성 3엔진 렌더링 비교 포함</span></div>'
                 +'<div class="autolegend"><span class="autoval-chip">자동</span> 표시된 값은 <b>유형 자동 판별·로그인 필드 자동 감지·검사 경로 자동 수집</b>으로 채워진 것입니다 — 내용을 확인한 뒤 <b>[설정 저장]</b>하세요. 직접 수정하면 표시가 사라집니다.</div>';
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
