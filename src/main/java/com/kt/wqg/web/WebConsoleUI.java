@@ -680,7 +680,9 @@ final class WebConsoleUI {
               const lpEl=el.querySelector('[name=loginPath]');const lp=lpEl?lpEl.value.trim():'';
               box.innerHTML=busy('브라우저를 띄웠습니다…','열린 창에서 로그인을 완료하세요. 폼이 사라지면 자동 저장(최대 3분)');
               let r;try{r=await api('/api/capture-session/'+name,'POST',{baseUrl:base,loginPath:lp})}catch(e){r={ok:false,detail:String(e)}}
-              box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${esc(r.detail||'')}</div>`}
+              // 안내 메시지의 ①②는 줄바꿈해 읽기 쉽게 표시
+              const detail=esc(r.detail||'').replace(/\\s*(①|②)/g,'<br>$1');
+              box.innerHTML=`<div class="hbox ${r.ok?'ok':'no'}">${r.ok?'✓ ':'✗ '}${detail}</div>`}
             // 세션 유효성 확인 — 저장 세션으로 보호 페이지 접근 시 로그인으로 안 튕기면 유효
             async function checkSession(name,el){const box=el.querySelector('.sessbox');
               const base=el.querySelector('[name=baseUrl]').value.trim();

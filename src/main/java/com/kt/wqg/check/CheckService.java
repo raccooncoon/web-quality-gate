@@ -227,7 +227,33 @@ public final class CheckService {
             } finally { browser.close(); }
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException("세션 저장 실패: " + file, e);
+        } catch (RuntimeException e) {
+            // 디스플레이 없는 서버(폐쇄망 headless)에서 헤드풀 로그인 창을 못 띄운 경우 — 원인·조치 안내로 바꾼다.
+            if (isNoDisplayError(e)) throw noDisplayError(site);
+            throw e;
         }
+    }
+
+    /** 헤드풀 브라우저 실행이 X 서버/$DISPLAY 부재로 실패했는지 판별. */
+    private static boolean isNoDisplayError(Throwable e) {
+        for (Throwable t = e; t != null; t = t.getCause()) {
+            if (t.getMessage() == null) continue;
+            String s = t.getMessage().toLowerCase(java.util.Locale.ROOT);
+            if (s.contains("missing x server") || s.contains("$display")
+                    || s.contains("xserver") || s.contains("xvfb")
+                    || s.contains("platform failed to initialize")) return true;
+        }
+        return false;
+    }
+
+    /** 디스플레이 없는 서버에서 수동 세션 로그인을 시도했을 때의 원인·조치 안내. */
+    private static IllegalStateException noDisplayError(SitesConfig.Site site) {
+        return new IllegalStateException(
+                "이 서버에는 화면(디스플레이)이 없어 수동 로그인 창을 띄울 수 없습니다(X server/$DISPLAY 없음). "
+              + "세션 재사용 로그인은 실제 로그인 화면이 필요합니다. "
+              + "① (권장) GUI가 있는 PC에서 콘솔을 띄워 [① 세션 로그인(수동)]으로 로그인한 뒤, 생성된 "
+              + sessionFile(site.name()) + " 파일을 이 서버의 config/ 폴더로 복사하세요 — 검사는 이 서버에서 headless 로 그대로 실행됩니다. "
+              + "② 서버에서 가상 디스플레이가 가능하면 xvfb-run 으로 콘솔을 실행할 수 있으나, 화면이 보이지 않아 수동 로그인 조작은 어렵습니다.");
     }
 
     /** 저장된 세션이 아직 유효한지 확인 — 세션 로드 후 보호 페이지가 로그인으로 튕기지 않으면 유효. */
