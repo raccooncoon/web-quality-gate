@@ -598,11 +598,13 @@ final class WebConsoleUI {
     private static final String HTML_B = """
             function sysCard(s){const cfg=s.configured;const A=s.auto||[];const ac=n=>A.includes(n)?' autoval':'';
               return `<div class="sys" id="sys-${s.name}"><div class="hd">
-                <div class="nm">${esc(s.displayName)}<small>${s.name}</small></div>
+                <div class="nm"><span class="dispname">${esc(s.displayName)}</span><small>${s.name}</small></div>
                 <div>${s.hasCredentials?'<span class=pill ok>계정 저장됨</span>':(s.authType==='form'?'<span class=pill wait>계정 필요</span>':'')}
                   ${cfg?'<span class=pill ok>설정됨</span>':'<span class=pill no>미설정</span>'}</div></div>
                 <div class="body">
                 <div class="cardsteps"><b>진행 순서</b> ① 유형·baseUrl → ② 로그인 필드·계정 → ③ 검사 경로 → ④ 설정 저장 → ⑤ 설정 확인(헬스체크)</div>
+                <label>표시 이름 <span class=st>(목록·리포트에 보이는 이름)</span></label>
+                <input name="displayName" value="${esc(s.displayName||'')}" placeholder="예: 결함관리 체험(Plainly)">
                 <div class="row"><div><label>유형</label><select name="type" class="${ac('type').trim()}">
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
@@ -693,11 +695,13 @@ final class WebConsoleUI {
               syncPaths(el);return row}
             async function saveSys(name,el){const g=n=>el.querySelector('[name='+n+']').value;
               const auto=[...el.querySelectorAll('.autoval')].map(x=>x.getAttribute('name')).filter(Boolean);
-              await api('/api/save/'+name,'POST',{type:g('type'),authType:g('authType'),baseUrl:g('baseUrl'),
+              const disp=(g('displayName')||'').trim()||name;
+              await api('/api/save/'+name,'POST',{displayName:disp,type:g('type'),authType:g('authType'),baseUrl:g('baseUrl'),
                 loginPath:g('loginPath'),idSelector:g('idSelector'),pwSelector:g('pwSelector'),
                 submitSelector:g('submitSelector'),urls:parseUrls(g('urls')),auto});
               const cid=g('cid'),cpw=g('cpw');if(cid&&cpw){await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});markCredSaved(el)}
-              // 카드를 다시 그리지 않고 그대로 유지 — 설정됨 배지만 즉시 갱신
+              // 카드를 다시 그리지 않고 그대로 유지 — 표시 이름·설정됨 배지만 즉시 갱신
+              const dn=el.querySelector('.hd .dispname');if(dn)dn.textContent=disp;
               const cfgOk=g('baseUrl')&&!g('baseUrl').includes('TODO');
               const badge=el.querySelector('.hd .pill.no');if(cfgOk&&badge){badge.className='pill ok';badge.textContent='설정됨'}
               toast('저장됨: '+name)}
