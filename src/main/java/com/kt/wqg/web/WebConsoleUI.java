@@ -369,7 +369,7 @@ final class WebConsoleUI {
                 +'<div class="cardsteps"><b>KWCAG 버전</b> — <b>KIWAC WA 품질인증 심사표의 24개 심사기준 = KWCAG 2.1 항목</b>(<span class="pill ok">KIWAC N</span>)입니다. '
                 +'<b>2022년 개정 KWCAG 2.2(KS X OT0003)</b>에서 항목이 추가되어 총 <b>33개</b>가 됐고, 그 추가분이 <span class="pill wait">2.2 추가</span>(= 2.1/KIWAC 24 밖). '
                 +'<span class="pill na">웹 호환성</span>은 KWCAG 밖 WQG 확장(3엔진·확대 등)입니다. 이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.'
-                +'<br><small class=st>※ 심사표의 심사기준 <b>8</b>은 <b>8-1</b>(키보드 사용 보장=2.1.1)과 <b>8-2</b>(누르기 동작 지원=2.5.1) 둘로 나뉘어 채점되므로, 24 심사기준이 우리 코드로는 25개에 대응합니다. 그래서 "2.2 추가"는 카탈로그 기준 <b>8개</b>로 표기됩니다(공식 +9와 1개 차이는 이 분할 때문).</small></div>'
+                +'<br><small class=st>※ 공식 KWCAG 2.2 추가 항목은 <b>9개</b>입니다. 심사표는 심사기준 <b>8</b>을 <b>8-1</b>(키보드 사용 보장=WCAG 2.1.1)과 <b>8-2</b>(포인터 궤적=WCAG 2.5.1, 복잡한 제스처를 단순 누르기로 대체)로 나눠 관리하므로, 24 심사기준이 우리 카탈로그로는 25개에 대응합니다. 이 때문에 카탈로그 기준 "2.2 추가"는 <b>8개</b>로 표기됩니다(정산 방식 차이).</small></div>'
                 +'<table id="mapPr">'+theadMap+rowsPr+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'

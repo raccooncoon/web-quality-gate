@@ -364,8 +364,8 @@ items:
     category: accessibility
     siClassification: manual
     automation: manual
-    title: "단일 포인터 입력 지원"
-    criteria: "다중 포인터(멀티터치) 또는 경로기반 동작 없이도 단일 포인터로 조작 가능해야 함"
+    title: "포인터 궤적(단일 포인터 대체)"
+    criteria: "드래그·스와이프·핀치 등 경로/다중 포인터 제스처는 단순 누르기(단일 포인터)로도 조작 가능해야 함 (WCAG 2.5.1 Pointer Gestures)"
     resolver: { type: probe, rules: [pointer-gesture] }
     guide:
       what: "핀치줌·스와이프 등 복잡한 제스처가 필요한 UI인지 스크린샷과 상호작용 기록으로 확인합니다."
