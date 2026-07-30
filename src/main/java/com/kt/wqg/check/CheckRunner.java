@@ -130,10 +130,35 @@ public final class CheckRunner {
      * 현재 페이지의 앵커(&lt;a href&gt;)에서 점검 대상 내부 경로를 수집한다.
      * internalPath 필터를 거쳐 외부·로그아웃·앵커 등을 제외하고 중복 제거 후 정렬한다.
      */
+    @SuppressWarnings("unchecked")
     public static List<String> harvestPaths(Page page, String baseUrl) {
-        List<ElementHandle> anchors = page.querySelectorAll("a[href]");
-        return anchors.stream()
-                .map(a -> a.getAttribute("href"))
+        // SPA 대응: a/area 의 href 뿐 아니라 data-href/to/url, onclick·라우터 호출의 경로 문자열까지 수집
+        Object raw;
+        try {
+            raw = page.evaluate("""
+                () => {
+                  const out = new Set();
+                  const add = h => { if (h && typeof h === 'string') out.add(h); };
+                  document.querySelectorAll('a[href], area[href]').forEach(a => add(a.getAttribute('href')));
+                  document.querySelectorAll('[data-href],[data-to],[data-url],[data-link]').forEach(e =>
+                    add(e.getAttribute('data-href') || e.getAttribute('data-to') || e.getAttribute('data-url') || e.getAttribute('data-link')));
+                  // onclick 등 인라인 핸들러에서 '/경로' 문자열 추출(navigate('/x'), href='/x' 등)
+                  document.querySelectorAll('[onclick]').forEach(e => {
+                    const s = e.getAttribute('onclick') || '';
+                    const re = /['"](\\/[A-Za-z0-9_\\-\\/]{1,})['"]/g; let m;
+                    while ((m = re.exec(s)) !== null) add(m[1]);
+                  });
+                  return [...out];
+                }""");
+        } catch (RuntimeException e) {
+            // 네비게이션 중 등으로 evaluate 실패 시 기본(a[href])만
+            return page.querySelectorAll("a[href]").stream()
+                    .map(a -> a.getAttribute("href")).map(h -> internalPath(baseUrl, h))
+                    .filter(p -> p != null).distinct().sorted().collect(Collectors.toList());
+        }
+        List<Object> hrefs = raw instanceof List ? (List<Object>) raw : List.of();
+        return hrefs.stream()
+                .map(String::valueOf)
                 .map(href -> internalPath(baseUrl, href))
                 .filter(p -> p != null)
                 .distinct()

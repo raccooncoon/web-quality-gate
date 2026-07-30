@@ -561,6 +561,10 @@ final class WebConsoleUI {
                   <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option>
                   <option value="sso" ${s.authType==='sso'?'selected':''}>SSO (Keycloak/OIDC)</option>
                   <option value="storage" ${s.authType==='storage'?'selected':''}>세션 재사용 (수동 로그인)</option></select></div></div>
+                <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
+                <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
+                <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
+                <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="storage-only">
                   <div class="cardsteps"><b>세션 재사용</b> — OASIS SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
                     한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
@@ -570,10 +574,6 @@ final class WebConsoleUI {
                     <button class="act ghost chksess">② 세션 유효성 확인</button></div>
                   <div class="sessbox" id="sess-${s.name}">${s.hasSession?'<div class="hbox ok">저장된 세션이 있습니다 — [세션 유효성 확인]으로 점검하세요.</div>':'<div class=st>저장된 세션이 없습니다. [세션 로그인]으로 저장하세요.</div>'}</div>
                 </div>
-                <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
-                <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
-                <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
-                <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="auth-only">
                   <div class="row3"><div><label>로그인 경로</label><input name="loginPath" value="${esc(s.loginPath||'/login')}"></div>
                     <div><label>아이디 셀렉터</label><input name="idSelector" class="${ac('idSelector').trim()}" value="${esc(s.idSelector||'')}" placeholder="input[name=username]"></div>

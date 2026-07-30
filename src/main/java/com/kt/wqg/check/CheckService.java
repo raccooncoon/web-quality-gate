@@ -451,6 +451,10 @@ public final class CheckService {
                 // 렌더(SPA 포함) 대기 후 랜딩 링크 수집 → 발견한 경로를 한 단계 더 방문해 링크 병합(1-depth 크롤)
                 java.util.LinkedHashSet<String> found = new java.util.LinkedHashSet<>();
                 waitRender(page);
+                try {
+                    if (page.querySelector("input[type=password]") != null)
+                        progress.accept("⚠ 로그인 화면입니다 — 인증이 안 돼 앱 경로를 못 봅니다. 로그인 방식을 '세션 재사용'으로 로그인한 뒤 다시 시도하세요.");
+                } catch (RuntimeException ignore) { }
                 found.addAll(CheckRunner.harvestPaths(page, site.baseUrl()));
                 java.util.List<String> seeds = new java.util.ArrayList<>(found);
                 progress.accept("랜딩에서 " + found.size() + "개 발견 — 하위 페이지 탐색 시작");
