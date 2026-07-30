@@ -103,8 +103,9 @@ final class WebConsoleUI {
             .rlfallback summary{cursor:pointer;font-size:12px;color:var(--muted)}
             .rlfallback button{margin-top:7px}
             .rlpaste{width:auto;font-size:12px;padding:6px 9px}
-            .pathadd{display:flex;gap:7px;margin-top:7px}
-            .pathadd input{font-family:ui-monospace,monospace;font-size:12px}
+            .pathadd{display:flex;gap:7px;margin-top:7px;align-items:flex-start}
+            .pathadd .newpath{flex:1;font-family:ui-monospace,monospace;font-size:12px;
+              min-height:36px;height:36px;line-height:1.5;resize:vertical}
             .pathadd button{margin-top:0;white-space:nowrap}
             .autolegend{font-size:11.5px;color:var(--muted);margin-top:8px}
             .mapviewbar{display:flex;gap:6px;margin:10px 0}
@@ -512,10 +513,21 @@ final class WebConsoleUI {
                 el.querySelector('.shots').onclick=()=>captureShots(s.name,el);
                 initPaths(el);
                 const np=el.querySelector('.newpath');
-                const addNp=()=>{let v=np.value.trim();if(!v){toast('경로 입력');return}
-                  if(!v.startsWith('/')&&!/^https?:/i.test(v))v='/'+v;addPath(el,v,'',true);np.value='';np.focus()};
+                // 여러 경로를 줄바꿈·쉼표·공백으로 구분해 한꺼번에 추가(중복 제외). 'path | 셀렉터' 형식도 허용.
+                const addNp=()=>{const raw=np.value;
+                  const toks=raw.split(/[\\n,\\s]+/).map(x=>x.trim()).filter(Boolean);
+                  if(!toks.length){toast('경로 입력');return}
+                  const cur=new Set(parseUrls(el.querySelector('[name=urls]').value).map(u=>u.path));
+                  let added=0,dup=0;
+                  toks.forEach(t=>{let[p,sel]=t.split('|').map(x=>x.trim());
+                    if(!p.startsWith('/')&&!/^https?:/i.test(p))p='/'+p;
+                    if(cur.has(p)){dup++;return}
+                    addPath(el,p,sel||'',true);cur.add(p);added++});
+                  np.value='';np.focus();
+                  toast(added?(added+'개 추가됨'+(dup?(' · 중복 '+dup+'개 제외'):'')):'추가할 새 경로 없음(모두 중복)')};
                 el.querySelector('.addpath').onclick=addNp;
-                np.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();addNp()}};
+                // 여러 줄 입력: Enter=줄바꿈, Ctrl/⌘+Enter=추가
+                np.onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();addNp()}};
                 el.querySelector('.gorun').onclick=()=>goRun(s.name);
                 el.querySelector('.del').onclick=()=>delSystem(s.name,s.displayName);
               })}
@@ -638,7 +650,7 @@ final class WebConsoleUI {
                   <span class="hint" style="margin:0">SPA는 우측에 대기 셀렉터 지정 가능</span></div>
                 <div class="pathlist"></div>
                 <textarea name="urls" style="display:none">${esc((s.urls||[]).join('\\n'))}</textarea>
-                <div class="pathadd"><input class="newpath" placeholder="/경로 입력 후 Enter 또는 [추가]">
+                <div class="pathadd"><textarea class="newpath" rows="1" placeholder="/경로 입력 — 여러 개는 줄바꿈으로 붙여넣기 (⌘/Ctrl+Enter 또는 [추가])"></textarea>
                   <button class="act ghost addpath" type="button">＋ 추가</button></div>
                 <div class="pathbtns">
                   <button class="act ghost discover">🧭 검사 경로 자동 수집</button>
