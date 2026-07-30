@@ -184,47 +184,55 @@ public final class CheckService {
                 && java.nio.file.Files.isRegularFile(sessionFile(site.name()));
     }
 
+    /** 시스템별 영속 브라우저 프로필 디렉터리 — 최초 1회 로그인 후 재로그인 없이 재사용. git 제외. */
+    public static Path profileDir(String siteName) {
+        return Path.of("config", "browser-profile-" + siteName);
+    }
+
     /**
      * 사람이 직접 로그인(OASIS SSO→포탈→시스템)한 뒤의 세션을 저장한다.
-     * 헤드풀 브라우저를 띄워 로그인 폼이 뜨면(비번 필드 등장) 사용자가 로그인,
-     * 폼이 사라지면(로그인 완료) storageState 를 파일로 저장한다.
+     * <b>영속 프로필</b>(전용 브라우저)을 쓰므로 최초 1회만 로그인하면 이후엔 그 창이 로그인을 기억한다 —
+     * 이미 로그인 상태면 폼이 뜨지 않아 즉시 저장된다. 폼이 사라지면(로그인 완료) storageState 를 파일로 저장한다.
      */
     public static void captureSession(SitesConfig.Site site, java.util.function.Consumer<String> progress) {
         requireBaseUrl(site);
         Path file = sessionFile(site.name());
+        Path profile = profileDir(site.name());
         try (Playwright pw = Playwright.create()) {
-            Browser browser = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(false));
-            try (BrowserContext ctx = browser.newContext()) {
-                Page page = ctx.newPage();
+            try { java.nio.file.Files.createDirectories(profile); }
+            catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+            // 영속 컨텍스트 — user-data-dir 를 유지해 로그인/쿠키가 다음 실행에도 남는다.
+            try (BrowserContext ctx = pw.chromium().launchPersistentContext(profile,
+                    new BrowserType.LaunchPersistentContextOptions().setHeadless(false))) {
+                Page page = ctx.pages().isEmpty() ? ctx.newPage() : ctx.pages().get(0);
                 String lp = site.auth() != null && site.auth().loginPath() != null && !site.auth().loginPath().isBlank()
                         ? site.auth().loginPath() : "/";
                 page.navigate(CheckRunner.resolveUrl(site.baseUrl(), lp));
-                progress.accept("열린 브라우저에서 로그인을 완료하세요 — 로그인 폼이 사라지면 자동 저장됩니다(최대 3분).");
-                // 로그인 폼(비번 필드) 등장 대기(최대 90초) → 소멸(DETACHED) 대기(최대 180초).
-                // 로그인 중 리다이렉트로 실행 컨텍스트가 갈아엎이므로 querySelector 폴링 대신
-                // 네비게이션에 안전한 waitForSelector(DETACHED) 를 쓴다.
+                progress.accept("열린 브라우저에서 로그인을 완료하세요 — 이미 로그인돼 있으면 자동 저장됩니다(최대 3분).");
+                // 비번 필드가 안 뜨면(이미 로그인) 즉시 통과. 뜨면 로그인 완료(DETACHED)까지 대기.
+                boolean formAppeared = true;
                 try {
                     page.waitForSelector("input[type=password]",
-                            new Page.WaitForSelectorOptions().setTimeout(90000));
-                } catch (RuntimeException ignore) { /* 이미 로그인됐거나 비번폼이 아닌 흐름 */ }
-                boolean done;
-                try {
-                    page.waitForSelector("input[type=password]", new Page.WaitForSelectorOptions()
-                            .setState(com.microsoft.playwright.options.WaitForSelectorState.DETACHED)
-                            .setTimeout(180000));
-                    done = true;
-                } catch (RuntimeException timeout) {
-                    done = false;
+                            new Page.WaitForSelectorOptions().setTimeout(8000));
+                } catch (RuntimeException ignore) { formAppeared = false; /* 이미 로그인됨/비번폼 아님 */ }
+                if (formAppeared) {
+                    // 로그인 중 리다이렉트로 실행 컨텍스트가 갈아엎이므로 waitForSelector(DETACHED) 사용.
+                    try {
+                        page.waitForSelector("input[type=password]", new Page.WaitForSelectorOptions()
+                                .setState(com.microsoft.playwright.options.WaitForSelectorState.DETACHED)
+                                .setTimeout(180000));
+                    } catch (RuntimeException timeout) {
+                        throw new IllegalStateException("시간 초과 — 로그인이 완료되지 않았습니다.");
+                    }
                 }
-                if (!done) throw new IllegalStateException("시간 초과 — 로그인이 완료되지 않았습니다.");
                 try {
                     page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
                             new Page.WaitForLoadStateOptions().setTimeout(8000));
                 } catch (RuntimeException ignore) { }
                 java.nio.file.Files.createDirectories(file.getParent());
                 java.nio.file.Files.writeString(file, ctx.storageState());
-                progress.accept("로그인 세션 저장 완료: " + file);
-            } finally { browser.close(); }
+                progress.accept("로그인 세션 저장 완료: " + file + " (프로필 유지 — 다음엔 재로그인 불필요)");
+            }
         } catch (java.io.IOException e) {
             throw new java.io.UncheckedIOException("세션 저장 실패: " + file, e);
         } catch (RuntimeException e) {

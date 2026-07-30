@@ -595,9 +595,10 @@ final class WebConsoleUI {
                 <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="storage-only">
                   <div class="cardsteps"><b>세션 재사용</b> — OASIS SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
-                    한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
-                    baseUrl 을 채운 뒤 <b>① 세션 로그인(수동)</b> → 열리는 브라우저에서 로그인 완료 → 자동 저장,
-                    이후 <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.
+                    <b>전용 브라우저</b>에서 한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
+                    baseUrl 을 채운 뒤 <b>① 세션 로그인(수동)</b> → 열리는 브라우저에서 로그인 완료 → 자동 저장.
+                    <br>이 창은 <b>로그인을 기억</b>하므로 <u>최초 1회만 로그인</u>하면 이후엔 재로그인 없이 바로 저장됩니다.
+                    <b>② 세션 유효성 확인</b>으로 살아있는지 점검하세요. 세션·프로필은 이 PC 로컬에만 저장(git·리포트 제외)됩니다.
                     <br>화면이 없는 <b>서버에서 검사</b>한다면, GUI가 있는 이 PC에서 로그인한 뒤 <b>③ 서버로 전송</b>으로 세션만 서버 콘솔에 보내면 됩니다(파일 복사 불필요).</div>
                   <div class="actbar"><button class="act ghost capsess">① 세션 로그인(수동)</button>
                     <button class="act ghost chksess">② 세션 유효성 확인</button></div>

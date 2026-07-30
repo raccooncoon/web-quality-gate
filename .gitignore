@@ -16,3 +16,5 @@ llm.properties
 
 # 로그인 세션 재사용(storageState) — 로컬 전용, 절대 커밋 금지
 config/storage-*.json
+# 전용 브라우저 영속 프로필(쿠키·로그인 유지) — 로컬 전용, 절대 커밋 금지
+config/browser-profile-*/
