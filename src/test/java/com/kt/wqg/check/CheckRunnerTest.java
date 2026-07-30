@@ -40,6 +40,19 @@ class CheckRunnerTest {
     }
 
     @Test
+    void baseUrl에_경로가_있으면_그_경로를_기준으로_이어붙인다() {
+        // 앱이 /app 하위에 있을 때, /w/1/issues 는 /app/w/1/issues 로 해석돼야 한다(오류 페이지 방지)
+        assertEquals("https://plainly.example.com/app/w/1/issues",
+                CheckRunner.resolveUrl("https://plainly.example.com/app", "/w/1/issues"));
+    }
+
+    @Test
+    void 입력경로가_이미_base경로를_포함하면_중복시키지_않는다() {
+        assertEquals("https://plainly.example.com/app/w/1/issues",
+                CheckRunner.resolveUrl("https://plainly.example.com/app", "/app/w/1/issues"));
+    }
+
+    @Test
     void 사이트명을_대문자_환경변수로_바꿔_계정을_읽는다() {
         Map<String, String> env = Map.of(
                 "WQG_SITE_A_ID", "tester",

@@ -29,6 +29,20 @@ final class WebConsoleUI {
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             nav{align-items:center}
             .navsp{flex:1 1 auto}.navsp2{flex:0 0 22px}
+            /* 검사 완료 후 검수 유도 바 — '검수하러 가기'를 크고 눈에 띄게 */
+            .donebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+            .gochk{margin-top:0;background:var(--gov);color:#fff;font-size:14px;font-weight:800;
+              padding:9px 20px;border:none;border-radius:5px;cursor:pointer;box-shadow:0 2px 8px rgba(31,90,166,.35);
+              animation:gopulse 1.6s ease-in-out infinite}
+            .gochk:hover{background:var(--navy2);box-shadow:0 3px 12px rgba(31,90,166,.5)}
+            @keyframes gopulse{0%,100%{box-shadow:0 2px 8px rgba(31,90,166,.35)}50%{box-shadow:0 2px 16px rgba(31,90,166,.6)}}
+            .gorep{margin-top:0;text-decoration:none;font-size:12.5px;padding:8px 14px}
+            /* 실행 표 액션 칸: [검사] 옆 컴팩트 [검수 ▶] 버튼(펄스·확대 없이 나란히) */
+            .actcell{white-space:nowrap}
+            .actcell #act-,.actcell span{margin-left:0}
+            .actcell .gochk{margin-left:7px;font-size:12.5px;font-weight:700;padding:7px 13px;
+              box-shadow:none;animation:none}
+            .actcell .gochk:hover{box-shadow:0 2px 8px rgba(31,90,166,.4)}
             /* 매핑표: KIWAC·카도와·웹와치 pill 열은 가운데 정렬 */
             #mapPr td:nth-child(2),#mapPr td:nth-child(3),#mapPr td:nth-child(4),
             #mapPr th:nth-child(2),#mapPr th:nth-child(3),#mapPr th:nth-child(4){text-align:center}
@@ -74,6 +88,16 @@ final class WebConsoleUI {
             .pathrow .rm:hover{color:var(--bad);background:var(--badbg)}
             .pathrow.justadded{animation:pf 2s ease}@keyframes pf{0%,55%{background:var(--autobg)}100%{background:transparent}}
             .pathempty{padding:14px;text-align:center;color:var(--muted);font-size:12px}
+            /* 경로 행 아래 화면 미리보기 캡처 */
+            .pathshot{border-bottom:1px solid var(--line);background:var(--govsoft);padding:10px 12px}
+            .pathrow:has(+.pathshot){border-bottom:1px solid var(--line)}
+            .pathshot img{display:block;max-width:100%;max-height:300px;border:1px solid var(--line2);
+              border-radius:5px;background:#fff;cursor:zoom-in;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+            .pathshot .shotfail{font-size:12px;color:var(--bad)}
+            .pathbtns{display:flex;gap:7px;flex-wrap:wrap}
+            .pathbtns button{margin-top:0}
+            .shotstatus{margin-top:7px}
+            .shotstatus:empty{margin-top:0}
             .pathadd{display:flex;gap:7px;margin-top:7px}
             .pathadd input{font-family:ui-monospace,monospace;font-size:12px}
             .pathadd button{margin-top:0;white-space:nowrap}
@@ -156,14 +180,14 @@ final class WebConsoleUI {
             .evcap{margin-top:0;font-size:11.5px;color:var(--fg);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
-            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
+            .evt{table-layout:auto;max-width:100%;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
-            .evt .evno{width:32px!important;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
-            .evt .evel{width:auto!important;font-family:ui-monospace,monospace;color:var(--fg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-            .evt .evloc{width:88px!important;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
+            .evt .evno{width:1%;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evel{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--fg)}
+            .evt .evloc{white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
+            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible;max-width:none}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
               border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
             .evcap .evtx:hover{background:var(--govsoft)}
@@ -472,6 +496,7 @@ final class WebConsoleUI {
                 el.querySelector('.detect').onclick=()=>detectSel(s.name,el);
                 el.querySelector('.dtype').onclick=()=>detectType(s.name,el);
                 el.querySelector('.discover').onclick=()=>discoverUrls(s.name,el);
+                el.querySelector('.shots').onclick=()=>captureShots(s.name,el);
                 initPaths(el);
                 const np=el.querySelector('.newpath');
                 const addNp=()=>{let v=np.value.trim();if(!v){toast('경로 입력');return}
@@ -597,8 +622,11 @@ final class WebConsoleUI {
                 <textarea name="urls" style="display:none">${esc((s.urls||[]).join('\\n'))}</textarea>
                 <div class="pathadd"><input class="newpath" placeholder="/경로 입력 후 Enter 또는 [추가]">
                   <button class="act ghost addpath" type="button">＋ 추가</button></div>
-                <button class="act ghost discover">🧭 검사 경로 자동 수집</button>
-                <div class="hint">로그인(필요 시) 후 내부 링크를 훑어 후보 경로를 제시합니다. 원하는 항목만 골라 위 목록에 추가하세요.</div>
+                <div class="pathbtns">
+                  <button class="act ghost discover">🧭 검사 경로 자동 수집</button>
+                  <button class="act ghost shots" type="button">📷 화면 미리보기 캡처</button></div>
+                <div class="hint">자동 수집: 로그인(필요 시) 후 내부 링크를 훑어 후보 경로를 제시합니다. · 화면 미리보기: 위 경로들을 실제로 열어 각 경로 아래에 화면을 붙여줍니다(로그인 필요 시 세션 사용).</div>
+                <div class="shotstatus"></div>
                 <div class="discovered" id="disc-${s.name}"></div>
                 <div class="actbar"><button class="act save">설정 저장</button>
                 <button class="act ghost health">설정 확인(헬스체크)</button>
@@ -662,6 +690,34 @@ final class WebConsoleUI {
               box.innerHTML=busy('세션 확인 중…','저장 세션으로 보호 페이지 접근 점검');
               let r;try{r=await api('/api/session-check/'+name,'POST',{baseUrl:base})}catch(e){r={valid:false,detail:String(e)}}
               box.innerHTML=`<div class="hbox ${r.valid?'ok':'no'}">${r.valid?'✓ 유효':'✗ 무효/만료'} — ${esc(r.detail||'')}${r.valid?'':'<div class=hint>[세션 로그인(수동)]으로 다시 저장하세요.</div>'}</div>`}
+            // 검사 경로 화면 미리보기 — 각 경로를 실제로 열어 스크린샷을 찍고, 해당 경로 행 아래에 붙인다
+            function setRowShot(el,idx,url){const rows=[...el.querySelectorAll('.pathlist .pathrow')];
+              const row=rows[idx];if(!row)return;
+              let sib=row.nextElementSibling;if(sib&&sib.classList.contains('pathshot'))sib.remove();
+              const div=document.createElement('div');div.className='pathshot';
+              div.innerHTML=url?('<img loading=lazy src="'+url+'?t='+Date.now()+'" alt="화면 미리보기" onclick="showLb(this.src)">')
+                :'<span class="shotfail">✗ 캡처 실패 — 로그인/세션 또는 경로를 확인하세요</span>';
+              row.after(div)}
+            async function captureShots(name,el){const st=el.querySelector('.shotstatus');
+              const base=el.querySelector('[name=baseUrl]').value.trim();
+              if(!base||base.includes('TODO')){toast('baseUrl 먼저 입력');return}
+              const urls=parseUrls(el.querySelector('[name=urls]').value);
+              if(!urls.length){toast('검사 경로가 없습니다 — 먼저 경로를 추가하세요');return}
+              st.innerHTML=busy('화면 캡처 시작…','각 경로를 열어 스크린샷을 찍습니다(로그인 필요 시 세션 사용)');
+              try{await api('/api/capture-shots/'+name,'POST',{baseUrl:base,urls})}catch(e){st.innerHTML='<div class="hbox no">✗ 시작 실패 — '+esc(String(e))+'</div>';return}
+              const key='shots:'+name;let lines=null,err=null;
+              for(let t=0;t<150;t++){
+                await new Promise(r=>setTimeout(r,1500));
+                let s;try{s=await api('/api/status')}catch(e){continue}
+                const j=(s.status||{})[key];if(!j)continue;
+                if(j.state==='RUNNING'){st.innerHTML=busy('화면 캡처 중…',j.message||'');}
+                else if(j.state==='DONE'){lines=(j.message||'').split('\\n').filter(x=>x.length);break;}
+                else if(j.state==='ERROR'){err=j.message||'실패';break;}
+              }
+              if(err){st.innerHTML='<div class="hbox no">✗ 캡처 실패 — '+esc(err)+'<div class=hint>로그인/세션 설정을 먼저 확인하세요(SSO는 세션 재사용).</div></div>';return}
+              if(lines===null){st.innerHTML='<div class="hbox no">✗ 시간 초과 — 다시 시도하세요.</div>';return}
+              let okN=0;lines.forEach((ln,i)=>{const tab=ln.indexOf('\\t');const u=tab<0?'':ln.slice(tab+1);setRowShot(el,i,u);if(u)okN++});
+              st.innerHTML='<div class="hbox '+(okN?'ok':'no')+'">'+(okN?'✓ ':'✗ ')+okN+'/'+lines.length+' 화면 캡처 완료 — 각 경로 아래에 표시됩니다.</div>'}
             // 검사 경로 자동 수집 — 백그라운드 잡 시작 → /api/status 폴링으로 진행 표시 → 완료 시 후보 제시
             async function discoverUrls(name,el){const box=el.querySelector('.discovered');
               box.innerHTML=busy('경로 수집 시작…','로그인/접속 후 내부 링크를 크롤합니다');
@@ -717,7 +773,8 @@ final class WebConsoleUI {
                   <td>${s.configured?'<span class=pill ok>준비</span>':'<span class=pill no>미설정</span>'}
                     ${s.authType==='form'&&!s.hasCredentials?'<span class=pill wait>계정 필요</span>':''}</td>
                   <td class="statcell" id="stat-${s.name}">-</td>
-                  <td><button class="act run" id="runbtn-${s.name}" ${s.configured?'':'disabled'} onclick="runSys('${s.name}')">${s.configured?'검사':'미설정'}</button></td></tr>`).join('')+
+                  <td class="actcell"><button class="act run" id="runbtn-${s.name}" ${s.configured?'':'disabled'} onclick="runSys('${s.name}')">${s.configured?'검사':'미설정'}</button>
+                    <span id="act-${s.name}"></span></td></tr>`).join('')+
                 '</tbody></table>';refreshStatus();
               clearInterval(poll);poll=setInterval(refreshStatus,2000)}
             function setRunBtn(name,running){const b=document.getElementById('runbtn-'+name);
@@ -737,12 +794,17 @@ final class WebConsoleUI {
               Object.entries(status).forEach(([site,st])=>{
                 setRunBtn(site,st.state==='RUNNING');            // 실행 중인 시스템 검사 버튼 잠금
                 const el=document.getElementById('stat-'+site);if(!el)return;
-                if(st.state==='RUNNING')el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
+                const ac=document.getElementById('act-'+site);   // 검사 버튼 옆 검수 이동 버튼
+                if(st.state==='RUNNING'){el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
+                  if(ac)ac.innerHTML=''}
                 else if(st.state==='DONE'){const rel=st.message.replace(/^\\.?\\//,'');const ts=rel.split('/')[2];
-                  el.innerHTML='<span class=pill ok>완료</span> <a href="/'+rel+'" target="_blank">리포트 ↗</a> '+
-                    '<button class="linkbtn" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">검수</button> <span id="verdict-'+site+'" class=st></span>';
+                  el.innerHTML='<div class="donebar"><span class=pill ok>검사 완료</span> <span id="verdict-'+site+'" class=st></span>'+
+                    '<button class="act gochk" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">✓ 검수하러 가기 ▶</button>'+
+                    '<a class="act ghost gorep" href="/'+rel+'" target="_blank">리포트 ↗</a></div>';
+                  if(ac)ac.innerHTML='<button class="act gochk" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">✓ 검수 ▶</button>';
                   loadVerdict(site,ts)}
-                else if(st.state==='ERROR')el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>'})}
+                else if(st.state==='ERROR'){el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>';
+                  if(ac)ac.innerHTML=''}})}
             async function loadVerdict(site,ts){try{
               const d=await api('/api/assessment?site='+encodeURIComponent(site)+'&ts='+encodeURIComponent(ts));
               const el=document.getElementById('verdict-'+site);if(!el)return;

@@ -257,6 +257,65 @@ public final class CheckService {
     /** 세션 유효성 결과. */
     public record SessionStatus(boolean valid, String detail) {}
 
+    /**
+     * 설정 화면 미리보기용 — 현재 검사 경로들을 실제로 열어 화면을 캡처한다.
+     * 검사(runSite)와 동일한 로그인/세션 방식을 쓰되 리포트는 만들지 않고 스크린샷만 저장한다.
+     * 반환: 경로별 "path\t/reports/_preview/&lt;name&gt;/&lt;slug&gt;.png" 라인 목록(실패한 경로는 URL 공란).
+     */
+    public static List<String> capturePreviews(SitesConfig.Site site,
+                                               UnaryOperator<String> credResolver,
+                                               Consumer<String> progress) {
+        requireBaseUrl(site);
+        if (site.urls().isEmpty()) return List.of();
+        Path outDir = Path.of("reports", "_preview", site.name());
+        try { java.nio.file.Files.createDirectories(outDir); }
+        catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+        List<String> out = new ArrayList<>();
+        try (Playwright pw = Playwright.create()) {
+            Browser browser = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
+            boolean useStored = useStoredSession(site);
+            Browser.NewContextOptions opts = new Browser.NewContextOptions()
+                    .setViewportSize(1280, 900);
+            if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
+            try (BrowserContext ctx = browser.newContext(opts)) {
+                Page page = ctx.newPage();
+                if (site.auth() != null && site.auth().required()) {
+                    progress.accept("로그인 중…");
+                    CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
+                }
+                int total = site.urls().size(), i = 0;
+                for (SitesConfig.Url u : site.urls()) {
+                    i++;
+                    String path = u.path();
+                    progress.accept(String.format("화면 캡처 (%d/%d): %s", i, total, path));
+                    String rel = "";
+                    try {
+                        page.navigate(CheckRunner.resolveUrl(site.baseUrl(), path));
+                        page.waitForLoadState(com.microsoft.playwright.options.LoadState.LOAD);
+                        if (u.readySelector() != null && !u.readySelector().isBlank()) {
+                            try { page.waitForSelector(u.readySelector(),
+                                    new Page.WaitForSelectorOptions().setTimeout(8000)); }
+                            catch (RuntimeException ignore) { /* 셀렉터 미출현은 무시하고 캡처 */ }
+                        }
+                        waitRender(page);
+                        String slug = CompatibilityCheck.slug(path);
+                        Path png = outDir.resolve(slug + ".png");
+                        page.screenshot(new Page.ScreenshotOptions().setPath(png));
+                        rel = "/reports/_preview/" + enc(site.name()) + "/" + slug + ".png";
+                    } catch (RuntimeException perUrl) {
+                        progress.accept(String.format("캡처 실패 (%d/%d): %s — %s", i, total, path, msg(perUrl)));
+                    }
+                    out.add(path + "\t" + rel);
+                }
+            } finally { browser.close(); }
+        }
+        return out;
+    }
+
+    private static String enc(String s) {
+        return java.net.URLEncoder.encode(s, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
     /** 페이지(URL)별 판정·스크린샷·미디어 정보를 만든다. 대상 페이지/페이지별 평가표/동영상 표에서 사용. */
     private static java.util.List<java.util.Map<String, Object>> buildPages(
             SitesConfig.Site site, com.kt.wqg.compliance.KwcagCatalog catalog,

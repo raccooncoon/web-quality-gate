@@ -73,6 +73,7 @@ public final class WebConsole {
             if (path.equals("/api/llm/test")) { llmTest(ex); return; }
             if (path.equals("/api/ai-judge")) { aiJudge(ex); return; }
             if (path.startsWith("/api/discover-paths/")) { discoverPaths(ex, path.substring("/api/discover-paths/".length())); return; }
+            if (path.startsWith("/api/capture-shots/")) { captureShots(ex, path.substring("/api/capture-shots/".length())); return; }
             if (path.equals("/api/status")) { sendJson(ex, statusPayload()); return; }
             if (path.equals("/api/items")) { sendJson(ex, itemsPayload()); return; }
             if (path.equals("/api/items/exclude")) { saveExclusions(ex); return; }
@@ -356,6 +357,28 @@ public final class WebConsole {
         // 백그라운드 잡으로 실행 — 진행 상황은 /api/status 의 'discover:<name>' 로 폴링, 완료 시 결과(경로, 개행 구분)
         jobs.submit("discover:" + name, report ->
                 String.join("\n", CheckService.discoverPaths(site, credentials.resolver(), report)));
+        sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
+    }
+
+    /** 검사 경로 화면 미리보기 캡처 — 백그라운드 잡('shots:&lt;name&gt;'). 저장 전 편집 중인 baseUrl·경로도 반영. */
+    private void captureShots(HttpExchange ex, String name) throws IOException {
+        JsonNode b = JSON.readTree(ex.getRequestBody());
+        SitesConfig.Site base = effectiveSite(name, b);
+        // 편집 중인 경로 목록(body.urls)이 오면 그것으로 캡처, 없으면 저장된 경로 사용
+        java.util.List<SitesConfig.Url> urls = new java.util.ArrayList<>();
+        if (b.has("urls") && b.get("urls").isArray()) {
+            for (JsonNode n : b.get("urls")) {
+                String p = n.path("path").asText("").trim();
+                if (p.isEmpty()) continue;
+                String rs = n.path("readySelector").asText("").trim();
+                urls.add(new SitesConfig.Url(p, rs.isEmpty() ? null : rs));
+            }
+        }
+        SitesConfig.Site site = urls.isEmpty() ? base
+                : new SitesConfig.Site(base.name(), base.displayName(), base.type(),
+                        base.baseUrl(), base.auth(), urls);
+        jobs.submit("shots:" + name, report ->
+                String.join("\n", CheckService.capturePreviews(site, credentials.resolver(), report)));
         sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
     }
 

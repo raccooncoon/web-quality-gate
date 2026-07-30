@@ -211,15 +211,15 @@ public final class ComplianceReportWriter {
             .evcap{margin-top:0;font-size:11.5px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
-            .evt{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
+            .evt{table-layout:auto;max-width:100%;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
-            .evt .evno{width:32px!important;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
-            .evt .evel{width:auto!important;font-family:ui-monospace,monospace;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-            .evt .evloc{width:88px!important;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .evt .evno{width:1%;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evel{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--ink)}
+            .evt .evloc{white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
             /* '넓게 보기' 누르면 셀 줄바꿈 표시(기본은 …말줄임 + 호버 title) */
-            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
+            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible;max-width:none}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
               border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
             .evcap .evtx:hover{background:var(--govsoft)}

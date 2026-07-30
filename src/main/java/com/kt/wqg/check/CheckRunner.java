@@ -247,17 +247,23 @@ public final class CheckRunner {
 
     /** baseUrl과 path의 슬래시 유무에 상관없이 슬래시 하나로 이어붙인다. */
     static String resolveUrl(String baseUrl, String path) {
-        // 절대 경로(/…)는 origin(scheme+host) 기준으로 해석한다 — baseUrl 에 경로(/app 등)가 있어도
-        // 수집된 경로가 이미 origin 기준(/app/w/1/)이므로 중복(/app/app/…)을 막는다.
-        if (path != null && path.startsWith("/")) {
-            try {
-                java.net.URI b = java.net.URI.create(baseUrl);
-                if (b.getScheme() != null && b.getAuthority() != null)
-                    return b.getScheme() + "://" + b.getAuthority() + path;
-            } catch (RuntimeException ignore) { /* 파싱 실패 시 아래 기본 로직 */ }
-        }
-        String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         String suffix = path == null ? "/" : (path.startsWith("/") ? path : "/" + path);
+        try {
+            java.net.URI b = java.net.URI.create(baseUrl);
+            if (b.getScheme() != null && b.getAuthority() != null) {
+                String origin = b.getScheme() + "://" + b.getAuthority();
+                String bp = b.getPath() == null ? "" : b.getPath();       // baseUrl 의 경로(예 /app)
+                if (bp.endsWith("/")) bp = bp.substring(0, bp.length() - 1);
+                boolean hasBasePath = !bp.isEmpty() && !bp.equals("/");
+                // base 에 경로(/app)가 있고, 입력 경로가 그 경로로 시작하지 않으면 이어붙인다(/app + /w/1 = /app/w/1).
+                // 이미 base 경로를 포함하면(/app/w/1) origin 기준으로 붙여 중복(/app/app)을 막는다.
+                if (hasBasePath && !suffix.equals(bp) && !suffix.startsWith(bp + "/")) {
+                    return origin + bp + suffix;
+                }
+                return origin + suffix;
+            }
+        } catch (RuntimeException ignore) { /* 파싱 실패 시 아래 기본 로직 */ }
+        String base = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         return base + suffix;
     }
 }
