@@ -365,11 +365,8 @@ final class WebConsoleUI {
                 ['P','웹 호환성'],
                 ['c-webstandard','웹표준 HTML/CSS','n','p','vnu·평가자'],['c-deprecated','Deprecated 태그','n','p','vnu'],
                 ['c-browser','브라우저 호환성','n','n','Playwright'],['c-reflow','해상도·확대(200%)','n','p','Playwright']];
-              // KIWAC(한국웹접근성인증평가원) WA 인증 심사 24 기준 ↔ 우리 코드 매핑. 없으면 대상 아님(KWCAG 2.2 확장·웹호환성).
-              const KIWAC={'1.1.1':'1','1.2.1':'2','1.4.1':'3','1.3.3':'4','1.4.3':'5','1.4.2':'6','1.4.4':'7',
-                '2.1.1':'8','2.1.2':'9','2.1.3':'10','2.2.1':'11','2.2.2':'12','2.3.1':'13',
-                '2.4.1':'14','2.4.2':'15','2.4.3':'16','3.1.1':'17','3.2.1':'18','1.3.2':'19','1.3.1':'20',
-                '3.3.2':'21','3.3.1':'22','4.1.1':'23','4.2.1':'24'};
+              // KIWAC(한국웹접근성인증평가원) WA 인증 심사 24 기준 ↔ 우리 코드 매핑. 공통 KIWAC24 재사용.
+              const KIWAC=KIWAC24;
               const kiwacCell=code=>KIWAC[code]
                 ?'<span class="pill ok" title="KWCAG 2.1 기준 24개 심사항목(KIWAC WA인증 심사표) '+KIWAC[code]+'번">KIWAC '+KIWAC[code]+'</span>'
                 :(String(code)[0]==='c'
@@ -474,8 +471,7 @@ final class WebConsoleUI {
               const test=systems.filter(isTest),real=systems.filter(s=>!isTest(s));
               let html='<div class="tabintro">설정된 <b>검사 대상</b>의 baseUrl·계정·검사 경로를 편집하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
-                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.'
-                +'<br><span class=st>기준: 웹접근성 <b>KWCAG 2.2</b>(KS X OT0003:2022) — <b>KWCAG 2.1 항목 24개</b>에 <b>2022년 개정 KWCAG 2.2</b> 신설 9개 추가(총 33) · 웹 호환성 3엔진 렌더링 비교 포함</span></div>'
+                +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.</div>'
                 +'<div class="autolegend"><span class="autoval-chip">자동</span> 표시된 값은 <b>유형 자동 판별·로그인 필드 자동 감지·검사 경로 자동 수집</b>으로 채워진 것입니다 — 내용을 확인한 뒤 <b>[설정 저장]</b>하세요. 직접 수정하면 표시가 사라집니다.</div>';
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
@@ -815,6 +811,17 @@ final class WebConsoleUI {
 
             // ── 점검 항목 관리 탭 ──
             const AUTOLBL={auto:'자동',na:'해당없음(기본)',screen:'자동 스크리닝',manual:'수동확인'};
+            // KWCAG 버전 구분(공통) — KIWAC WA 심사표 24기준=KWCAG 2.1, 그 밖 접근성 항목=2022 개정 2.2 신설, c-*=웹호환성 확장.
+            const KIWAC24={'1.1.1':'1','1.2.1':'2','1.4.1':'3','1.3.3':'4','1.4.3':'5','1.4.2':'6','1.4.4':'7',
+              '2.1.1':'8','2.1.2':'9','2.1.3':'10','2.2.1':'11','2.2.2':'12','2.3.1':'13',
+              '2.4.1':'14','2.4.2':'15','2.4.3':'16','3.1.1':'17','3.2.1':'18','1.3.2':'19','1.3.1':'20',
+              '3.3.2':'21','3.3.1':'22','4.1.1':'23','4.2.1':'24'};
+            const verInfo=code=>KIWAC24[code]
+              ? {cls:'ok',label:'KWCAG 2.1',title:'KWCAG 2.1 기준 24개 심사항목(KIWAC WA 심사표 '+KIWAC24[code]+'번)'}
+              : (String(code)[0]==='c'
+                 ? {cls:'na',label:'웹 호환성',title:'KWCAG 밖 · WQG 웹호환성 확장(3엔진·확대 등)'}
+                 : {cls:'wait',label:'2.2 신설',title:'2022년 개정 KWCAG 2.2(KS X OT0003) 신설 항목 — KWCAG 2.1(=KIWAC 24) 밖'});
+            const verPill=code=>{const v=verInfo(code);return '<span class="pill '+v.cls+'" title="'+v.title+'">'+v.label+'</span>'};
             // 공통 분류: KWCAG 4원칙(코드 1/2/3/4) + 웹 호환성(c-*). 그룹·코드 순으로 정렬.
             const PRIN=[['1','인식의 용이성 (Perceivable)'],['2','운용의 용이성 (Operable)'],
               ['3','이해의 용이성 (Understandable)'],['4','견고성 (Robustness)'],['c','웹 호환성']];
@@ -824,16 +831,17 @@ final class WebConsoleUI {
             async function loadItems(){const {items,excludedCount}=await api('/api/items');
               let html=`<div class="tabintro">검사할 <b>KWCAG 점검 항목</b>을 관리합니다. 체크를 <b>끄면</b> 그 항목은
                 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통, 다음 검사부터 적용). 현재 제외 <b id="exCount">${excludedCount}</b>건.
-                <br><span class=st>KWCAG 4원칙 + 웹 호환성 순으로 분류합니다.</span></div>
+                <br><span class=st>KWCAG 4원칙 + 웹 호환성 순으로 분류하며, <b>기준 버전</b> 열에 <span class="pill ok">KWCAG 2.1</span>(KIWAC 24 심사기준) / <span class="pill wait">2.2 신설</span>(2022 개정 추가) / <span class="pill na">웹 호환성</span>(WQG 확장)을 표시합니다.</span></div>
                 <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
                   <button class="act ghost" onclick="allItems(true)">전체 선택</button>
                   <button class="act ghost" onclick="allItems(false)">전체 해제</button></div>`;
               PRIN.forEach(([g,label])=>{let list=items.filter(it=>gkey(it.code)===g);
                 if(g!=='c')list=list.slice().sort((a,b)=>csort(a.code,b.code));
                 if(!list.length)return;
-                html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th>판정 방식</th></tr></thead><tbody>`+
+                html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th style="white-space:nowrap">기준 버전</th><th>판정 방식</th></tr></thead><tbody>`+
                   list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
                     <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
+                    <td style="white-space:nowrap">${verPill(it.code)}</td>
                     <td class=st>${AUTOLBL[it.automation]||it.automation}</td></tr>`).join('')+'</tbody></table>';
               });
               $('#items').innerHTML=html}
