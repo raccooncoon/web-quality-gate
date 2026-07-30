@@ -194,19 +194,27 @@ public final class CheckService {
                         ? site.auth().loginPath() : "/";
                 page.navigate(CheckRunner.resolveUrl(site.baseUrl(), lp));
                 progress.accept("열린 브라우저에서 로그인을 완료하세요 — 로그인 폼이 사라지면 자동 저장됩니다(최대 3분).");
-                // 로그인 폼(비번 필드) 등장 대기(최대 90초) → 소멸 대기(최대 180초)
+                // 로그인 폼(비번 필드) 등장 대기(최대 90초) → 소멸(DETACHED) 대기(최대 180초).
+                // 로그인 중 리다이렉트로 실행 컨텍스트가 갈아엎이므로 querySelector 폴링 대신
+                // 네비게이션에 안전한 waitForSelector(DETACHED) 를 쓴다.
                 try {
                     page.waitForSelector("input[type=password]",
                             new Page.WaitForSelectorOptions().setTimeout(90000));
                 } catch (RuntimeException ignore) { /* 이미 로그인됐거나 비번폼이 아닌 흐름 */ }
-                long end = System.currentTimeMillis() + 180000;
-                boolean done = false;
-                while (System.currentTimeMillis() < end) {
-                    if (page.querySelector("input[type=password]") == null) { done = true; break; }
-                    page.waitForTimeout(2000);
+                boolean done;
+                try {
+                    page.waitForSelector("input[type=password]", new Page.WaitForSelectorOptions()
+                            .setState(com.microsoft.playwright.options.WaitForSelectorState.DETACHED)
+                            .setTimeout(180000));
+                    done = true;
+                } catch (RuntimeException timeout) {
+                    done = false;
                 }
                 if (!done) throw new IllegalStateException("시간 초과 — 로그인이 완료되지 않았습니다.");
-                page.waitForTimeout(1000);
+                try {
+                    page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
+                            new Page.WaitForLoadStateOptions().setTimeout(8000));
+                } catch (RuntimeException ignore) { }
                 java.nio.file.Files.createDirectories(file.getParent());
                 java.nio.file.Files.writeString(file, ctx.storageState());
                 progress.accept("로그인 세션 저장 완료: " + file);
@@ -229,7 +237,10 @@ public final class CheckService {
                 String probe = site.urls().isEmpty() ? "/" : site.urls().get(0).path();
                 page.navigate(CheckRunner.resolveUrl(site.baseUrl(), probe));
                 page.waitForLoadState(com.microsoft.playwright.options.LoadState.LOAD);
-                boolean login = page.querySelector("input[type=password]") != null;
+                waitRender(page);   // 리다이렉트/SPA 정착 대기(컨텍스트 파괴 방지)
+                boolean login;
+                try { login = page.querySelector("input[type=password]") != null; }
+                catch (RuntimeException nav) { page.waitForTimeout(1500); login = page.querySelector("input[type=password]") != null; }
                 return login
                         ? new SessionStatus(false, "세션 만료 — 로그인 화면으로 돌아감(" + page.url() + ")")
                         : new SessionStatus(true, "유효 — 인증 상태로 접근됨(" + page.url() + ")");
