@@ -1,0 +1,64 @@
+# web-quality-gate 대상 설정 예시
+# 이 파일을 config/sites.yaml 로 복사한 뒤 실제 값으로 채우세요.
+#   cp config/sites.example.yaml config/sites.yaml
+# config/sites.yaml 은 .gitignore 처리되어 커밋되지 않습니다(내부 시스템·도메인 보호).
+#
+# type: spa → readySelector 대기 + networkidle 후 검사(렌더링 DOM 기준)
+# type: mpa → load 이벤트 후 검사(원본 응답 기준, 서버 렌더링)
+# auth.type: none | form | sso | storage
+#   - form    : loginPath + id/pw/submit 셀렉터로 자동 로그인. 계정은 콘솔/환경변수로 주입.
+#   - sso     : Keycloak/OIDC 등 다단계. 세션 재사용(storage) 권장.
+#   - storage : 사람이 직접 로그인한 세션(storageState)을 저장해 재사용.
+#   - none    : 로그인 불필요.
+sites:
+- name: "sample-mpa"
+  displayName: "샘플 시스템(MPA)"
+  type: "mpa"
+  baseUrl: "https://mpa.example.com"
+  auth:
+    type: "form"
+    loginPath: "/login"
+    idSelector: "input[name=username]"
+    pwSelector: "input[name=password]"
+    submitSelector: "button[type=submit]"
+    sso: false
+    storage: false
+  urls:
+  - path: "/"
+    readySelector: null
+  - path: "/list"
+    readySelector: null
+- name: "sample-spa"
+  displayName: "샘플 시스템(SPA)"
+  type: "spa"
+  baseUrl: "https://spa.example.com/app"
+  auth:
+    type: "storage"      # 다단계/SSO 로그인은 세션 재사용 권장
+    loginPath: "/"
+    idSelector: null
+    pwSelector: null
+    submitSelector: null
+    sso: false
+    storage: true
+  urls:
+  - path: "/dashboard"
+    readySelector: "#root .app-ready"
+checks:
+  accessibility:
+    enabled: true
+    tags:
+    - "wcag2a"
+    - "wcag2aa"
+    - "wcag21aa"
+  markup:
+    enabled: true
+    vnuJarPath: "/opt/wqg/vnu.jar"    # 반입한 vnu.jar 경로
+  compatibility:
+    enabled: true
+    engines:
+    - "chromium"
+    - "firefox"
+    - "webkit"
+    pixelDiffThreshold: 0.2
+output:
+  dir: "./reports"

@@ -18,3 +18,5 @@ llm.properties
 config/storage-*.json
 # 전용 브라우저 영속 프로필(쿠키·로그인 유지) — 로컬 전용, 절대 커밋 금지
 config/browser-profile-*/
+# 실제 대상 설정(내부 시스템·도메인) — 로컬 전용, 예시는 sites.example.yaml
+config/sites.yaml
