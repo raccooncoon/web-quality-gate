@@ -413,11 +413,13 @@ final class WebConsoleUI {
                 rowsMd+=grpHd(mc[2]+' ('+list.length+')')
                   +list.map(it=>'<tr'+offCls(it.code)+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+offTag(it.code)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
               const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (KWCAG 4원칙 + 웹 호환성)</div>'
-                +'<div class="cardsteps"><b>KWCAG 버전</b> — <b>KIWAC WA 품질인증 심사표의 24개 심사기준 = KWCAG 2.1 항목</b>(<span class="pill ok">KIWAC N</span>)입니다. '
-                +'<b>2022년 개정 KWCAG 2.2(KS X OT0003)</b>에서 항목이 추가되어 총 <b>33개</b>가 됐고, 그 추가분이 <span class="pill wait">2.2 추가</span>(= 2.1/KIWAC 24 밖). '
-                +'<span class="pill na">웹 호환성</span>은 KWCAG 밖 WQG 확장(3엔진·확대 등)입니다. 이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.'
-                +'<br><small class=st>※ 공식 KWCAG 2.2 추가 항목은 <b>9개</b>이며, 표에서도 <span class="pill wait">2.2 추가</span>가 <b>9개</b>로 일치합니다. 표준상 <b>지침 2.5(포인터 입력)는 KWCAG 2.2 신설</b>이라 2.5.1(포인터 궤적)도 2.2 추가로 분류합니다. 다만 KIWAC 심사표는 심사기준 8을 8-1(키보드=2.1.1)/8-2로 나눠 관리하며, 그 8-2가 개념상 이 2.5.1(단순 누르기 대체)을 가리키는 표기 관행이 있습니다.</small>'
-                +'<br><small class=st>표의 <s>취소선</s>·<span class="pill off">미사용</span> 항목은 <b>④ 점검 항목</b> 탭에서 <b>제외</b>한 것으로 검사·집계에서 빠집니다(현재 <b>'+(excludedCount||0)+'</b>개 제외).</small></div>'
+                +'<div class="cardsteps"><b>기준 버전 배지</b> — KWCAG 2.2 총 <b>33개</b> 항목 = 2.1 <b>24개</b> + 2022 신설 <b>9개</b>.'
+                +'<div style="margin-top:5px;line-height:1.9">'
+                +'<span class="pill ok">KIWAC N</span> KIWAC WA 심사표 24개 심사기준 = <b>KWCAG 2.1</b> &nbsp; '
+                +'<span class="pill wait">2.2 추가</span> 2022 개정(KS X OT0003) <b>신설 9개</b> &nbsp; '
+                +'<span class="pill na">웹 호환성</span> KWCAG 밖 <b>WQG 확장</b>(3엔진·200% 확대)</div>'
+                +'<small class=st>이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다. '
+                +'<s>취소선</s>·<span class="pill off">미사용</span>은 <b>④ 점검 항목</b>에서 제외한 항목(현재 <b>'+(excludedCount||0)+'</b>개).</small></div>'
                 +'<table id="mapPr">'+theadMap+rowsPr+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
@@ -1020,11 +1022,18 @@ final class WebConsoleUI {
               <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a></td>
               <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
             // 체크박스 선택 → 비교(정확히 2건)·선택 삭제(1건 이상) 버튼 상태 갱신
-            function onSel(gi){const chk=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]:checked')];
+            function onSel(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
+              const chk=all.filter(c=>c.checked);
               const cb=document.getElementById('cmpbtn-'+gi);
               if(cb){cb.disabled=chk.length!==2;cb.textContent=chk.length===2?'선택한 2건 비교 ▶':('비교 ('+chk.length+'/2)')}
               const db=document.getElementById('delbtn-'+gi);
-              if(db){db.disabled=chk.length===0;db.textContent='선택 삭제 ('+chk.length+')'}}
+              if(db){db.disabled=chk.length===0;db.textContent='선택 삭제 ('+chk.length+')'}
+              const sb=document.getElementById('selallbtn-'+gi);
+              if(sb)sb.textContent=(all.length&&chk.length===all.length)?'전체 해제':'전체 선택'}
+            // 프로젝트(시스템) 그룹의 모든 회차 선택/해제 토글
+            function selAllG(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
+              const allOn=all.length>0&&all.every(c=>c.checked);
+              all.forEach(c=>c.checked=!allOn);onSel(gi)}
             async function delSelected(gi){const chk=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]:checked')];
               if(!chk.length){toast('선택된 회차 없음');return}
               const site=document.getElementById('delbtn-'+gi).dataset.site;
@@ -1048,6 +1057,7 @@ final class WebConsoleUI {
                   <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
                   ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
                   <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
+                    <button class="act ghost selallbtn" id="selallbtn-${gi}" onclick="selAllG(${gi})">전체 선택</button>
                     ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})">비교 (0/2)</button>`:''}
                     <button class="act delbtn" id="delbtn-${gi}" data-site="${esc(g.site)}" disabled style="background:var(--bad)" onclick="delSelected(${gi})">선택 삭제 (0)</button>
                   </span></div>
