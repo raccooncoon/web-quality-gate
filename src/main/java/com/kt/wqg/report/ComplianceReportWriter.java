@@ -138,8 +138,9 @@ public final class ComplianceReportWriter {
             .docinfo{width:100%;border-collapse:collapse;margin:0 0 4px;background:var(--paper);
               border:1px solid var(--line);border-top:none;border-radius:0 0 3px 3px;overflow:hidden}
             .docinfo th{width:118px;background:var(--govsoft);color:var(--head);font-weight:700;
-              font-size:12.5px;text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
-            .docinfo td{font-size:13px;padding:9px 14px;border-bottom:1px solid var(--line)}
+              font-size:12.5px;text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+            .docinfo td{font-size:13px;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+            .docinfo td.urlcell{font-family:ui-monospace,monospace;word-break:break-all;overflow-wrap:anywhere}
             .docinfo tr:last-child th,.docinfo tr:last-child td{border-bottom:none}
             /* 섹션 제목(자동 번호) */
             h2{counter-increment:sec;font-size:15px;color:var(--head);margin:30px 0 12px;
@@ -478,7 +479,7 @@ public final class ComplianceReportWriter {
               </div>
               <table class="docinfo">
                 <tr><th>대상 시스템</th><td>${esc(R.displayName||R.site)} <code>(${esc(R.site)})</code></td></tr>
-                ${R.target?`<tr><th>검사 대상 URL</th><td class="shoturl"><code>${esc(R.target.baseUrl||'-')}</code></td></tr>
+                ${R.target?`<tr><th>검사 대상 URL</th><td class="urlcell"><code>${esc(R.target.baseUrl||'-')}</code></td></tr>
                 <tr><th>검사 계정</th><td>${R.target.account?'<code>'+esc(R.target.account)+'</code>':'<span class="prov">비로그인</span>'} ${R.target.authType==='form'?'<span class="prov">· 폼 로그인 '+esc(R.target.loginPath||'/login')+'</span>':(R.target.authType&&R.target.authType!=='form'&&R.target.authType!=='none'?'<span class="prov">· '+esc(R.target.authType)+'</span>':'')}</td></tr>
                 <tr><th>검사 경로 <span class="prov">(${(R.target.paths||[]).length})</span></th><td class="pathlist">${(R.target.paths||[]).map(p=>'<code>'+esc(p)+'</code>').join(' ')||'-'}</td></tr>`:''}
                 <tr><th>검사 일시</th><td>${fmtTs(R.timestamp)}</td></tr>
