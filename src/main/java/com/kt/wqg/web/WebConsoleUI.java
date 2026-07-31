@@ -672,7 +672,12 @@ final class WebConsoleUI {
                   <div class="hint">계정은 이 PC 로컬 파일에만 저장됩니다 (git·리포트 제외).</div>
                 </div>
                 <div class="pathhd"><label style="margin:0">검사 경로 <span class="pathcount"></span></label>
-                  <span class="hint" style="margin:0">SPA는 우측에 대기 셀렉터 지정 가능</span></div>
+                  <span class="hint" style="margin:0">SPA는 우측에 <b>대기 셀렉터</b> 지정 가능</span></div>
+                <details class="hint" style="margin:2px 0 6px"><summary style="cursor:pointer">대기 셀렉터란? — SPA 빈 화면 오탐 방지</summary>
+                  <div style="margin-top:4px;line-height:1.7">SPA는 페이지 이동 직후엔 화면이 비어 있어, 그대로 검사하면 위반 0건으로 <b>잘못 통과(오탐)</b>될 수 있습니다.
+                  이 칸에 <b>화면이 다 뜬 뒤에만 나타나는 요소의 CSS 셀렉터</b>를 넣으면, 그 요소가 보일 때까지 기다린 뒤 검사를 시작합니다.
+                  <br>예: <code>#root .app-ready</code> · <code>main</code> · <code>.content-loaded</code>
+                  <br><span class=st>비워두면 네트워크 유휴 + 짧은 정착만 대기합니다. 지정해도 최대 10초까지 기다리고, 못 찾으면 렌더된 만큼 검사합니다. MPA(서버 렌더링)는 불필요.</span></div></details>
                 <div class="pathlist"></div>
                 <textarea name="urls" style="display:none">${esc((s.urls||[]).join('\\n'))}</textarea>
                 <div class="pathadd"><textarea class="newpath" rows="1" placeholder="/경로 입력 — 여러 개는 줄바꿈으로 붙여넣기 (⌘/Ctrl+Enter 또는 [추가])"></textarea>
@@ -987,7 +992,7 @@ final class WebConsoleUI {
             const csort=(a,b)=>{const na=String(a).split('.').map(Number),nb=String(b).split('.').map(Number);
               for(let i=0;i<Math.max(na.length,nb.length);i++){const x=na[i]||0,y=nb[i]||0;if(x!==y)return x-y}return 0};
             async function loadItems(){const {items,excludedCount}=await api('/api/items');
-              let html=`<div class="tabintro"><b>KWCAG 점검 항목</b> 관리 — 체크를 <b>끄면</b> 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통·다음 검사부터). 전체 <b>${items.length}</b>건 중 <b>검사 <b id="chkCount">${items.length-excludedCount}</b>건</b> · 제외 <b id="exCount">${excludedCount}</b>건.
+              let html=`<div class="tabintro"><b>KWCAG 점검 항목</b> 관리 — 체크를 <b>끄면</b> 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통·다음 검사부터). 전체 <b>${items.length}</b>건 중 검사 <b id="chkCount">${items.length-excludedCount}</b>건 · 제외 <b id="exCount">${excludedCount}</b>건.
                 <br><small class=st>열 의미(KIWAC·판정 방식·카도와·웹와치·WQG 엔진)는 <b>③ 기준·도구</b> 탭과 동일합니다.</small></div>
                 <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
                   <button class="act ghost" onclick="allItems(true)">전체 선택</button>

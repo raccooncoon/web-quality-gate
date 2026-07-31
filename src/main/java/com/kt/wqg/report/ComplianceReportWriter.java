@@ -122,7 +122,7 @@ public final class ComplianceReportWriter {
                text-wrap:pretty 로 마지막 줄에 한 단어만 남는(고아 단어) 현상 완화 */
             td,th,.g,.sub,summary,.docinfo td,h1,h2{word-break:keep-all;overflow-wrap:break-word;text-wrap:pretty}
             /* URL·경로만 강제 분해. 코드(1.2.1 등)는 줄바꿈 금지 */
-            .ev,.site,.shoturl{word-break:break-all;overflow-wrap:anywhere}
+            .ev,.site,.shoturl,.urlcell{word-break:break-all;overflow-wrap:anywhere}
             code{white-space:nowrap}
             /* 표지 머리글 */
             .cover{background:linear-gradient(180deg,var(--navy),var(--navy2));color:#fff;
@@ -140,7 +140,7 @@ public final class ComplianceReportWriter {
             .docinfo th{width:118px;background:var(--govsoft);color:var(--head);font-weight:700;
               font-size:12.5px;text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
             .docinfo td{font-size:13px;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
-            .docinfo td.urlcell{font-family:ui-monospace,monospace;word-break:break-all;overflow-wrap:anywhere}
+            .docinfo td.urlcell{font-family:ui-monospace,monospace}
             .docinfo tr:last-child th,.docinfo tr:last-child td{border-bottom:none}
             /* 섹션 제목(자동 번호) */
             h2{counter-increment:sec;font-size:15px;color:var(--head);margin:30px 0 12px;
