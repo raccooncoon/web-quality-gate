@@ -548,8 +548,8 @@ public final class ComplianceReportWriter {
                 +`</tbody></table></div></div>`;});
               return h};
             const thead='<thead><tr><th>No</th><th>코드</th><th>검사 항목</th><th>세부 기준</th><th>판정</th><th>근거</th></tr></thead>';
-            const itemRows=(list,withId)=>{let s='';list.forEach(it=>{const g=it.guide||{};
-              s+=`<tr class="main"${withId?' id="it-'+esc(it.code)+'"':''}><td class="num r0">${it.no}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
+            const itemRows=(list,withId)=>{let s='';list.forEach((it,idx)=>{const g=it.guide||{};
+              s+=`<tr class="main"${withId?' id="it-'+esc(it.code)+'"':''}><td class="num r0">${idx+1}</td><td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td><td class="sub">${esc(it.criteria)}</td>
                 <td><span class="badge ${esc(it.verdict)}">${esc(it.verdict)}</span></td><td class="sub">${it.source==='assessor'?'평가자 확정':'자동 판정'}</td></tr>`;
               s+=`<tr class="drow"><td colspan="6"><details class="d"><summary>상세 설명 보기</summary>`;
               const hasEv=(it.evidence||[]).length>0;
@@ -679,7 +679,7 @@ public final class ComplianceReportWriter {
                 if(cat.category!=='c')its=its.slice().sort((a,b)=>codeSort(a.code,b.code));
                 if(!its.length)return;
                 p+=`<h3 class="ph3">${esc(cat.label)}</h3><table class="ptbl det"><thead><tr><th>No</th><th>코드</th><th>검사 항목 · 판정 · 근거</th></tr></thead><tbody>`;
-                its.forEach(it=>{const g=it.guide||{};
+                its.forEach((it,idx)=>{const g=it.guide||{};
                   const full=it.verdict==='부적합'||it.verdict==='수동확인필요';
                   const rmsg=it.verdict==='적합'?'자동 검사에서 위반이 발견되지 않아 적합.'
                     :it.verdict==='해당없음'?'검사 대상 요소가 페이지에 없어 해당없음.'
@@ -698,7 +698,7 @@ public final class ComplianceReportWriter {
                     +(g.fix?`<div><b>개선</b> ${esc(g.fix)}</div>`:'')
                     +(g.limit?`<div><b>검사 한계</b> ${esc(g.limit)}</div>`:'')
                     +'</div>';}
-                  p+=`<tr><td class="num">${it.no}</td><td class="code">${esc(it.code)}</td>
+                  p+=`<tr><td class="num">${idx+1}</td><td class="code">${esc(it.code)}</td>
                     <td><div class="pit"><b>${esc(it.title)}</b>${badge(it.verdict)}</div>
                     <div class="psub">${esc(it.criteria)}</div>
                     ${detail}${ev}${it.memo?'<div class="pres"><b>평가자 메모</b> '+esc(it.memo)+'</div>':''}</td></tr>`;});

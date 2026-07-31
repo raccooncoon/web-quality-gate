@@ -987,7 +987,7 @@ final class WebConsoleUI {
             const csort=(a,b)=>{const na=String(a).split('.').map(Number),nb=String(b).split('.').map(Number);
               for(let i=0;i<Math.max(na.length,nb.length);i++){const x=na[i]||0,y=nb[i]||0;if(x!==y)return x-y}return 0};
             async function loadItems(){const {items,excludedCount}=await api('/api/items');
-              let html=`<div class="tabintro"><b>KWCAG 점검 항목</b> 관리 — 체크를 <b>끄면</b> 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통·다음 검사부터). 현재 제외 <b id="exCount">${excludedCount}</b>건.
+              let html=`<div class="tabintro"><b>KWCAG 점검 항목</b> 관리 — 체크를 <b>끄면</b> 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통·다음 검사부터). 전체 <b>${items.length}</b>건 중 <b>검사 <b id="chkCount">${items.length-excludedCount}</b>건</b> · 제외 <b id="exCount">${excludedCount}</b>건.
                 <br><small class=st>열 의미(KIWAC·판정 방식·카도와·웹와치·WQG 엔진)는 <b>③ 기준·도구</b> 탭과 동일합니다.</small></div>
                 <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
                   <button class="act ghost" onclick="allItems(true)">전체 선택</button>
@@ -1013,6 +1013,7 @@ final class WebConsoleUI {
             async function saveItems(){const excluded=[...document.querySelectorAll('.itemchk:not(:checked)')].map(c=>c.dataset.code);
               const r=await api('/api/items/exclude','POST',{excluded});
               const el=document.getElementById('exCount');if(el)el.textContent=r.excludedCount;
+              const ck=document.getElementById('chkCount');if(ck)ck.textContent=document.querySelectorAll('.itemchk:checked').length;
               toast(excluded.length?('제외 '+excluded.length+'건 저장 — 다음 검사부터 적용'):'제외 없음으로 저장')}
 
             // ── 결과 탭 (플랫폼별 그룹) ──
