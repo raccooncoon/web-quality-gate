@@ -279,12 +279,13 @@ final class WebConsoleUI {
             </style></head><body>
             <header><h1>🛡️ web-quality-gate <span class="tag">웹접근성·웹호환성 검사 콘솔</span></h1>
             <nav><button data-tab="stdref" class="util">ⓘ 기준·도구</button>
-              <span class="navsp2"></span>
+              <button data-tab="items" class="util">✓ 점검 항목</button>
+              <span class="navsp"></span>
               <button data-tab="config" class="on">① 설정</button>
               <button data-tab="run">② 실행</button><button data-tab="result">③ 결과 · 검수</button>
               <span class="navsp"></span>
               <button data-tab="syscfg" class="util">⚙ 시스템 관리</button>
-              <button data-tab="items" class="util">✓ 점검 항목</button>
+              <button data-tab="audit" class="util">📄 증적·이력</button>
               <button data-tab="aicfg" class="util">✦ AI 설정</button></nav></header>
             <main><div id="config"></div><div id="run" style="display:none"></div>
               <div id="items" style="display:none"></div>
@@ -369,7 +370,7 @@ final class WebConsoleUI {
                 +'<div class="cardsteps" style="margin-top:12px"><b>WCAG 통과 ≈ KWCAG 통과</b>가 대체로 성립하지만, 법·인증이 KWCAG 기준이라 <b>판정은 KWCAG 항목 단위</b>로 합니다. '
                 +'아래 매핑의 "33 + 확장 4"에서 <b>33은 KWCAG 표준 항목</b>, <b>+4는 KWCAG 밖 웹호환성</b>(c-browser·c-reflow·c-deprecated·c-webstandard)을 WQG가 얹은 확장입니다.</div>';
               const cmp='<div class=grouphd style="margin-top:22px">2. 도구 성격 비교</div>'
-                +'<table><tr><th>항목</th><th>카도와(KADO-WAH)</th><th>웹와치(WebWatch)</th><th style="background:var(--govsoft)">WQG (이 도구)</th></tr>'
+                +'<table><tr><th>항목</th><th>카도와(KADO-WAH)</th><th>웹와치(WebWatch)</th><th style="background:var(--govsoft)">WQG (Web Quality Gate · 이 도구)</th></tr>'
                 +'<tr><td><b>성격</b></td><td>NIA 무료 공식 도구</td><td>상용 모니터링 솔루션</td><td>자체 제작 인하우스</td></tr>'
                 +'<tr><td><b>엔진</b></td><td>KWCAG 네이티브</td><td>자체 상용 엔진</td><td><small style="font-family:ui-monospace,monospace">axe-core+vnu+Playwright</small></td></tr>'
                 +'<tr><td><b>방식</b></td><td>단일 페이지·준자동</td><td>사이트 크롤링·스케줄</td><td>로그인 후 다중 페이지 자동+AI 초안</td></tr>'
@@ -637,8 +638,9 @@ final class WebConsoleUI {
                 <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
                 <div class="dtnote" id="dtnote-${s.name}"></div>
                 <div class="storage-only">
-                  <div class="cardsteps"><b>세션 재사용</b> — OASIS SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
+                  <div class="cardsteps"><b>세션 재사용</b> — SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
                     한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
+                    <span class=st>(SSO 로그인 기본 기반: <b>Keycloak</b>)</span>
                     baseUrl 을 채운 뒤 <b>① 세션 로그인</b> → 열리는 <b>전용 브라우저</b>에서 로그인 완료 → 자동 저장.
                     이 창은 <b>로그인을 기억</b>하므로 <u>최초 1회만</u> 로그인하면 됩니다.
                     이후 <b>② 세션 유효성 확인</b>으로 점검하세요. 세션·프로필은 이 PC 로컬에만 저장됩니다.</div>
