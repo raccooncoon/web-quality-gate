@@ -350,7 +350,7 @@ final class WebConsoleUI {
               const exSet=new Set((realItems||[]).filter(it=>it.excluded).map(it=>it.code));
               const offCls=code=>exSet.has(code)?' class=offrow':'';
               const offTag=code=>exSet.has(code)?' <span class="pill off">미사용</span>':'';
-              const P={a:'<span class="pill ok" title="해당 도구가 자동 검출">자동</span>',m:'<span class="pill wait" title="도구에 항목은 있고 사람이 최종 확인">수동</span>',p:'<span class="pill wait" title="부분 지원(제품 버전·설정에 따라 다름)">부분</span>',n:'<span class="pill na" title="해당 도구 미지원 — 항목 자체가 없음(주로 KWCAG 2.2 신설 항목이거나 웹호환성 등 도구 범위 밖)">—</span>'};
+              const P=TOOLLBL;  // 도구 커버리지 pill — 공통 단일 소스 재사용
               const intro='<div class="tabintro">세 도구 모두 KWCAG를 보지만 <b>목적·엔진·공신력이 달라 대체가 아니라 보완</b>입니다. '
                 +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 표준 관계·도구 비교·항목 매핑·체크리스트(참조).</div>';
               const std='<div class=grouphd>1. 표준 관계 · WCAG ↔ KWCAG</div>'
@@ -377,32 +377,27 @@ final class WebConsoleUI {
                 +'<tr><td><b>수동항목</b></td><td>평가자 유도</td><td>평가자</td><td>AI 비전 초안+근거 스크린샷, 평가자 확정</td></tr>'
                 +'<tr><td><b>공신력</b></td><td><span class="pill ok">인증·자가진단 표준</span></td><td>상용 모니터링</td><td><span class="pill wait">내부 QA 참고</span></td></tr>'
                 +'<tr><td><b>적합 용도</b></td><td>공식 자가진단·인증 준비</td><td>대규모 정기 모니터링</td><td>개발·운영 상시 QA·회귀 방지</td></tr></table>';
+              // 검사항목 순서·제목(원칙별). 도구·엔진 커버리지는 공통 TOOLMAP 단일 소스에서 조회.
               const M=[['P','인식의 용이성 (Perceivable)'],
-                ['1.1.1','적절한 대체 텍스트','a','a','axe'],['1.2.1','자막 제공','m','m','axe'],['1.3.1','표의 구성','a','a','axe'],
-                ['1.3.2','콘텐츠의 선형 구조','m','m','axe'],['1.3.3','명확한 지시사항','m','m','AI·평가자'],['1.4.1','색에 무관한 인식','m','p','AI·평가자'],
-                ['1.4.2','자동 재생 금지','m','a','axe'],['1.4.3','텍스트 명도 대비','a','a','axe'],['1.4.4','콘텐츠 간의 구분','m','m','평가자'],
+                ['1.1.1','적절한 대체 텍스트'],['1.2.1','자막 제공'],['1.3.1','표의 구성'],
+                ['1.3.2','콘텐츠의 선형 구조'],['1.3.3','명확한 지시사항'],['1.4.1','색에 무관한 인식'],
+                ['1.4.2','자동 재생 금지'],['1.4.3','텍스트 명도 대비'],['1.4.4','콘텐츠 간의 구분'],
                 ['P','운용의 용이성 (Operable)'],
-                ['2.1.1','키보드 사용 보장','m','m','axe'],['2.1.2','초점 이동과 표시','m','m','평가자'],['2.1.3','조작 가능(타깃 크기)','n','p','axe'],
-                ['2.1.4','문자 단축키','m','m','axe'],['2.2.1','응답시간 조절','m','m','axe'],['2.2.2','정지 기능','m','a','axe'],['2.3.1','깜빡임 제한','m','a','axe'],
-                ['2.4.1','반복 영역 건너뛰기','a','a','axe'],['2.4.2','제목 제공','a','a','axe'],['2.4.3','적절한 링크 텍스트','a','a','axe'],['2.4.4','고정 참조 위치','m','m','axe'],
-                ['2.5.1','단일 포인터 입력','m','m','axe'],['2.5.2','포인터 입력 취소','m','m','axe'],['2.5.3','레이블과 네임','m','m','axe'],['2.5.4','동작 기반 작동','m','m','axe'],
+                ['2.1.1','키보드 사용 보장'],['2.1.2','초점 이동과 표시'],['2.1.3','조작 가능(타깃 크기)'],
+                ['2.1.4','문자 단축키'],['2.2.1','응답시간 조절'],['2.2.2','정지 기능'],['2.3.1','깜빡임 제한'],
+                ['2.4.1','반복 영역 건너뛰기'],['2.4.2','제목 제공'],['2.4.3','적절한 링크 텍스트'],['2.4.4','고정 참조 위치'],
+                ['2.5.1','단일 포인터 입력'],['2.5.2','포인터 입력 취소'],['2.5.3','레이블과 네임'],['2.5.4','동작 기반 작동'],
                 ['P','이해의 용이성 (Understandable)'],
-                ['3.1.1','기본 언어 표시','a','a','axe'],['3.2.1','사용자 요구에 따른 실행','m','m','axe'],['3.2.2','찾기 쉬운 도움 정보','m','m','AI·평가자'],
-                ['3.3.1','오류 정정','m','m','axe'],['3.3.2','레이블 제공','a','a','axe'],['3.3.3','접근 가능한 인증','m','m','axe'],['3.3.4','반복 입력 정보','m','m','AI·평가자'],
+                ['3.1.1','기본 언어 표시'],['3.2.1','사용자 요구에 따른 실행'],['3.2.2','찾기 쉬운 도움 정보'],
+                ['3.3.1','오류 정정'],['3.3.2','레이블 제공'],['3.3.3','접근 가능한 인증'],['3.3.4','반복 입력 정보'],
                 ['P','견고성 (Robust)'],
-                ['4.1.1','마크업 오류 방지','p','a','vnu'],['4.2.1','웹 애플리케이션 접근성(ARIA)','m','m','axe'],
+                ['4.1.1','마크업 오류 방지'],['4.2.1','웹 애플리케이션 접근성(ARIA)'],
                 ['P','웹 호환성'],
-                ['c-webstandard','웹표준 HTML/CSS','n','p','vnu·평가자'],['c-deprecated','Deprecated 태그','n','p','vnu'],
-                ['c-browser','브라우저 호환성','n','n','Playwright'],['c-reflow','해상도·확대(200%)','n','p','Playwright']];
-              // KIWAC(한국웹접근성인증평가원) WA 인증 심사 24 기준 ↔ 우리 코드 매핑. 공통 KIWAC24 재사용.
-              const KIWAC=KIWAC24;
-              const kiwacCell=code=>KIWAC[code]
-                ?'<span class="pill ok" title="KWCAG 2.1 기준 24개 심사항목(KIWAC WA인증 심사표) '+KIWAC[code]+'번">KIWAC '+KIWAC[code]+'</span>'
-                :(String(code)[0]==='c'
-                  ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
-                  :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 항목 — KWCAG 2.1(=KIWAC 24) 밖">2.2 추가</span>');
+                ['c-webstandard','웹표준 HTML/CSS'],['c-deprecated','Deprecated 태그'],
+                ['c-browser','브라우저 호환성'],['c-reflow','해상도·확대(200%)']];
+              const kiwacCell=kiwacPill;  // KIWAC(KWCAG 2.1) 셀 — 공통 단일 소스
               const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
-              const itRow=r=>'<tr'+offCls(r[0])+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+offTag(r[0])+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
+              const itRow=r=>'<tr'+offCls(r[0])+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+offTag(r[0])+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td>'+toolTds(r[0])+'</tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
@@ -948,12 +943,30 @@ final class WebConsoleUI {
               '2.1.1':'8','2.1.2':'9','2.1.3':'10','2.2.1':'11','2.2.2':'12','2.3.1':'13',
               '2.4.1':'14','2.4.2':'15','2.4.3':'16','3.1.1':'17','3.2.1':'18','1.3.2':'19','1.3.1':'20',
               '3.3.2':'21','3.3.1':'22','4.1.1':'23','4.2.1':'24'};
-            const verInfo=code=>KIWAC24[code]
-              ? {cls:'ok',label:'KWCAG 2.1',title:'KWCAG 2.1 기준 24개 심사항목(KIWAC WA 심사표 '+KIWAC24[code]+'번)'}
-              : (String(code)[0]==='c'
-                 ? {cls:'na',label:'웹 호환성',title:'KWCAG 밖 · WQG 웹호환성 확장(3엔진·확대 등)'}
-                 : {cls:'wait',label:'2.2 신설',title:'2022년 개정 KWCAG 2.2(KS X OT0003) 신설 항목 — KWCAG 2.1(=KIWAC 24) 밖'});
-            const verPill=code=>{const v=verInfo(code);return '<span class="pill '+v.cls+'" title="'+v.title+'">'+v.label+'</span>'};
+            const kiwacPill=code=>KIWAC24[code]
+              ?'<span class="pill ok" title="KWCAG 2.1 기준 24개 심사항목(KIWAC WA인증 심사표) '+KIWAC24[code]+'번">KIWAC '+KIWAC24[code]+'</span>'
+              :(String(code)[0]==='c'
+                ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
+                :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 항목 — KWCAG 2.1(=KIWAC 24) 밖">2.2 추가</span>');
+            // 도구·엔진 커버리지(공통 단일 소스) — 기준·도구 매핑표와 ④ 점검 항목 탭이 함께 사용.
+            // 값: [카도와, 웹와치, WQG 엔진] · 카도와·웹와치는 근사치(제품 버전·설정별 상이, 참고용).
+            const TOOLMAP={
+              '1.1.1':['a','a','axe'],'1.2.1':['m','m','axe'],'1.3.1':['a','a','axe'],'1.3.2':['m','m','axe'],
+              '1.3.3':['m','m','AI·평가자'],'1.4.1':['m','p','AI·평가자'],'1.4.2':['m','a','axe'],'1.4.3':['a','a','axe'],
+              '1.4.4':['m','m','평가자'],'2.1.1':['m','m','axe'],'2.1.2':['m','m','평가자'],'2.1.3':['n','p','axe'],
+              '2.1.4':['m','m','axe'],'2.2.1':['m','m','axe'],'2.2.2':['m','a','axe'],'2.3.1':['m','a','axe'],
+              '2.4.1':['a','a','axe'],'2.4.2':['a','a','axe'],'2.4.3':['a','a','axe'],'2.4.4':['m','m','axe'],
+              '2.5.1':['m','m','axe'],'2.5.2':['m','m','axe'],'2.5.3':['m','m','axe'],'2.5.4':['m','m','axe'],
+              '3.1.1':['a','a','axe'],'3.2.1':['m','m','axe'],'3.2.2':['m','m','AI·평가자'],'3.3.1':['m','m','axe'],
+              '3.3.2':['a','a','axe'],'3.3.3':['m','m','axe'],'3.3.4':['m','m','AI·평가자'],'4.1.1':['p','a','vnu'],
+              '4.2.1':['m','m','axe'],'c-webstandard':['n','p','vnu·평가자'],'c-deprecated':['n','p','vnu'],
+              'c-browser':['n','n','Playwright'],'c-reflow':['n','p','Playwright']};
+            // a=자동 m=수동 p=부분 n=미지원 — 도구 커버리지 pill(카도와·웹와치 공통)
+            const TOOLLBL={a:'<span class="pill ok" title="해당 도구가 자동 검출">자동</span>',m:'<span class="pill wait" title="도구에 항목은 있고 사람이 최종 확인">수동</span>',p:'<span class="pill wait" title="부분 지원(제품 버전·설정에 따라 다름)">부분</span>',n:'<span class="pill na" title="해당 도구 미지원 — 항목 자체가 없음(주로 KWCAG 2.2 신설 항목이거나 웹호환성 등 도구 범위 밖)">—</span>'};
+            // 카도와·웹와치·WQG 엔진 3개 <td> 생성(코드 미매핑 시 —)
+            const toolTds=code=>{const t=TOOLMAP[code]||['n','n','—'];
+              return '<td style="text-align:center">'+(TOOLLBL[t[0]]||'—')+'</td><td style="text-align:center">'+(TOOLLBL[t[1]]||'—')+'</td>'
+                +'<td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+esc(t[2])+'</small></td>'};
             // 공통 분류: KWCAG 4원칙(코드 1/2/3/4) + 웹 호환성(c-*). 그룹·코드 순으로 정렬.
             const PRIN=[['1','인식의 용이성 (Perceivable)'],['2','운용의 용이성 (Operable)'],
               ['3','이해의 용이성 (Understandable)'],['4','견고성 (Robustness)'],['c','웹 호환성']];
@@ -963,18 +976,19 @@ final class WebConsoleUI {
             async function loadItems(){const {items,excludedCount}=await api('/api/items');
               let html=`<div class="tabintro">검사할 <b>KWCAG 점검 항목</b>을 관리합니다. 체크를 <b>끄면</b> 그 항목은
                 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통, 다음 검사부터 적용). 현재 제외 <b id="exCount">${excludedCount}</b>건.
-                <br><span class=st>KWCAG 4원칙 + 웹 호환성 순으로 분류하며, <b>기준 버전</b> 열에 <span class="pill ok">KWCAG 2.1</span>(KIWAC 24 심사기준) / <span class="pill wait">2.2 신설</span>(2022 개정 추가) / <span class="pill na">웹 호환성</span>(WQG 확장)을 표시합니다.</span></div>
+                <br><span class=st>KWCAG 4원칙 + 웹 호환성 순으로 분류합니다. <b>KIWAC (KWCAG 2.1)</b> 열은 <span class="pill ok">KIWAC N</span>(24 심사기준 번호=KWCAG 2.1) / <span class="pill wait">2.2 추가</span>(2022 개정 신설) / <span class="pill na">웹 호환성</span>(WQG 확장), <b>판정 방식</b>은 SI 심사 분류(자동 판정·수동 확인)입니다. <b>카도와·웹와치·WQG 엔진</b> 열은 도구별 커버리지(<span class="pill ok">자동</span>·<span class="pill wait">수동/부분</span>·<span class="pill na">—</span>)로 <b>③ 기준·도구</b> 탭 매핑표와 동일합니다. <small>카도와·웹와치는 근사치(참고용).</small></span></div>
                 <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
                   <button class="act ghost" onclick="allItems(true)">전체 선택</button>
                   <button class="act ghost" onclick="allItems(false)">전체 해제</button></div>`;
               PRIN.forEach(([g,label])=>{let list=items.filter(it=>gkey(it.code)===g);
                 if(g!=='c')list=list.slice().sort((a,b)=>csort(a.code,b.code));
                 if(!list.length)return;
-                html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th style="white-space:nowrap">기준 버전</th><th>판정 방식</th></tr></thead><tbody>`+
+                html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th style="white-space:nowrap">KIWAC (KWCAG 2.1)</th><th style="white-space:nowrap">판정 방식</th><th style="text-align:center">카도와</th><th style="text-align:center">웹와치</th><th>WQG 엔진</th></tr></thead><tbody>`+
                   list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
                     <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
-                    <td style="white-space:nowrap">${verPill(it.code)}</td>
-                    <td class=st title="도구 처리: ${esc(AUTOLBL[it.automation]||it.automation)}">${siLabel(it)}</td></tr>`).join('')+'</tbody></table>';
+                    <td style="white-space:nowrap">${kiwacPill(it.code)}</td>
+                    <td class=st title="도구 처리: ${esc(AUTOLBL[it.automation]||it.automation)}">${siLabel(it)}</td>
+                    ${toolTds(it.code)}</tr>`).join('')+'</tbody></table>';
               });
               $('#items').innerHTML=html}
             function allItems(v){document.querySelectorAll('.itemchk').forEach(c=>c.checked=v)}
