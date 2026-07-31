@@ -40,7 +40,10 @@ if not exist "%OUT%\vnu.jar" (echo vnu.jar 추출 실패 & goto :err)
 
 echo [5/6] 최소 JRE 17 생성 (jlink)
 if "%JAVA_HOME%"=="" (echo JAVA_HOME(JDK17) 설정 필요 & goto :err)
-"%JAVA_HOME%\bin\jlink" --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.net.http,java.management,jdk.httpserver,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.charsets,jdk.zipfs,jdk.unsupported --no-header-files --no-man-pages --strip-debug --output "%OUT%\jre" || goto :err
+REM java.se = 모든 Java SE 모듈(java.xml 등) — 번들 JRE 로 vnu.jar(HTML/XML 검증)도 실행하므로
+REM 앱뿐 아니라 vnu 의 모듈 요구까지 안전하게 커버한다. jdk.charsets 는 EUC-KR/MS949 페이지용.
+REM ※ 리눅스판 scripts/package-offline.sh 와 모듈 목록·vnu 버전(VNU_VER)을 동기 유지할 것.
+"%JAVA_HOME%\bin\jlink" --add-modules java.se,jdk.httpserver,jdk.crypto.ec,jdk.charsets,jdk.unsupported --no-header-files --no-man-pages --strip-debug --output "%OUT%\jre" || goto :err
 
 echo [6/6] 설정·실행기 복사
 REM 실제 설정(config\sites.yaml)이 있으면 그것을, 없으면 예시 템플릿을 반입

@@ -71,7 +71,7 @@ public final class MarkupCheck {
     private static String runVnu(String vnuJarPath, Path htmlFile)
             throws IOException, InterruptedException {
         Process proc = new ProcessBuilder(
-                "java", "-jar", vnuJarPath,
+                javaExe(), "-jar", vnuJarPath,
                 "--format", "json", "--exit-zero-always",
                 htmlFile.toString())
                 .redirectErrorStream(false)
@@ -81,6 +81,19 @@ public final class MarkupCheck {
         String stdout = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
         proc.waitFor();
         return !stdout.isBlank() ? stdout : stderr;
+    }
+
+    /**
+     * 지금 실행 중인 JVM(폐쇄망은 번들 JRE)의 java 실행 파일 경로.
+     * PATH 의 "java" 에 의존하면 Java 미설치 PC 에서 vnu 가 실행되지 않으므로,
+     * 앱을 띄운 것과 같은 JRE 로 vnu 를 돌린다. 못 찾으면 PATH 의 java 로 폴백.
+     */
+    private static String javaExe() {
+        String home = System.getProperty("java.home");
+        if (home == null || home.isBlank()) return "java";
+        boolean win = System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win");
+        Path p = Path.of(home, "bin", win ? "java.exe" : "java");
+        return Files.isExecutable(p) ? p.toString() : "java";
     }
 
     /** vnu --format json 출력에서 type=="error" 메시지만 위반으로 집계한다. */

@@ -36,7 +36,10 @@ cp config/sites.example.yaml "$DIST/config/sites.example.yaml"
 
 echo "[2/6] 최소 JRE 17 생성 (jlink) — 서버에 Java 미설치여도 실행 가능"
 JLINK="${JAVA_HOME:+$JAVA_HOME/bin/}jlink"
-"$JLINK" --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.net.http,java.management,jdk.httpserver,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.charsets,jdk.zipfs,jdk.unsupported \
+# java.se = 모든 Java SE 모듈(java.xml 등) — 번들 JRE 로 vnu.jar(HTML/XML 검증)도 실행하므로
+# 앱뿐 아니라 vnu 의 모듈 요구까지 안전하게 커버. jdk.charsets 는 EUC-KR/MS949 페이지용.
+# ※ 윈도우판 scripts/win/package-offline.bat 와 모듈 목록·vnu 버전을 동기 유지할 것.
+"$JLINK" --add-modules java.se,jdk.httpserver,jdk.crypto.ec,jdk.charsets,jdk.unsupported \
   --no-header-files --no-man-pages --strip-debug --output "$DIST/jre"
 
 echo "[3/6] Playwright 브라우저 번들 다운로드"
