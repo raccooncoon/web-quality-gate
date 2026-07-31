@@ -89,6 +89,8 @@ public final class WebConsole {
             if (path.equals("/api/items/exclude")) { saveExclusions(ex); return; }
             if (path.startsWith("/api/reports/delete/")) { deleteReport(ex, path.substring("/api/reports/delete/".length())); return; }
             if (path.equals("/api/reports")) { sendJson(ex, reportsPayload()); return; }
+            if (path.equals("/api/reports/pdf-latest")) { pdfBundle(ex, true); return; }
+            if (path.equals("/api/reports/pdf-all")) { pdfBundle(ex, false); return; }
             if (path.startsWith("/api/save/")) { saveSystem(ex, path.substring("/api/save/".length())); return; }
             if (path.startsWith("/api/credentials/")) { saveCredentials(ex, path.substring("/api/credentials/".length())); return; }
             if (path.startsWith("/api/health/")) { health(ex, path.substring("/api/health/".length())); return; }
@@ -595,6 +597,58 @@ public final class WebConsole {
         }
         reports.sort(Comparator.comparing((Map<String, Object> m) -> (String) m.get("timestamp")).reversed());
         return Map.of("reports", reports);
+    }
+
+    /**
+     * 리포트 PDF 묶음(ZIP) 다운로드. latestOnly=true 면 시스템별 최신 회차만, false 면 전체 회차.
+     * report.html 을 Playwright 로 PDF 렌더해 하나의 ZIP 으로 내려준다(수십 초 걸릴 수 있음).
+     */
+    private void pdfBundle(HttpExchange ex, boolean latestOnly) throws IOException {
+        List<Path> dirs = latestOnly ? latestReportDirs() : allReportDirs();
+        if (dirs.isEmpty()) {
+            send(ex, 404, "text/plain; charset=utf-8", "묶을 리포트가 없습니다.".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        byte[] zip = com.kt.wqg.report.ReportPdf.bundleZip(dirs, this::pdfEntryName);
+        String fn = (latestOnly ? "reports-latest-" : "reports-all-")
+                + java.time.LocalDate.now() + ".zip";
+        ex.getResponseHeaders().add("Content-Disposition", "attachment; filename=\"" + fn + "\"");
+        send(ex, 200, "application/zip", zip);
+    }
+
+    /** ZIP 엔트리 파일명(확장자 제외): "표시이름_타임스탬프", 파일명 금지문자 치환. */
+    private String pdfEntryName(Path dir) {
+        String site = dir.getParent().getFileName().toString();
+        String ts = dir.getFileName().toString();
+        String disp = site;
+        try { disp = com.kt.wqg.compliance.ComplianceStore.read(dir).displayName(); }
+        catch (RuntimeException ignore) { /* 없으면 site 명 사용 */ }
+        if (disp == null || disp.isBlank()) disp = site;
+        String safe = disp.replaceAll("[\\\\/:*?\"<>|]", "").trim();
+        return safe + "_" + ts;
+    }
+
+    /** reports/&lt;site&gt;/&lt;ts&gt; 중 report.html 이 있는 모든 회차 디렉터리(최신순). */
+    private List<Path> allReportDirs() throws IOException {
+        Path root = Path.of("reports");
+        List<Path> dirs = new ArrayList<>();
+        if (Files.isDirectory(root)) {
+            try (Stream<Path> w = Files.walk(root, 3)) {
+                w.filter(p -> p.getFileName().toString().equals("report.html"))
+                        .map(Path::getParent).forEach(dirs::add);
+            }
+        }
+        dirs.sort(Comparator.comparing((Path d) -> d.getFileName().toString()).reversed());
+        return dirs;
+    }
+
+    /** 시스템별 최신 회차 디렉터리 1개씩. */
+    private List<Path> latestReportDirs() throws IOException {
+        Map<String, Path> latest = new LinkedHashMap<>();
+        for (Path dir : allReportDirs()) {          // 최신순 → 처음 만난 site 가 최신
+            latest.putIfAbsent(dir.getParent().getFileName().toString(), dir);
+        }
+        return new ArrayList<>(latest.values());
     }
 
     /** GET: 검수 뷰(37항목+준수율) 조회. POST: 항목 확정 후 갱신된 뷰 반환. */

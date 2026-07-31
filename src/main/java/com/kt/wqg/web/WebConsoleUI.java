@@ -447,8 +447,17 @@ final class WebConsoleUI {
                 +'<table><tr><th>검사 일시</th><th>대상</th><th>종합판정</th><th>적합</th><th>부적합</th><th>해당없음</th><th>수동확인</th><th class=noprint>상세</th></tr>'
                 +(rows||'<tr><td colspan=8 class=st>검사 이력이 없습니다. ② 실행 탭에서 검사하거나 주기 자동검사를 기다리세요.</td></tr>')+'</table>';
               const printhd='<div id="printhd" style="display:none"><h2 style="margin:0 0 6px;font-size:18px">웹접근성·웹호환성 점검 증적</h2><div class="st" id="printmeta"></div><hr style="margin:10px 0;border:none;border-top:1px solid var(--line)"></div>';
-              const btn='<div class="actbar noprint" style="margin-top:14px"><button class="act" onclick="printAudit()">증적 인쇄 / PDF 저장</button> <span class="st">주기 자동검사가 회차를 자동으로 쌓아 수행 증거가 됩니다.</span></div>';
+              const btn='<div class="actbar noprint" style="margin-top:14px"><button class="act" onclick="printAudit()">증적 인쇄 / PDF 저장</button>'
+                +'<button class="act ghost" onclick="dlPdf(true)">📦 시스템별 최신 PDF 묶음</button>'
+                +'<button class="act ghost" onclick="dlPdf(false)">📦 전체 리포트 PDF 묶음</button>'
+                +' <span class="st">묶음 PDF는 서버에서 생성되어 ZIP으로 내려받습니다(리포트 수에 따라 수십 초~수 분).</span></div>';
               $('#audit').innerHTML=printhd+cover+std+table+btn;}
+            // 리포트 PDF 묶음(ZIP) 다운로드 — latest: 시스템별 최신 1개씩 / 전체: 모든 회차
+            function dlPdf(latest){
+              toast((latest?'시스템별 최신':'전체')+' PDF 생성 중… 완료되면 ZIP이 다운로드됩니다(창을 닫지 마세요)');
+              const a=document.createElement('a');
+              a.href=latest?'/api/reports/pdf-latest':'/api/reports/pdf-all';
+              a.download='';document.body.appendChild(a);a.click();a.remove();}
             function printAudit(){const g=id=>{const e=$('#'+id);return e?e.value:''};
               const now=new Date().toISOString().slice(0,16).replace('T',' ');
               $('#printmeta').innerHTML='기관/부서: <b>'+esc(g('ac-org')||'—')+'</b> · 대상: <b>'+esc(g('ac-sys')||'—')+'</b> · 검사자: <b>'+esc(g('ac-by')||'—')+'</b> · 출력일: '+esc(now)
