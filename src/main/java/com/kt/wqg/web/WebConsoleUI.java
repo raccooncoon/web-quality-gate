@@ -460,7 +460,7 @@ final class WebConsoleUI {
                 +'<button class="act ghost" onclick="dlPdf(true)">📦 시스템별 최신 PDF 묶음</button>'
                 +'<button class="act ghost" onclick="dlPdf(false)">📦 전체 리포트 PDF 묶음</button>'
                 +' <span class="st">묶음 PDF는 서버에서 생성되어 ZIP으로 내려받습니다(리포트 수에 따라 수십 초~수 분).</span></div>';
-              $('#audit').innerHTML=printhd+cover+std+table+btn;}
+              $('#audit').innerHTML=printhd+cover+std+btn+table;}
             // 리포트 PDF 묶음(ZIP) 다운로드 — latest: 시스템별 최신 1개씩 / 전체: 모든 회차
             function dlPdf(latest){
               toast((latest?'시스템별 최신':'전체')+' PDF 생성 중… 완료되면 ZIP이 다운로드됩니다(창을 닫지 마세요)');
