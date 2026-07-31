@@ -443,10 +443,7 @@ final class WebConsoleUI {
             const fmtTsFull=ts=>{const m=String(ts).match(/(\\d{4})(\\d\\d)(\\d\\d)-(\\d\\d)(\\d\\d)/);return m?m[1]+'-'+m[2]+'-'+m[3]+' '+m[4]+':'+m[5]:ts};
             function vpillA(v){return '<span class="pill '+(v==='적합'?'ok':v==='부적합'?'no':'wait')+'">'+esc(v)+'</span>'}
             async function loadAudit(){const {reports}=await api('/api/reports');
-              const cover='<div class="tabintro noprint">웹접근성·웹호환성을 <b>주기적으로 점검한 증거(증적)</b> 문서입니다. 표지 정보를 채우고 <b>[증적 인쇄 / PDF]</b>를 누르면 제출용 문서로 저장됩니다. 브라우저 인쇄에서 <b>대상: PDF로 저장</b> 선택.</div>'
-                +'<div class="row3 noprint"><div><label>기관/부서</label><input id="ac-org" placeholder="K-water ○○부"></div>'
-                +'<div><label>대상 시스템</label><input id="ac-sys" value="결함관리시스템(K-water)"></div>'
-                +'<div><label>검사자</label><input id="ac-by" placeholder="성명"></div></div>';
+              const cover='<div class="tabintro noprint">웹접근성·웹호환성을 <b>주기적으로 점검한 증거(증적)</b> 문서입니다. <b>[증적 인쇄 / PDF]</b>를 누르면 제출용 문서로 저장됩니다. 브라우저 인쇄에서 <b>대상: PDF로 저장</b> 선택.</div>';
               const std='<div class="cardsteps" style="margin-top:12px"><b>검사 기준</b> — KWCAG 2.2(한국형 웹 콘텐츠 접근성 지침) · 전자정부 웹사이트 품질관리 지침 · 장애인차별금지법. <b>검사 도구</b> — WQG(axe-core + vnu.jar + Playwright 3엔진).</div>';
               const rows=(reports||[]).map(r=>'<tr><td>'+fmtTsFull(r.timestamp)+'</td><td>'+esc(r.displayName||r.site)+'</td><td>'+vpillA(r.status)+'</td>'
                 +'<td style="text-align:center">'+(r['적합']||0)+'</td><td style="text-align:center">'+(r['부적합']||0)+'</td>'
@@ -467,9 +464,9 @@ final class WebConsoleUI {
               const a=document.createElement('a');
               a.href=latest?'/api/reports/pdf-latest':'/api/reports/pdf-all';
               a.download='';document.body.appendChild(a);a.click();a.remove();}
-            function printAudit(){const g=id=>{const e=$('#'+id);return e?e.value:''};
+            function printAudit(){
               const now=new Date().toISOString().slice(0,16).replace('T',' ');
-              $('#printmeta').innerHTML='기관/부서: <b>'+esc(g('ac-org')||'—')+'</b> · 대상: <b>'+esc(g('ac-sys')||'—')+'</b> · 검사자: <b>'+esc(g('ac-by')||'—')+'</b> · 출력일: '+esc(now)
+              $('#printmeta').innerHTML='출력일: <b>'+esc(now)+'</b>'
                 +'<br>기준: KWCAG 2.2 · 전자정부 웹사이트 품질관리 지침 · 도구: WQG(axe-core+vnu+Playwright 3엔진)';
               $('#printhd').style.display='block';window.print();setTimeout(()=>{$('#printhd').style.display='none'},300);}
 
@@ -982,17 +979,17 @@ final class WebConsoleUI {
             const csort=(a,b)=>{const na=String(a).split('.').map(Number),nb=String(b).split('.').map(Number);
               for(let i=0;i<Math.max(na.length,nb.length);i++){const x=na[i]||0,y=nb[i]||0;if(x!==y)return x-y}return 0};
             async function loadItems(){const {items,excludedCount}=await api('/api/items');
-              let html=`<div class="tabintro">검사할 <b>KWCAG 점검 항목</b>을 관리합니다. 체크를 <b>끄면</b> 그 항목은
-                검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통, 다음 검사부터 적용). 현재 제외 <b id="exCount">${excludedCount}</b>건.
-                <br><span class=st>KWCAG 4원칙 + 웹 호환성 순으로 분류합니다. <b>KIWAC (KWCAG 2.1)</b> 열은 <span class="pill ok">KIWAC N</span>(24 심사기준 번호=KWCAG 2.1) / <span class="pill wait">2.2 추가</span>(2022 개정 신설) / <span class="pill na">웹 호환성</span>(WQG 확장), <b>판정 방식</b>은 SI 심사 분류(자동 판정·수동 확인)입니다. <b>카도와·웹와치·WQG 엔진</b> 열은 도구별 커버리지(<span class="pill ok">자동</span>·<span class="pill wait">수동/부분</span>·<span class="pill na">—</span>)로 <b>③ 기준·도구</b> 탭 매핑표와 동일합니다. <small>카도와·웹와치는 근사치(참고용).</small></span></div>
+              let html=`<div class="tabintro"><b>KWCAG 점검 항목</b> 관리 — 체크를 <b>끄면</b> 검사·집계·리포트에서 <b>제외</b>됩니다(전체 시스템 공통·다음 검사부터). 현재 제외 <b id="exCount">${excludedCount}</b>건.
+                <br><small class=st>열 의미(KIWAC·판정 방식·카도와·웹와치·WQG 엔진)는 <b>③ 기준·도구</b> 탭과 동일합니다.</small></div>
                 <div class=filterbar><button class="act" onclick="saveItems()">제외 설정 저장</button>
                   <button class="act ghost" onclick="allItems(true)">전체 선택</button>
-                  <button class="act ghost" onclick="allItems(false)">전체 해제</button></div>`;
+                  <button class="act ghost" onclick="allItems(false)">전체 해제</button>
+                  <button class="act ghost" onclick="autoOnly()" title="판정 방식이 '자동 판정'인 항목만 선택하고 수동 확인 항목은 제외">⚙ 자동검사만 선택</button></div>`;
               PRIN.forEach(([g,label])=>{let list=items.filter(it=>gkey(it.code)===g);
                 if(g!=='c')list=list.slice().sort((a,b)=>csort(a.code,b.code));
                 if(!list.length)return;
                 html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th style="white-space:nowrap">KIWAC (KWCAG 2.1)</th><th style="white-space:nowrap">판정 방식</th><th style="text-align:center">카도와</th><th style="text-align:center">웹와치</th><th>WQG 엔진</th></tr></thead><tbody>`+
-                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
+                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" data-si="${esc(it.siClassification)}" ${it.excluded?'':'checked'}></td>
                     <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
                     <td style="white-space:nowrap">${kiwacPill(it.code)}</td>
                     <td class=st title="도구 처리: ${esc(AUTOLBL[it.automation]||it.automation)}">${siLabel(it)}</td>
@@ -1000,6 +997,9 @@ final class WebConsoleUI {
               });
               $('#items').innerHTML=html}
             function allItems(v){document.querySelectorAll('.itemchk').forEach(c=>c.checked=v)}
+            // 판정 방식이 '자동 판정'(siClassification=auto)인 항목만 선택, 수동 확인 항목은 해제(제외)
+            function autoOnly(){document.querySelectorAll('.itemchk').forEach(c=>c.checked=c.dataset.si==='auto');
+              toast('자동 판정 항목만 선택했습니다 — 수동 확인 항목은 제외됩니다. [제외 설정 저장]을 눌러 적용하세요')}
             async function saveItems(){const excluded=[...document.querySelectorAll('.itemchk:not(:checked)')].map(c=>c.dataset.code);
               const r=await api('/api/items/exclude','POST',{excluded});
               const el=document.getElementById('exCount');if(el)el.textContent=r.excludedCount;
