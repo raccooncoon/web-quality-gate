@@ -193,6 +193,7 @@ final class WebConsoleUI {
             .evt .evno{width:1%;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
             .evt .evel{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--fg)}
             .evt .evloc{white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
+            .evtwrap.wrap .evt{width:100%}
             .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible;max-width:none}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
               border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
@@ -880,19 +881,23 @@ final class WebConsoleUI {
             function setRunBtn(name,running){const b=document.getElementById('runbtn-'+name);
               if(!b)return;b.disabled=running;b.textContent=running?'검사 중…':'검사'}
             async function runSys(name){setRunBtn(name,true);
-              await api('/api/run/'+name,'POST',{});toast('검사 시작: '+name);refreshStatus()}
+              let r;try{r=await api('/api/run/'+name,'POST',{})}catch(e){r={ok:false,detail:String(e)}}
+              if(r&&r.ok===false){toast(r.detail||'이미 검사 실행 중');setRunBtn(name,false);refreshStatus();return}
+              toast('검사 시작: '+name);refreshStatus()}
             async function runAll(){const rab=document.getElementById('runall-btn');if(rab)rab.disabled=true;
-              runConfigured.forEach(n=>setRunBtn(n,true));
-              for(const n of runConfigured){await api('/api/run/'+n,'POST',{})}
-              toast('전체 검사 시작 ('+runConfigured.length+')');refreshStatus()}
+              let r;try{r=await api('/api/run-all','POST',{})}catch(e){r={ok:false,detail:String(e)}}
+              if(r&&r.ok===false){toast(r.detail||'이미 검사 실행 중');refreshStatus();return}
+              toast('전체 검사 시작 ('+(r.count||0)+') — 순차 실행됩니다');refreshStatus()}
             async function refreshStatus(){const {status:raw}=await api('/api/status');
-              // 경로 수집(discover:*) 잡은 실행 탭 상태에서 제외
-              const status={};Object.entries(raw).forEach(([k,v])=>{if(!k.startsWith('discover:'))status[k]=v;});
+              // 검사 잡만 대상(보조 잡 discover:/shots: 제외)
+              const status={};Object.entries(raw).forEach(([k,v])=>{if(!k.includes(':'))status[k]=v;});
               const anyRunning=Object.values(status).some(st=>st.state==='RUNNING');
               const rab=document.getElementById('runall-btn');
               if(rab)rab.disabled=anyRunning||runConfigured.length===0;
+              // 검사 실행 중엔 모든 [검사] 버튼 잠금(동시 실행 방지)
+              if(anyRunning)runConfigured.forEach(n=>setRunBtn(n,true));
               Object.entries(status).forEach(([site,st])=>{
-                setRunBtn(site,st.state==='RUNNING');            // 실행 중인 시스템 검사 버튼 잠금
+                if(!anyRunning)setRunBtn(site,st.state==='RUNNING');   // 실행 없을 때만 개별 상태로 복구
                 const el=document.getElementById('stat-'+site);if(!el)return;
                 const ac=document.getElementById('act-'+site);   // 검사 버튼 옆 검수 이동 버튼
                 if(st.state==='RUNNING'){el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';

@@ -54,6 +54,15 @@ public final class JobRunner {
         return statuses.getOrDefault(site, new Status(site, State.IDLE, ""));
     }
 
+    /**
+     * 검사(사이트명 키, 접두어 ':' 없는 잡)가 실행 중인지 여부.
+     * discover:/shots: 같은 보조 잡은 제외 — 검사 동시 실행만 막는다.
+     */
+    public boolean hasRunningCheck() {
+        return statuses.entrySet().stream()
+                .anyMatch(e -> !e.getKey().contains(":") && e.getValue().state() == State.RUNNING);
+    }
+
     public Map<String, Status> all() {
         return Map.copyOf(statuses);
     }

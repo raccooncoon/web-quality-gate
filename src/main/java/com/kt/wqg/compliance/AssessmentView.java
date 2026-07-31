@@ -99,7 +99,47 @@ public final class AssessmentView {
                 "compliance", Map.of("status", c.status(), "pendingTotal", c.pendingTotal(), "categories", cats),
                 "site", n(doc.site()), "displayName", n(doc.displayName()), "timestamp", n(doc.timestamp()),
                 "excluded", excluded, "screenshots", screenshots,
-                "pages", doc.pages() == null ? List.of() : doc.pages());
+                "pages", overlayPages(doc.pages(), byCode));
+    }
+
+    /**
+     * 페이지별 평가표의 잠정(△) 셀을 검수 확정 판정으로 덮어쓴다.
+     * 셀은 검사 시점 자동 판정이라 수동확인 항목은 △로 남는데, 평가자가 항목을 확정하면 그 값(O/X/-)으로 반영한다.
+     * "-"(해당없음)·"O"/"X"(자동 판정)는 그대로 둔다.
+     */
+    private static List<Map<String, Object>> overlayPages(List<Map<String, Object>> pages,
+                                                          Map<String, ItemResult> byCode) {
+        if (pages == null) return List.of();
+        List<Map<String, Object>> out = new ArrayList<>();
+        for (Map<String, Object> pg : pages) {
+            Map<String, Object> np = new LinkedHashMap<>(pg);
+            if (pg.get("cells") instanceof Map<?, ?> cells) {
+                Map<String, String> nc = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> e : cells.entrySet()) {
+                    String code = String.valueOf(e.getKey());
+                    String sym = String.valueOf(e.getValue());
+                    if ("△".equals(sym)) {
+                        ItemResult r = byCode.get(code);
+                        if (r != null && r.verdict() != ItemVerdict.수동확인필요) sym = symbolOf(r.verdict());
+                    }
+                    nc.put(code, sym);
+                }
+                np.put("cells", nc);
+            }
+            out.add(np);
+        }
+        return out;
+    }
+
+    /** 판정 → 페이지별 평가표 기호(CheckService.symbol 과 동일 규칙). */
+    private static String symbolOf(ItemVerdict v) {
+        if (v == null) return "△";
+        return switch (v) {
+            case 적합 -> "O";
+            case 부적합 -> "X";
+            case 해당없음 -> "-";
+            default -> "△";
+        };
     }
 
     private static String n(String s) { return s == null ? "" : s; }

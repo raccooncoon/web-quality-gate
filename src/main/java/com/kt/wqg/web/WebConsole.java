@@ -99,6 +99,7 @@ public final class WebConsole {
             if (path.startsWith("/api/rlogin/input/")) { rloginInput(ex, path.substring("/api/rlogin/input/".length())); return; }
             if (path.startsWith("/api/rlogin/done/")) { rloginDone(ex, path.substring("/api/rlogin/done/".length())); return; }
             if (path.startsWith("/api/rlogin/cancel/")) { rloginCancel(ex, path.substring("/api/rlogin/cancel/".length())); return; }
+            if (path.equals("/api/run-all")) { runAll(ex); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
             if (path.equals("/api/assessment")) { assessment(ex); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
@@ -398,6 +399,10 @@ public final class WebConsole {
     }
 
     private void run(HttpExchange ex, String name) throws IOException {
+        if (jobs.hasRunningCheck()) {   // 검사 동시 실행 금지 — 하나 끝나야 다음 시작
+            sendJson(ex, Map.of("ok", false, "detail", "이미 검사가 실행 중입니다 — 완료 후 다시 시도하세요."));
+            return;
+        }
         SitesConfig config = configStore.load();
         SitesConfig.Site site = config.sites().stream()
                 .filter(s -> s.name().equals(name)).findFirst()
@@ -406,6 +411,25 @@ public final class WebConsole {
         jobs.submit(name, report -> CheckService.runSite(config, site, credentials.resolver(), report, excluded)
                 .toString().replace('\\', '/'));
         sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
+    }
+
+    /** 전체 검사 — 설정된 시스템을 단일 스레드로 순차 실행(동시 실행 아님). 실행 중이면 거부. */
+    private void runAll(HttpExchange ex) throws IOException {
+        if (jobs.hasRunningCheck()) {
+            sendJson(ex, Map.of("ok", false, "detail", "이미 검사가 실행 중입니다 — 완료 후 다시 시도하세요."));
+            return;
+        }
+        SitesConfig config = configStore.load();
+        java.util.Set<String> excluded = exclusions.excluded();
+        int n = 0;
+        for (SitesConfig.Site site : config.sites()) {
+            if (site.baseUrl() == null || site.baseUrl().contains("TODO")) continue;   // 미설정 제외
+            jobs.submit(site.name(), report ->
+                    CheckService.runSite(config, site, credentials.resolver(), report, excluded)
+                            .toString().replace('\\', '/'));
+            n++;
+        }
+        sendJson(ex, Map.of("ok", true, "count", n));
     }
 
     /** 점검 항목 목록(37) + 현재 제외 여부. */

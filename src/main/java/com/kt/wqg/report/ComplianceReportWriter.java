@@ -218,7 +218,8 @@ public final class ComplianceReportWriter {
             .evt .evno{width:1%;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
             .evt .evel{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--ink)}
             .evt .evloc{white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
-            /* '넓게 보기' 누르면 셀 줄바꿈 표시(기본은 …말줄임 + 호버 title) */
+            /* '펼쳐보기' 누르면 표를 폭 꽉 채우고 셀 줄바꿈 표시(기본은 …말줄임 + 호버 title) */
+            .evtwrap.wrap .evt{width:100%}
             .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible;max-width:none}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
               border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
