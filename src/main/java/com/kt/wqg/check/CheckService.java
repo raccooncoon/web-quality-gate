@@ -628,10 +628,11 @@ public final class CheckService {
             try (BrowserContext ctx = br.newContext(opts)) {
                 Page page = ctx.newPage();
                 // 로그인 필요 + 계정 있으면 먼저 로그인 (SPA는 대개 로그인 뒤에 있음)
+                String loginErr = null;
                 if (!useStored && site != null && site.auth() != null && site.auth().required() && credResolver != null) {
                     try {
                         CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
-                    } catch (RuntimeException ignore) { /* 로그인 실패 시 비로그인 상태로 진행 → 로그인 벽 감지됨 */ }
+                    } catch (RuntimeException e) { loginErr = e.getMessage(); /* 사유는 로그인 벽 안내에 덧붙임 */ }
                 }
                 var resp = page.navigate(url, new Page.NavigateOptions()
                         .setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED)
@@ -673,6 +674,7 @@ public final class CheckService {
                                     : "로그인이 필요합니다 — 세션 또는 계정을 먼저 저장한 뒤 다시 시도하세요.");
                     String hint = base + (useStored
                             ? " (저장된 세션이 만료됐을 수 있습니다 — 세션을 다시 저장하세요.)" : "");
+                    if (loginErr != null) hint = "로그인 실패: " + loginErr + " " + base;
                     return new DetectedType("unknown",
                             "요청한 경로가 로그인 페이지(" + finalPath + ")로 리다이렉트됨 — 로그인 뒤 화면을 못 봐 자동 판정 불가. "
                             + hint + " 또는 유형을 직접 지정하세요.");

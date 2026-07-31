@@ -41,8 +41,11 @@ final class WebConsoleUI {
             .actcell{white-space:nowrap}
             .actcell #act-,.actcell span{margin-left:0}
             .actcell .gochk{margin-left:7px;font-size:12.5px;font-weight:700;padding:7px 13px;
-              box-shadow:none;animation:none}
+              box-shadow:none;animation:none;white-space:nowrap}
             .actcell .gochk:hover{box-shadow:0 2px 8px rgba(31,90,166,.4)}
+            .actcell .gorep{margin-left:7px;white-space:nowrap;padding:6px 11px;text-decoration:none}
+            .statcell{white-space:nowrap}
+            .statcell .st{white-space:nowrap}
             /* 매핑표: KIWAC·카도와·웹와치 pill 열은 가운데 정렬 */
             #mapPr td:nth-child(2),#mapPr td:nth-child(3),#mapPr td:nth-child(4),
             #mapPr th:nth-child(2),#mapPr th:nth-child(3),#mapPr th:nth-child(4){text-align:center}
@@ -894,19 +897,18 @@ final class WebConsoleUI {
               const anyRunning=Object.values(status).some(st=>st.state==='RUNNING');
               const rab=document.getElementById('runall-btn');
               if(rab)rab.disabled=anyRunning||runConfigured.length===0;
-              // 검사 실행 중엔 모든 [검사] 버튼 잠금(동시 실행 방지)
-              if(anyRunning)runConfigured.forEach(n=>setRunBtn(n,true));
+              // 각 [검사] 버튼은 자기 시스템 상태만 반영(실행 중=검사 중…, 아니면 검사). 동시 실행은 서버가 거부.
               Object.entries(status).forEach(([site,st])=>{
-                if(!anyRunning)setRunBtn(site,st.state==='RUNNING');   // 실행 없을 때만 개별 상태로 복구
+                setRunBtn(site,st.state==='RUNNING');
                 const el=document.getElementById('stat-'+site);if(!el)return;
-                const ac=document.getElementById('act-'+site);   // 검사 버튼 옆 검수 이동 버튼
+                const ac=document.getElementById('act-'+site);   // 검사 버튼 옆 액션(검수·리포트)
                 if(st.state==='RUNNING'){el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
                   if(ac)ac.innerHTML=''}
                 else if(st.state==='DONE'){const rel=st.message.replace(/^\\.?\\//,'');const ts=rel.split('/')[2];
-                  el.innerHTML='<div class="donebar"><span class=pill ok>검사 완료</span> <span id="verdict-'+site+'" class=st></span>'+
-                    '<button class="act gochk" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">✓ 검수하러 가기 ▶</button>'+
-                    '<a class="act ghost gorep" href="/'+rel+'" target="_blank">리포트 ↗</a></div>';
-                  if(ac)ac.innerHTML='<button class="act gochk" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">✓ 검수 ▶</button>';
+                  // 상태칸은 정보만 한 줄, 버튼은 액션칸에 한 줄로
+                  el.innerHTML='<span class=pill ok>검사 완료</span> <span id="verdict-'+site+'" class=st></span>';
+                  if(ac)ac.innerHTML='<button class="act gochk" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">✓ 검수 ▶</button>'+
+                    '<a class="act ghost gorep" href="/'+rel+'" target="_blank">리포트 ↗</a>';
                   loadVerdict(site,ts)}
                 else if(st.state==='ERROR'){el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>';
                   if(ac)ac.innerHTML=''}})}

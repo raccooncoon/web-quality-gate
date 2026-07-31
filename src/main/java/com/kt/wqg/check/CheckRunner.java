@@ -69,6 +69,12 @@ public final class CheckRunner {
     public static String login(Page page, SitesConfig.Site site, Credentials creds) {
         SitesConfig.Auth auth = site.auth();
         if (auth.isSso()) return loginSso(page, site, creds);
+        // 폼 로그인은 입력 필드 셀렉터가 반드시 필요 — 비어 있으면 원인을 명확히 알린다.
+        if (blank(auth.idSelector()) || blank(auth.pwSelector()) || blank(auth.submitSelector())) {
+            throw new IllegalStateException(
+                    "폼 로그인 필드 셀렉터가 비어 있습니다(아이디·비번·제출 버튼). "
+                    + "[🔍 로그인 필드 자동 감지]로 채우거나 직접 입력한 뒤 [설정 저장]하세요.");
+        }
         String loginUrl = resolveUrl(site.baseUrl(), auth.loginPath());
         page.navigate(loginUrl);
         page.fill(auth.idSelector(), creds.id());
@@ -125,6 +131,8 @@ public final class CheckRunner {
     private static String orDefault(String v, String def) {
         return v == null || v.isBlank() ? def : v;
     }
+
+    private static boolean blank(String v) { return v == null || v.isBlank(); }
 
     /**
      * 현재 페이지의 앵커(&lt;a href&gt;)에서 점검 대상 내부 경로를 수집한다.
