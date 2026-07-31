@@ -24,6 +24,8 @@ if not exist "%JAVA%" set "JAVA=java"
 
 echo web-quality-gate 웹 콘솔을 시작합니다 ...
 echo 브라우저가 자동으로 열리지 않으면 http://localhost:%PORT% 를 여세요.
+REM 서버가 뜰 시간(약 3초)을 준 뒤 기본 브라우저로 콘솔을 연다(별도 창에서 대기).
+start "" cmd /c "timeout /t 3 >nul & start "" http://localhost:%PORT%"
 "%JAVA%" -jar "%~dp0web-quality-gate.jar" serve %PORT%
 
 endlocal

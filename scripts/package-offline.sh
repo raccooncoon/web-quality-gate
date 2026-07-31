@@ -29,11 +29,14 @@ rm -rf "$DIST" && mkdir -p "$DIST/deps" "$DIST/config"
 echo "[1/6] 애플리케이션 빌드"
 mvn -q clean package
 cp target/web-quality-gate-*.jar "$DIST/web-quality-gate.jar"
-cp config/sites.yaml "$DIST/config/sites.yaml"
+# 실제 설정이 있으면 그것을, 없으면 예시 템플릿을 반입(sites.yaml 은 .gitignore 대상)
+if [ -f config/sites.yaml ]; then cp config/sites.yaml "$DIST/config/sites.yaml";
+else cp config/sites.example.yaml "$DIST/config/sites.yaml"; fi
+cp config/sites.example.yaml "$DIST/config/sites.example.yaml"
 
 echo "[2/6] 최소 JRE 17 생성 (jlink) — 서버에 Java 미설치여도 실행 가능"
 JLINK="${JAVA_HOME:+$JAVA_HOME/bin/}jlink"
-"$JLINK" --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.net.http,jdk.httpserver,jdk.crypto.ec,jdk.unsupported \
+"$JLINK" --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.net.http,java.management,jdk.httpserver,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.charsets,jdk.zipfs,jdk.unsupported \
   --no-header-files --no-man-pages --strip-debug --output "$DIST/jre"
 
 echo "[3/6] Playwright 브라우저 번들 다운로드"

@@ -7,9 +7,11 @@ REM   ├─ web-quality-gate.jar     shade 단일 jar
 REM   ├─ vnu.jar                  W3C Nu Html Checker
 REM   ├─ jre\                     윈도우용 JRE 17 (jlink 로 생성)
 REM   ├─ pw-browsers\             윈도우용 chromium/firefox/webkit
-REM   ├─ config\sites.yaml        11개 시스템 템플릿
+REM   ├─ config\sites.yaml        검사 대상 설정(없으면 sites.example.yaml 사용)
+REM   ├─ verify.bat               반입 후 완전성 검증기
 REM   └─ reports\                 결과 저장 위치(비어 있음)
 REM 요구: 이 PC 에 JDK 17 + Maven + 인터넷. (JAVA_HOME=JDK17)
+REM ★ 반드시 '윈도우'에서 실행 — JRE·브라우저는 OS 네이티브라 mac/리눅스에서 못 만듦.
 REM ============================================================
 setlocal
 cd /d "%~dp0\..\.."
@@ -27,17 +29,31 @@ echo [3/6] Playwright 브라우저(윈도우) 다운로드
 set "PLAYWRIGHT_BROWSERS_PATH=%CD%\%OUT%\pw-browsers"
 call mvn -q exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium firefox webkit" || goto :err
 
-echo [4/6] vnu.jar 다운로드
-curl -fsSL -o "%OUT%\vnu.jar" "https://github.com/validator/validator/releases/download/latest/vnu.jar" || goto :err
+echo [4/6] vnu.jar 다운로드 (버전별 zip 을 받아 vnu.jar 추출)
+set "VNU_VER=24.10.17"
+curl -fsSL -o "%TEMP%\vnu.zip" "https://github.com/validator/validator/releases/download/%VNU_VER%/vnu.jar_%VNU_VER%.zip" || goto :err
+if exist "%TEMP%\vnuex" rmdir /s /q "%TEMP%\vnuex"
+mkdir "%TEMP%\vnuex"
+tar -xf "%TEMP%\vnu.zip" -C "%TEMP%\vnuex" || goto :err
+for /r "%TEMP%\vnuex" %%v in (vnu.jar) do if exist "%%v" copy /y "%%v" "%OUT%\vnu.jar" >nul
+if not exist "%OUT%\vnu.jar" (echo vnu.jar 추출 실패 & goto :err)
 
 echo [5/6] 최소 JRE 17 생성 (jlink)
 if "%JAVA_HOME%"=="" (echo JAVA_HOME(JDK17) 설정 필요 & goto :err)
-"%JAVA_HOME%\bin\jlink" --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.net.http,jdk.httpserver,jdk.crypto.ec,jdk.unsupported --no-header-files --no-man-pages --strip-debug --output "%OUT%\jre" || goto :err
+"%JAVA_HOME%\bin\jlink" --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.net.http,java.management,jdk.httpserver,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.charsets,jdk.zipfs,jdk.unsupported --no-header-files --no-man-pages --strip-debug --output "%OUT%\jre" || goto :err
 
 echo [6/6] 설정·실행기 복사
-copy /y config\sites.yaml "%OUT%\config\sites.yaml" >nul
+REM 실제 설정(config\sites.yaml)이 있으면 그것을, 없으면 예시 템플릿을 반입
+if exist config\sites.yaml (
+  copy /y config\sites.yaml "%OUT%\config\sites.yaml" >nul
+) else (
+  copy /y config\sites.example.yaml "%OUT%\config\sites.yaml" >nul
+)
+copy /y config\sites.example.yaml "%OUT%\config\sites.example.yaml" >nul
 copy /y scripts\win\start.bat "%OUT%\start.bat" >nul
 copy /y scripts\win\run-all.bat "%OUT%\run-all.bat" >nul
+copy /y scripts\win\verify.bat "%OUT%\verify.bat" >nul
+if exist scripts\win\README.md copy /y scripts\win\README.md "%OUT%\README.md" >nul
 
 echo.
 echo 완료: %OUT%  (폴더째 압축해 폐쇄망 반입)
