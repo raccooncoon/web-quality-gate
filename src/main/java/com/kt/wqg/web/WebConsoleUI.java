@@ -28,7 +28,7 @@ final class WebConsoleUI {
               padding:7px 16px;border-radius:4px;cursor:pointer}
             nav button.on{background:#fff;color:var(--navy);border-color:#fff}
             nav{align-items:center}
-            .navsp{flex:1 1 auto}.navsp2{flex:0 0 22px}
+            .navsp{flex:1 1 auto}
             /* 검사 완료 후 검수 유도 바 — '검수하러 가기'를 크고 눈에 띄게 */
             .donebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
             .gochk{margin-top:0;background:var(--gov);color:#fff;font-size:14px;font-weight:800;
@@ -370,7 +370,7 @@ final class WebConsoleUI {
                 +'<div class="cardsteps" style="margin-top:12px"><b>WCAG 통과 ≈ KWCAG 통과</b>가 대체로 성립하지만, 법·인증이 KWCAG 기준이라 <b>판정은 KWCAG 항목 단위</b>로 합니다. '
                 +'아래 매핑의 "33 + 확장 4"에서 <b>33은 KWCAG 표준 항목</b>, <b>+4는 KWCAG 밖 웹호환성</b>(c-browser·c-reflow·c-deprecated·c-webstandard)을 WQG가 얹은 확장입니다.</div>';
               const cmp='<div class=grouphd style="margin-top:22px">2. 도구 성격 비교</div>'
-                +'<table><tr><th>항목</th><th>카도와(KADO-WAH)</th><th>웹와치(WebWatch)</th><th style="background:var(--govsoft)">WQG (Web Quality Gate · 이 도구)</th></tr>'
+                +'<table><tr><th>항목</th><th>카도와(KADO-WAH)</th><th>웹와치(WebWatch)</th><th style="background:var(--govsoft)">WQG (Web Quality Gate)</th></tr>'
                 +'<tr><td><b>성격</b></td><td>NIA 무료 공식 도구</td><td>상용 모니터링 솔루션</td><td>자체 제작 인하우스</td></tr>'
                 +'<tr><td><b>엔진</b></td><td>KWCAG 네이티브</td><td>자체 상용 엔진</td><td><small style="font-family:ui-monospace,monospace">axe-core+vnu+Playwright</small></td></tr>'
                 +'<tr><td><b>방식</b></td><td>단일 페이지·준자동</td><td>사이트 크롤링·스케줄</td><td>로그인 후 다중 페이지 자동+AI 초안</td></tr>'
@@ -989,7 +989,7 @@ final class WebConsoleUI {
                 if(g!=='c')list=list.slice().sort((a,b)=>csort(a.code,b.code));
                 if(!list.length)return;
                 html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th style="white-space:nowrap">KIWAC (KWCAG 2.1)</th><th style="white-space:nowrap">판정 방식</th><th style="text-align:center">카도와</th><th style="text-align:center">웹와치</th><th>WQG 엔진</th></tr></thead><tbody>`+
-                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" data-si="${esc(it.siClassification)}" ${it.excluded?'':'checked'}></td>
+                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
                     <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
                     <td style="white-space:nowrap">${kiwacPill(it.code)}</td>
                     <td class=st title="도구 처리: ${esc(AUTOLBL[it.automation]||it.automation)}">${siLabel(it)}</td>
@@ -997,9 +997,13 @@ final class WebConsoleUI {
               });
               $('#items').innerHTML=html}
             function allItems(v){document.querySelectorAll('.itemchk').forEach(c=>c.checked=v)}
-            // 판정 방식이 '자동 판정'(siClassification=auto)인 항목만 선택, 수동 확인 항목은 해제(제외)
-            function autoOnly(){document.querySelectorAll('.itemchk').forEach(c=>c.checked=c.dataset.si==='auto');
-              toast('자동 판정 항목만 선택했습니다 — 수동 확인 항목은 제외됩니다. [제외 설정 저장]을 눌러 적용하세요')}
+            // 자동검사만 선택 — 도구가 스스로 판정하는 항목만 남긴다. 제외 기준:
+            //  ① WQG 엔진에 '평가자'가 든 항목(AI·평가자·평가자·vnu·평가자 = 사람 확인 필요)
+            //  ② 웹 호환성(c-*) 항목 전부
+            function autoOnly(){document.querySelectorAll('.itemchk').forEach(c=>{
+              const code=c.dataset.code, eng=(TOOLMAP[code]||[])[2]||'';
+              c.checked=String(code)[0]!=='c' && !eng.includes('평가자')});
+              toast('자동검사 항목만 선택 — 평가자(AI·수동) 항목과 웹 호환성은 제외됩니다. [제외 설정 저장]을 눌러 적용하세요')}
             async function saveItems(){const excluded=[...document.querySelectorAll('.itemchk:not(:checked)')].map(c=>c.dataset.code);
               const r=await api('/api/items/exclude','POST',{excluded});
               const el=document.getElementById('exCount');if(el)el.textContent=r.excludedCount;
@@ -1057,7 +1061,7 @@ final class WebConsoleUI {
                   <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
                   ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
                   <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="act ghost selallbtn" id="selallbtn-${gi}" onclick="selAllG(${gi})">전체 선택</button>
+                    <button class="act ghost" id="selallbtn-${gi}" onclick="selAllG(${gi})">전체 선택</button>
                     ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})">비교 (0/2)</button>`:''}
                     <button class="act delbtn" id="delbtn-${gi}" data-site="${esc(g.site)}" disabled style="background:var(--bad)" onclick="delSelected(${gi})">선택 삭제 (0)</button>
                   </span></div>

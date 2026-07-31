@@ -62,13 +62,22 @@ public final class CheckRunner {
                             new Page.WaitForSelectorOptions().setTimeout(10000));
                 } catch (RuntimeException ignore) { /* 준비 마커 미출현 — 렌더된 만큼 검사 진행 */ }
             }
-            try {
-                page.waitForLoadState(LoadState.NETWORKIDLE,
-                        new Page.WaitForLoadStateOptions().setTimeout(5000));
-            } catch (RuntimeException ignore) { /* 라이브 SPA는 networkidle 미도달 — 무시하고 진행 */ }
-            try { page.waitForTimeout(300); } catch (RuntimeException ignore) { }
+            settle(page);
         }
         return fullUrl;
+    }
+
+    /**
+     * 네트워크 유휴(유한 타임아웃) 대기 후 짧게 안정화. 실시간 채팅·폴링·웹소켓이 있는 라이브
+     * SPA 는 networkidle 에 영영 도달하지 못하므로 타임아웃·예외를 무시하고 진행한다.
+     * 접근성·마크업·호환성 캡처가 모두 이 정착 기준을 공유해 SPA 렌더 대기가 어긋나지 않게 한다.
+     */
+    public static void settle(Page page) {
+        try {
+            page.waitForLoadState(LoadState.NETWORKIDLE,
+                    new Page.WaitForLoadStateOptions().setTimeout(5000));
+        } catch (RuntimeException ignore) { /* 라이브 SPA는 networkidle 미도달 — 무시하고 진행 */ }
+        try { page.waitForTimeout(300); } catch (RuntimeException ignore) { }
     }
 
     /**

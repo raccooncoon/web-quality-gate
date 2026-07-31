@@ -130,17 +130,14 @@ public final class CompatibilityCheck {
                 try {
                     CheckRunner.navigateAndWait(page, site, url);
                     // 캡처 안정화 — 엔진 간 '같은 시점' 렌더 보장: 네트워크 유휴 + 웹폰트 로드 + 지연 렌더 정착.
-                    // (MPA 는 navigate 가 load 까지만 대기하므로 여기서 추가로 안정화한다)
-                    try {
-                        page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
-                                new Page.WaitForLoadStateOptions().setTimeout(5000));
-                    } catch (RuntimeException ignore) { /* 타임아웃이면 그대로 진행 */ }
+                    // (MPA 는 navigate 가 load 까지만 대기하므로 공통 정착 기준으로 추가 안정화한다)
+                    CheckRunner.settle(page);
                     try {
                         page.evaluate("() => (document.fonts ? document.fonts.ready.then(() => true) : true)");
                     } catch (RuntimeException ignore) { /* 폰트 API 없으면 무시 */ }
                     page.addStyleTag(new Page.AddStyleTagOptions().setContent(FREEZE_CSS));
                     page.waitForTimeout(350); // 지연 렌더·리플로우 정착
-                    String file = engine + "-" + slug(url.path()) + ".png";
+                    String file = shotName(engine, url.path());
                     // 뷰포트 캡처(fullPage 아님) — 전체페이지는 엔진별 폰트·줄바꿈 차이로 세로 높이가
                     // 달라지면 그 아래 전체가 어긋나 diff 가 비현실적으로 폭증(전 페이지 ~88%)한다.
                     // 크로스브라우징 판정은 첫 화면(뷰포트) 레이아웃 일치로 충분하다.
@@ -163,6 +160,12 @@ public final class CompatibilityCheck {
         String s = path.replaceAll("^/+|/+$", "").replaceAll("[^a-zA-Z0-9]+", "_");
         return s.isEmpty() ? "root" : s;
     }
+
+    /** 스크린샷 파일명 규칙(&lt;engine&gt;-&lt;slug&gt;.png). 호환성 캡처·미리보기·리포트 공용 — 한 곳에서 관리. */
+    static String shotName(String engine, String path) { return engine + "-" + slug(path) + ".png"; }
+
+    /** 리포트 기준 상대 스크린샷 경로(screenshots/&lt;engine&gt;-&lt;slug&gt;.png). */
+    public static String shotRelPath(String engine, String path) { return "screenshots/" + shotName(engine, path); }
 
     private static BrowserType browserType(Playwright playwright, String engine) {
         return switch (engine) {

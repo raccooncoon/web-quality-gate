@@ -62,6 +62,10 @@ public final class CheckService {
         java.util.Set<String> excluded = excludedCodes == null ? java.util.Set.of() : excludedCodes;
         com.kt.wqg.compliance.KwcagCatalog fullCatalog = com.kt.wqg.compliance.KwcagCatalog.load();
         com.kt.wqg.compliance.KwcagCatalog catalog = fullCatalog.without(excluded);
+        // 해당 판정방식(resolver type) 항목이 제외로 모두 빠지면 그 검사는 실행하지 않는다.
+        // 접근성은 페이지 로드(navigateAndWait)를 겸해 프로브·미리보기가 의존하므로 게이트하지 않는다.
+        boolean compatWillRun = config.checks().compatibility().enabled() && catalogNeeds(catalog, "compat");
+        boolean markupWillRun = config.checks().markup().enabled() && catalogNeeds(catalog, "markup");
         try (Playwright playwright = Playwright.create()) {
             List<CheckResult> results = new ArrayList<>();
             List<com.kt.wqg.compliance.Finding> probeFindings = new ArrayList<>();
@@ -87,8 +91,6 @@ public final class CheckService {
                 // 호환성 검사가 돌면 chromium 스크린샷을 만들어 '대상 페이지' 썸네일로 재사용한다.
                 // 호환성이 꺼졌거나 c-* 전부 제외로 건너뛰면 그 썸네일이 비므로, 이 경우엔
                 // 메인 루프에서 미리보기 1장(chromium 뷰포트)을 같은 경로에 남겨 썸네일을 유지한다.
-                boolean compatWillRun = config.checks().compatibility().enabled()
-                        && catalogNeeds(catalog, "compat");
                 int i = 0;
                 List<String> skipped = new ArrayList<>();
                 int markupFail = 0;
@@ -110,7 +112,7 @@ public final class CheckService {
                     }
                     // 이후 단계(마크업·프로브·미리보기)는 서로 독립 — 하나가 실패해도 나머지는 진행한다.
                     // 특히 마크업(vnu.jar 미탑재 등) 실패가 프로브·썸네일까지 죽이지 않도록 개별 격리.
-                    if (config.checks().markup().enabled()) {
+                    if (markupWillRun) {
                         try { results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config))); }
                         catch (RuntimeException e) { markupFail++; }
                     }
@@ -133,7 +135,7 @@ public final class CheckService {
             }
 
             Map<String, String> engineVersions = Map.of();
-            if (config.checks().compatibility().enabled() && catalogNeeds(catalog, "compat")) {
+            if (compatWillRun) {
                 SitesConfig.Compatibility compat = config.checks().compatibility();
                 progress.accept("호환성 검사: " + String.join("·", compat.engines()) + " 캡처 시작…");
                 CompatibilityCheck.CompatOutput co = CompatibilityCheck.run(playwright, site, timestamp,
@@ -182,7 +184,7 @@ public final class CheckService {
             Path shotsDir = reportDir.resolve("screenshots");
             java.nio.file.Files.createDirectories(shotsDir);
             page.screenshot(new Page.ScreenshotOptions().setFullPage(false)
-                    .setPath(shotsDir.resolve("chromium-" + CompatibilityCheck.slug(path) + ".png")));
+                    .setPath(shotsDir.resolve(CompatibilityCheck.shotName("chromium", path))));
         } catch (RuntimeException | java.io.IOException e) {
             progress.accept("미리보기 캡처 실패(계속): " + path + " — " + msg(e));
         }
@@ -198,13 +200,9 @@ public final class CheckService {
                 .anyMatch(it -> it.resolver() != null && resolverType.equals(it.resolver().type()));
     }
 
-    /** SPA 렌더/데이터 로드 대기(네트워크 유휴 + 짧은 정착). 타임아웃은 무시. */
+    /** SPA 렌더/데이터 로드 대기(네트워크 유휴 + 짧은 정착) — 공통 정착 기준 재사용. */
     private static void waitRender(Page page) {
-        try {
-            page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
-                    new Page.WaitForLoadStateOptions().setTimeout(5000));
-        } catch (RuntimeException ignore) { /* 타임아웃 무시 */ }
-        try { page.waitForTimeout(300); } catch (RuntimeException ignore) { }
+        CheckRunner.settle(page);
     }
 
     /** baseUrl 미설정(공란/TODO) 이면 세션 작업 전에 명확한 오류로 막는다. */
@@ -430,7 +428,7 @@ public final class CheckService {
             pg.put("path", path);
             pg.put("url", url);
             pg.put("title", breadcrumb(path, u.label()));
-            pg.put("shot", "screenshots/chromium-" + CompatibilityCheck.slug(path) + ".png");
+            pg.put("shot", CompatibilityCheck.shotRelPath("chromium", path));
             java.util.Map<String, String> cells = new java.util.LinkedHashMap<>();
             for (com.kt.wqg.compliance.CatalogItem it : catalog.items()) {
                 var r = vm.get(it.code());
