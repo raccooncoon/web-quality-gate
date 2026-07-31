@@ -160,6 +160,10 @@ final class WebConsoleUI {
             .sstep .sdt{font-size:11.5px;color:var(--muted);margin-top:1px}
             .rnote{padding:7px 13px;font-size:11.5px;color:var(--muted);background:var(--card);border-top:1px solid var(--line)}
             .pill.na{background:var(--line);color:var(--muted);border-color:var(--line2)}
+            .pill.off{background:#f0f0f0;color:#8a8a8a;border-color:#dcdcdc}
+            /* 기준·도구 표: ④ 점검항목에서 제외한 미사용 항목은 취소선 */
+            tr.offrow td{text-decoration:line-through;color:var(--muted);opacity:.6}
+            tr.offrow .pill{text-decoration:none;opacity:1;vertical-align:middle}
             @media print{
               header,nav,.toast,.verstamp,.noprint{display:none!important}
               body{background:#fff;color:#000}
@@ -339,8 +343,13 @@ final class WebConsoleUI {
               if(b.dataset.tab==='syscfg')loadSysCfg();if(b.dataset.tab==='aicfg')loadAiCfg();if(b.dataset.tab==='audit')loadAudit()});
 
             // ── 기준·도구 탭 (정적 참조: 도구 비교 + KWCAG 매핑 + 체크리스트) ──
-            async function loadStdRef(){const box=$('#stdref');if(box.dataset.done)return;
-              const {items:realItems}=await api('/api/items');
+            async function loadStdRef(){const box=$('#stdref');
+              // 매번 최신 제외 설정을 반영(캐시 제거) — ④ 점검 항목 변경이 바로 취소선에 보이게
+              const {items:realItems,excludedCount}=await api('/api/items');
+              // ④ 점검 항목 탭에서 제외한 '미사용' 코드 — 기준·도구 표에 취소선으로 표시
+              const exSet=new Set((realItems||[]).filter(it=>it.excluded).map(it=>it.code));
+              const offCls=code=>exSet.has(code)?' class=offrow':'';
+              const offTag=code=>exSet.has(code)?' <span class="pill off">미사용</span>':'';
               const P={a:'<span class="pill ok" title="해당 도구가 자동 검출">자동</span>',m:'<span class="pill wait" title="도구에 항목은 있고 사람이 최종 확인">수동</span>',p:'<span class="pill wait" title="부분 지원(제품 버전·설정에 따라 다름)">부분</span>',n:'<span class="pill na" title="해당 도구 미지원 — 항목 자체가 없음(주로 KWCAG 2.2 신설 항목이거나 웹호환성 등 도구 범위 밖)">—</span>'};
               const intro='<div class="tabintro">세 도구 모두 KWCAG를 보지만 <b>목적·엔진·공신력이 달라 대체가 아니라 보완</b>입니다. '
                 +'이 사이트의 실제 검사 결과는 <b>③ 결과·검수</b> 탭에서 확인하세요. 아래는 표준 관계·도구 비교·항목 매핑·체크리스트(참조).</div>';
@@ -393,7 +402,7 @@ final class WebConsoleUI {
                   ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
                   :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 항목 — KWCAG 2.1(=KIWAC 24) 밖">2.2 추가</span>');
               const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
-              const itRow=r=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
+              const itRow=r=>'<tr'+offCls(r[0])+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+offTag(r[0])+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td><td>'+P[r[2]]+'</td><td>'+P[r[3]]+'</td><td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+r[4]+'</small></td></tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
@@ -405,12 +414,13 @@ final class WebConsoleUI {
               modeCats.forEach(mc=>{const list=realItems.filter(it=>it.category===mc[0]&&(it.siClassification==='auto')===mc[1]);
                 if(!list.length)return;
                 rowsMd+=grpHd(mc[2]+' ('+list.length+')')
-                  +list.map(it=>'<tr><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
+                  +list.map(it=>'<tr'+offCls(it.code)+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+esc(it.code)+'</code> '+esc(it.title)+offTag(it.code)+'</td><td class=st style="white-space:nowrap">'+(AUTOLBL[it.automation]||esc(it.automation))+'</td></tr>').join('');});
               const mapping='<div class=grouphd style="margin-top:22px">3. KWCAG 2.2 항목 매핑 (KWCAG 4원칙 + 웹 호환성)</div>'
                 +'<div class="cardsteps"><b>KWCAG 버전</b> — <b>KIWAC WA 품질인증 심사표의 24개 심사기준 = KWCAG 2.1 항목</b>(<span class="pill ok">KIWAC N</span>)입니다. '
                 +'<b>2022년 개정 KWCAG 2.2(KS X OT0003)</b>에서 항목이 추가되어 총 <b>33개</b>가 됐고, 그 추가분이 <span class="pill wait">2.2 추가</span>(= 2.1/KIWAC 24 밖). '
                 +'<span class="pill na">웹 호환성</span>은 KWCAG 밖 WQG 확장(3엔진·확대 등)입니다. 이 구분·코드가 점검 항목·페이지별 평가·준수율의 <b>기준값</b>입니다.'
-                +'<br><small class=st>※ 공식 KWCAG 2.2 추가 항목은 <b>9개</b>이며, 표에서도 <span class="pill wait">2.2 추가</span>가 <b>9개</b>로 일치합니다. 표준상 <b>지침 2.5(포인터 입력)는 KWCAG 2.2 신설</b>이라 2.5.1(포인터 궤적)도 2.2 추가로 분류합니다. 다만 KIWAC 심사표는 심사기준 8을 8-1(키보드=2.1.1)/8-2로 나눠 관리하며, 그 8-2가 개념상 이 2.5.1(단순 누르기 대체)을 가리키는 표기 관행이 있습니다.</small></div>'
+                +'<br><small class=st>※ 공식 KWCAG 2.2 추가 항목은 <b>9개</b>이며, 표에서도 <span class="pill wait">2.2 추가</span>가 <b>9개</b>로 일치합니다. 표준상 <b>지침 2.5(포인터 입력)는 KWCAG 2.2 신설</b>이라 2.5.1(포인터 궤적)도 2.2 추가로 분류합니다. 다만 KIWAC 심사표는 심사기준 8을 8-1(키보드=2.1.1)/8-2로 나눠 관리하며, 그 8-2가 개념상 이 2.5.1(단순 누르기 대체)을 가리키는 표기 관행이 있습니다.</small>'
+                +'<br><small class=st>표의 <s>취소선</s>·<span class="pill off">미사용</span> 항목은 <b>④ 점검 항목</b> 탭에서 <b>제외</b>한 것으로 검사·집계에서 빠집니다(현재 <b>'+(excludedCount||0)+'</b>개 제외).</small></div>'
                 +'<table id="mapPr">'+theadMap+rowsPr+'</table>';
               const ck='<div class=grouphd style="margin-top:22px">4. 자동/수동 체크리스트</div>'
                 +'<table><tr><th style="width:50%">'+P.a+' 도구가 자동 판정</th><th>'+P.m+' 사람이 최종 확인</th></tr>'
@@ -424,7 +434,7 @@ final class WebConsoleUI {
                 +'<tr><td><b>axe-core</b> <small class=st>Deque</small></td><td>접근성(WCAG→KWCAG) 룰 — 대체텍스트·명도대비·레이블·ARIA·표 구성 등 자동 검출</td></tr>'
                 +'<tr><td><b>vnu.jar</b> <small class=st>W3C Nu Html Checker</small></td><td><b>마크업 유효성</b> — <code>validator.w3.org/nu</code> 엔진의 오프라인판. 닫히지 않은 태그·중복 id·잘못된 중첩·필수속성 누락·<b>deprecated(폐기) 태그</b> 등 HTML 문법 오류(항목 4.1.1·c-deprecated). MPA는 서버 원본 HTML, SPA는 JS 실행 후 렌더된 DOM을 검사</td></tr>'
                 +'<tr><td><b>Playwright</b> <small class=st>3엔진</small></td><td>chromium·firefox·webkit 스크린샷 <b>픽셀 diff</b>(크로스브라우저) + <b>200% 확대 reflow</b>(가로 오버플로)</td></tr></table>';
-              box.innerHTML=intro+std+cmp+engInfo+mapping+ck+note;box.dataset.done='1';
+              box.innerHTML=intro+std+cmp+engInfo+mapping+ck+note;
               box.querySelectorAll('.mvtab').forEach(b=>b.onclick=()=>mapView(b.dataset.mv));}
             function mapView(v){const pr=$('#mapPr'),md=$('#mapMd');if(!pr||!md)return;
               pr.style.display=v==='pr'?'':'none';md.style.display=v==='md'?'':'none';
