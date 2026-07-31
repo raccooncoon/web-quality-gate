@@ -76,6 +76,10 @@ public final class ComplianceReportWriter {
         }
         java.util.List<Map<String, Object>> out = new java.util.ArrayList<>();
         bySlug.forEach((slug, shots) -> {
+            // 엔진 2개 이상일 때만 '브라우저 호환성 화면 비교'로 취급한다. 호환성 검사를 건너뛴
+            // 경우(c-* 전부 제외 등) 남는 chromium 미리보기 1장은 '대상 페이지' 썸네일 용도이지
+            // 비교 대상이 아니므로 이 목록에서 빼 호환성 비교 섹션이 뜨지 않게 한다.
+            if (shots.size() < 2) return;
             Map<String, Object> m = new java.util.LinkedHashMap<>();
             m.put("slug", slug);
             m.put("shots", shots);

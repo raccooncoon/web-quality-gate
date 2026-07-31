@@ -57,6 +57,11 @@ public final class CheckService {
         String timestamp = timestamp();
         Path reportDir = Path.of(config.output().dir(), site.name(), timestamp);
         int total = site.urls().size();
+        // 제외 반영 카탈로그를 검사 실행 전에 확정 — 제외로 특정 판정방식(resolver type) 항목이
+        // 모두 빠지면 그 검사(예: 호환성 3엔진 캡처) 자체를 건너뛰어 헛돈다·리포트 노출을 막는다.
+        java.util.Set<String> excluded = excludedCodes == null ? java.util.Set.of() : excludedCodes;
+        com.kt.wqg.compliance.KwcagCatalog fullCatalog = com.kt.wqg.compliance.KwcagCatalog.load();
+        com.kt.wqg.compliance.KwcagCatalog catalog = fullCatalog.without(excluded);
         try (Playwright playwright = Playwright.create()) {
             List<CheckResult> results = new ArrayList<>();
             List<com.kt.wqg.compliance.Finding> probeFindings = new ArrayList<>();
@@ -80,30 +85,46 @@ public final class CheckService {
                     progress.accept("저장된 로그인 세션 재사용");
                     storageState = context.storageState();
                 }
+                // 호환성 검사가 돌면 chromium 스크린샷을 만들어 '대상 페이지' 썸네일로 재사용한다.
+                // 호환성이 꺼졌거나 c-* 전부 제외로 건너뛰면 그 썸네일이 비므로, 이 경우엔
+                // 메인 루프에서 미리보기 1장(chromium 뷰포트)을 같은 경로에 남겨 썸네일을 유지한다.
+                boolean compatWillRun = config.checks().compatibility().enabled()
+                        && catalogNeeds(catalog, "compat");
                 int i = 0;
                 List<String> skipped = new ArrayList<>();
+                int markupFail = 0;
                 for (SitesConfig.Url url : site.urls()) {
                     i++;
-                    // URL 단위 오류 격리 — 다운로드/내보내기 링크(net::ERR_ABORTED)나 일시적 실패
-                    // 하나가 사이트 검사 전체를 중단시키지 않도록 건너뛰고 나머지를 계속한다.
+                    // 접근성 검사가 페이지 로드(navigateAndWait)를 겸한다. 이게 실패하면 해당 URL 은
+                    // 로드 불가(다운로드 링크·타임아웃 등)로 보고 건너뛴다.
                     try {
                         if (config.checks().accessibility().enabled()) {
                             progress.accept(String.format("접근성·마크업 검사 (%d/%d): %s", i, total, url.path()));
                             results.add(AccessibilityCheck.run(page, site, url, timestamp,
                                     config.checks().accessibility().tags()));
                         }
-                        if (config.checks().markup().enabled()) {
-                            results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config)));
-                        }
-                        probeFindings.addAll(com.kt.wqg.check.probe.ProbeCheck.run(
-                                page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
-                                com.kt.wqg.check.probe.ProbeCheck.defaults()));
-                        try { pageTitles.put(url.path(), page.title()); } catch (RuntimeException ignore) { }
                     } catch (RuntimeException e) {
                         skipped.add(url.path());
                         progress.accept(String.format("건너뜀 (%d/%d): %s — %s",
                                 i, total, url.path(), msg(e)));
+                        continue;
                     }
+                    // 이후 단계(마크업·프로브·미리보기)는 서로 독립 — 하나가 실패해도 나머지는 진행한다.
+                    // 특히 마크업(vnu.jar 미탑재 등) 실패가 프로브·썸네일까지 죽이지 않도록 개별 격리.
+                    if (config.checks().markup().enabled()) {
+                        try { results.add(MarkupCheck.run(page, site, url, timestamp, vnuJarPath(config))); }
+                        catch (RuntimeException e) { markupFail++; }
+                    }
+                    try {
+                        probeFindings.addAll(com.kt.wqg.check.probe.ProbeCheck.run(
+                                page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
+                                com.kt.wqg.check.probe.ProbeCheck.defaults()));
+                    } catch (RuntimeException ignore) { /* 프로브 실패는 다른 검사에 영향 없음 */ }
+                    try { pageTitles.put(url.path(), page.title()); } catch (RuntimeException ignore) { }
+                    if (!compatWillRun) capturePreviewShot(page, reportDir, url.path(), progress);
+                }
+                if (markupFail > 0) {
+                    progress.accept("마크업 검사 실패 " + markupFail + "건(vnu.jar 경로 확인) — 나머지 검사·리포트는 진행됨");
                 }
                 if (!skipped.isEmpty()) {
                     progress.accept("건너뛴 경로 " + skipped.size() + "건(로드 불가·다운로드 링크 등): "
@@ -114,21 +135,20 @@ public final class CheckService {
             }
 
             Map<String, String> engineVersions = Map.of();
-            if (config.checks().compatibility().enabled()) {
+            if (config.checks().compatibility().enabled() && catalogNeeds(catalog, "compat")) {
                 SitesConfig.Compatibility compat = config.checks().compatibility();
                 progress.accept("호환성 검사: " + String.join("·", compat.engines()) + " 캡처 시작…");
                 CompatibilityCheck.CompatOutput co = CompatibilityCheck.run(playwright, site, timestamp,
                         compat.engines(), compat.pixelDiffThreshold(), storageState, reportDir, progress);
                 results.addAll(co.results());
                 engineVersions = co.engineVersions();
+            } else if (config.checks().compatibility().enabled()) {
+                progress.accept("호환성 항목 전부 제외 — 호환성 검사(3엔진 캡처) 건너뜀");
             }
 
             progress.accept("리포트 생성…");
 
-            // 컴플라이언스 스코어링 — 관리자가 제외한 항목은 필터링된 카탈로그로 전 과정에서 빠진다
-            com.kt.wqg.compliance.KwcagCatalog fullCatalog = com.kt.wqg.compliance.KwcagCatalog.load();
-            java.util.Set<String> excluded = excludedCodes == null ? java.util.Set.of() : excludedCodes;
-            com.kt.wqg.compliance.KwcagCatalog catalog = fullCatalog.without(excluded);
+            // 컴플라이언스 스코어링 — 관리자가 제외한 항목은 필터링된 카탈로그(catalog, 위에서 확정)로 전 과정에서 빠진다
             if (!excluded.isEmpty()) progress.accept("검사 제외 항목 " + excluded.size() + "건 적용");
             var itemMap = new com.kt.wqg.compliance.ComplianceMapper(catalog).map(results, probeFindings);
             com.kt.wqg.compliance.ComplianceEvaluator.Compliance compliance =
@@ -152,6 +172,32 @@ public final class CheckService {
             // report.html 을 SI 검수결과표로 최종 생성.
             return writeComplianceReport(reportDir, site, credResolver);
         }
+    }
+
+    /**
+     * '대상 페이지' 썸네일용 chromium 미리보기 1장(뷰포트) — 호환성 캡처가 없을 때만 호출한다.
+     * 저장 경로·형식(screenshots/chromium-&lt;slug&gt;.png, fullPage=false)은 호환성 캡처와 동일해
+     * buildPages 의 shot 경로가 호환성 유무와 무관하게 그대로 해석된다. 실패는 검사에 영향 없음.
+     */
+    private static void capturePreviewShot(Page page, Path reportDir, String path, Consumer<String> progress) {
+        try {
+            Path shotsDir = reportDir.resolve("screenshots");
+            java.nio.file.Files.createDirectories(shotsDir);
+            page.screenshot(new Page.ScreenshotOptions().setFullPage(false)
+                    .setPath(shotsDir.resolve("chromium-" + CompatibilityCheck.slug(path) + ".png")));
+        } catch (RuntimeException | java.io.IOException e) {
+            progress.accept("미리보기 캡처 실패(계속): " + path + " — " + msg(e));
+        }
+    }
+
+    /**
+     * 필터된 카탈로그에 해당 판정방식(resolver type: axe·markup·compat·probe) 항목이
+     * 하나라도 남아 있는가. 없으면 그 검사는 결과가 모두 제외되므로 실행할 필요가 없다.
+     * 예: 호환성 항목(c-browser=compat)이 전부 제외되면 3엔진 캡처를 건너뛴다.
+     */
+    static boolean catalogNeeds(com.kt.wqg.compliance.KwcagCatalog catalog, String resolverType) {
+        return catalog.items().stream()
+                .anyMatch(it -> it.resolver() != null && resolverType.equals(it.resolver().type()));
     }
 
     /** SPA 렌더/데이터 로드 대기(네트워크 유휴 + 짧은 정착). 타임아웃은 무시. */
