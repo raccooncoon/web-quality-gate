@@ -665,9 +665,17 @@ public final class CheckService {
                 String loginPath = site != null && site.auth() != null ? site.auth().loginPath() : "/login";
                 String finalPath = pathOfUrl(page.url());
                 if (loginPath != null && finalPath != null && finalPath.equals(loginPath) && !path.equals(loginPath)) {
+                    boolean storage = site != null && site.auth() != null && site.auth().isStorage();
+                    boolean form = site != null && site.auth() != null && "form".equalsIgnoreCase(site.auth().type());
+                    String base = storage
+                            ? "세션 재사용 방식입니다 — [① 세션 로그인](또는 원격 로그인)으로 세션을 먼저 저장한 뒤 다시 시도하세요."
+                            : (form ? "폼 로그인입니다 — 계정을 저장한 뒤 다시 시도하세요."
+                                    : "로그인이 필요합니다 — 세션 또는 계정을 먼저 저장한 뒤 다시 시도하세요.");
+                    String hint = base + (useStored
+                            ? " (저장된 세션이 만료됐을 수 있습니다 — 세션을 다시 저장하세요.)" : "");
                     return new DetectedType("unknown",
                             "요청한 경로가 로그인 페이지(" + finalPath + ")로 리다이렉트됨 — 로그인 뒤 화면을 못 봐 자동 판정 불가. "
-                            + "계정을 저장한 뒤 다시 시도하거나 유형을 직접 지정하세요.");
+                            + hint + " 또는 유형을 직접 지정하세요.");
                 }
                 return classifyType(rawLen, renderedLen, mount, bundle, fw);
             } finally {
