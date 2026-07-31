@@ -47,15 +47,26 @@ public final class CheckRunner {
      * url 을 열고 검사 가능한 상태까지 기다린 뒤 최종 URL 을 반환한다.
      * SPA: readySelector 대기 + NETWORKIDLE — 빈 화면 검사로 위반 0건이 나오는 오탐 방지.
      * MPA: navigate 의 기본 load 대기로 충분.
+     *
+     * NETWORKIDLE 은 반드시 유한 타임아웃으로 기다리고 미도달이면 무시한다. 실시간 채팅·폴링·
+     * 웹소켓이 있는 라이브 SPA(예: 프로젝트 관리 툴)는 네트워크가 영영 idle 이 되지 않아,
+     * 무한 대기 시 전 URL 이 타임아웃 예외로 skip 되어 결과가 통째로 0건이 되는 회귀가 발생한다.
      */
     public static String navigateAndWait(Page page, SitesConfig.Site site, SitesConfig.Url url) {
         String fullUrl = resolveUrl(site.baseUrl(), url.path());
         page.navigate(fullUrl);
         if (site.isSpa()) {
             if (url.readySelector() != null && !url.readySelector().isBlank()) {
-                page.waitForSelector(url.readySelector());
+                try {
+                    page.waitForSelector(url.readySelector(),
+                            new Page.WaitForSelectorOptions().setTimeout(10000));
+                } catch (RuntimeException ignore) { /* 준비 마커 미출현 — 렌더된 만큼 검사 진행 */ }
             }
-            page.waitForLoadState(LoadState.NETWORKIDLE);
+            try {
+                page.waitForLoadState(LoadState.NETWORKIDLE,
+                        new Page.WaitForLoadStateOptions().setTimeout(5000));
+            } catch (RuntimeException ignore) { /* 라이브 SPA는 networkidle 미도달 — 무시하고 진행 */ }
+            try { page.waitForTimeout(300); } catch (RuntimeException ignore) { }
         }
         return fullUrl;
     }
