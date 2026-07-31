@@ -54,7 +54,8 @@ public final class HeuristicProbe implements PageProbe {
         if (mouseOnly > 0) out.add(r(url, "keyboard-operable", "마우스 전용 의심 클릭 요소 " + mouseOnly + "개(비포커스·인라인 키핸들러 없음) — 키보드 조작 확인 필요" + ex(d, "mouseOnly")));
         else if (interactive > 0) out.add(r(url, "keyboard-operable", "상호작용 요소 " + interactive + "개 — 전체 키보드 조작 확인 필요"));
         int posTab = d.path("posTabindex").asInt();
-        if (posTab > 0) out.add(r(url, "linear-order", "양수 tabindex " + posTab + "개 — 읽기/초점 순서 훼손 우려, 확인 필요" + ex(d, "posTabindex")));
+        // 양수 tabindex 는 읽기/초점 순서를 훼손하는 명백한 안티패턴(axe 도 위반 처리) → 자동 부적합.
+        if (posTab > 0) out.add(v(url, "linear-order", "양수 tabindex " + posTab + "개 — 읽기/초점 순서 훼손(명백한 위반)" + ex(d, "posTabindex")));
         else out.add(r(url, "linear-order", "콘텐츠 선형 순서 적절성 확인 필요"));
         if (d.path("form").asBoolean())
             out.add(r(url, "form-validation", "입력 폼 존재 — 오류 안내/정정 수단 확인 필요" + ex(d, "form")));
