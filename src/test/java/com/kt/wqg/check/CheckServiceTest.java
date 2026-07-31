@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -30,5 +31,22 @@ class CheckServiceTest {
         KwcagCatalog cat = KwcagCatalog.load().without(Set.of("c-webstandard", "c-deprecated"));
         assertTrue(CheckService.catalogNeeds(cat, "markup"),
                 "4.1.1(markup)이 남아 있으면 마크업 검사는 필요해야 한다");
+    }
+
+    @Test
+    void 표시명이_있으면_대상페이지_제목으로_그대로_쓴다() {
+        assertEquals("홈 > 시작하기", CheckService.breadcrumb("/app/w/1/start", "홈 > 시작하기"));
+    }
+
+    @Test
+    void 표시명이_없으면_경로기반_빵부스러기로_표기한다() {
+        // page.title() 을 쓰지 않는다 — 경로 세그먼트만으로 "홈 > app > w > 1 > start".
+        assertEquals("홈 > app > w > 1 > start", CheckService.breadcrumb("/app/w/1/start", null));
+        assertEquals("홈 > app > w > 1 > start", CheckService.breadcrumb("/app/w/1/start", "   "));
+    }
+
+    @Test
+    void 루트경로_표시명_없으면_홈만() {
+        assertEquals("홈", CheckService.breadcrumb("/", null));
     }
 }

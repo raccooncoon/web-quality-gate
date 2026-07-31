@@ -65,7 +65,6 @@ public final class CheckService {
         try (Playwright playwright = Playwright.create()) {
             List<CheckResult> results = new ArrayList<>();
             List<com.kt.wqg.compliance.Finding> probeFindings = new ArrayList<>();
-            java.util.Map<String, String> pageTitles = new java.util.LinkedHashMap<>();
             String storageState = null;
 
             progress.accept("브라우저 기동…");
@@ -120,7 +119,6 @@ public final class CheckService {
                                 page, CheckRunner.resolveUrl(site.baseUrl(), url.path()),
                                 com.kt.wqg.check.probe.ProbeCheck.defaults()));
                     } catch (RuntimeException ignore) { /* 프로브 실패는 다른 검사에 영향 없음 */ }
-                    try { pageTitles.put(url.path(), page.title()); } catch (RuntimeException ignore) { }
                     if (!compatWillRun) capturePreviewShot(page, reportDir, url.path(), progress);
                 }
                 if (markupFail > 0) {
@@ -159,7 +157,7 @@ public final class CheckService {
                     .map(it -> itemMap.get(it.code())).toList();
             // 페이지별 판정 — 대상 페이지·페이지별 평가표·동영상 콘텐츠 표의 근거 데이터
             java.util.List<java.util.Map<String, Object>> pages =
-                    buildPages(site, catalog, results, probeFindings, pageTitles);
+                    buildPages(site, catalog, results, probeFindings);
             com.kt.wqg.compliance.ComplianceStore.write(reportDir,
                     new com.kt.wqg.compliance.ComplianceDoc(site.name(), site.label(), timestamp,
                             ordered, new java.util.ArrayList<>(excluded), pages));
@@ -418,8 +416,7 @@ public final class CheckService {
     private static java.util.List<java.util.Map<String, Object>> buildPages(
             SitesConfig.Site site, com.kt.wqg.compliance.KwcagCatalog catalog,
             List<com.kt.wqg.report.CheckResult> results,
-            List<com.kt.wqg.compliance.Finding> probeFindings,
-            java.util.Map<String, String> pageTitles) {
+            List<com.kt.wqg.compliance.Finding> probeFindings) {
         var perUrl = new com.kt.wqg.compliance.ComplianceMapper(catalog).mapByUrl(results, probeFindings);
         java.util.List<java.util.Map<String, Object>> pages = new java.util.ArrayList<>();
         int no = 1;
@@ -432,7 +429,7 @@ public final class CheckService {
             pg.put("no", no++);
             pg.put("path", path);
             pg.put("url", url);
-            pg.put("title", breadcrumb(path, pageTitles.get(path)));
+            pg.put("title", breadcrumb(path, u.label()));
             pg.put("shot", "screenshots/chromium-" + CompatibilityCheck.slug(path) + ".png");
             java.util.Map<String, String> cells = new java.util.LinkedHashMap<>();
             for (com.kt.wqg.compliance.CatalogItem it : catalog.items()) {
@@ -449,28 +446,17 @@ public final class CheckService {
     }
 
     /** '홈 &gt; 세그먼트…' 브레드크럼. 리프 라벨은 페이지 제목(&lt;title&gt;)이 있으면 사용. */
-    private static String breadcrumb(String path, String title) {
+    /**
+     * '대상 페이지' 카드 제목. 설정에서 지정한 표시명(label)이 있으면 그대로 쓰고(예: "홈 &gt; 시작하기"),
+     * 없으면 경로 세그먼트로 빵부스러기를 만든다(예: "홈 &gt; app &gt; w &gt; 1 &gt; start").
+     * page.title() 은 앱 공통 제목(예: "Plainly")이라 화면 구분이 안 돼 쓰지 않는다.
+     */
+    static String breadcrumb(String path, String label) {
+        if (label != null && !label.isBlank()) return label.trim();
         java.util.List<String> crumbs = new java.util.ArrayList<>();
         crumbs.add("홈");
         for (String s : (path == null ? "" : path).split("/")) if (!s.isBlank()) crumbs.add(s);
-        String leaf = cleanTitle(title);
-        if (!leaf.isEmpty()) {
-            if (crumbs.size() > 1) crumbs.set(crumbs.size() - 1, leaf);
-            else crumbs.add(leaf);
-        }
         return String.join(" > ", crumbs);
-    }
-
-    /** 페이지 제목에서 리프 라벨만 추출('페이지명 | 사이트' → '페이지명'). */
-    private static String cleanTitle(String title) {
-        if (title == null) return "";
-        String t = title.trim();
-        if (t.isEmpty()) return "";
-        for (String sep : new String[]{"|", "»", "·", " - ", " — ", "::"}) {
-            int idx = t.indexOf(sep);
-            if (idx > 0) { t = t.substring(0, idx).trim(); break; }
-        }
-        return t.length() > 40 ? t.substring(0, 40) : t;
     }
 
     /** 판정 → 페이지별 평가표 기호. 수동확인은 잠정(△). */

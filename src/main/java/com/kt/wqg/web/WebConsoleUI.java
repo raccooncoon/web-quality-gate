@@ -78,14 +78,15 @@ final class WebConsoleUI {
             .pathhd{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 4px}
             .pathhd .pathcount{color:var(--muted);font-weight:400;font-size:11.5px}
             .pathlist{border:1px solid var(--line2);border-radius:6px;overflow:hidden;background:var(--card)}
-            .pathrow{display:grid;grid-template-columns:1fr 210px 34px;align-items:stretch;border-bottom:1px solid var(--line)}
+            .pathrow{display:grid;grid-template-columns:1fr 200px 190px 34px;align-items:stretch;border-bottom:1px solid var(--line)}
             .pathrow:last-child{border-bottom:none}
             .pathrow>input{border:0;border-radius:0;background:transparent;box-shadow:none;padding:8px 11px;
               font-family:ui-monospace,monospace;width:100%}
             .pathrow>input:focus{outline:2px solid var(--gov);outline-offset:-2px;background:var(--govsoft)}
             .pathrow .pp{font-size:12.5px;font-weight:600;color:var(--fg)}
+            .pathrow .pl{font-size:12px;color:var(--fg);border-left:1px solid var(--line)}
             .pathrow .ps{font-size:11.5px;color:var(--muted);border-left:1px solid var(--line)}
-            .pathrow .ps::placeholder{color:var(--line2);font-weight:400}
+            .pathrow .pl::placeholder,.pathrow .ps::placeholder{color:var(--line2);font-weight:400}
             .pathrow .rm{border:0;border-left:1px solid var(--line);background:transparent;color:var(--muted);
               cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center}
             .pathrow .rm:hover{color:var(--bad);background:var(--badbg)}
@@ -685,29 +686,32 @@ final class WebConsoleUI {
                 <div class="danger"><button class="act ghost del">시스템 삭제</button>
                   <span class="hint" style="margin-left:8px">설정과 저장된 계정이 삭제됩니다.</span></div></div></div>`}
             function parseUrls(t){return t.split('\\n').map(l=>l.trim()).filter(Boolean).map(l=>{
-              const[p,rs]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||''}})}
+              const[p,rs,lb]=l.split('|').map(x=>x.trim());return{path:p,readySelector:rs||'',label:lb||''}})}
             // ── 검사 경로 행 목록: 숨은 textarea[name=urls]가 저장·수집의 원본, 행 UI는 그 편집기 ──
-            function pathRowHtml(path,sel){return '<div class="pathrow">'
+            function pathRowHtml(path,sel,label){return '<div class="pathrow">'
               +'<input class="pp" spellcheck="false" value="'+esc(path)+'">'
+              +'<input class="pl" spellcheck="false" placeholder="표시명 (선택) 예: 홈 &gt; 시작하기" value="'+esc(label||'')+'">'
               +'<input class="ps" spellcheck="false" placeholder="대기 셀렉터 (선택)" value="'+esc(sel||'')+'">'
               +'<button class="rm" type="button" title="삭제">✕</button></div>'}
             function bindPathRow(el,row){row.querySelector('.pp').oninput=()=>syncPaths(el);
+              row.querySelector('.pl').oninput=()=>syncPaths(el);
               row.querySelector('.ps').oninput=()=>syncPaths(el);
               row.querySelector('.rm').onclick=()=>{row.remove();syncPaths(el)}}
             function updatePathCount(el,n){const c=el.querySelector('.pathcount');if(c)c.textContent='('+n+')'}
             function initPaths(el){const list=el.querySelector('.pathlist');if(!list)return;
               const items=parseUrls(el.querySelector('[name=urls]').value);
-              list.innerHTML=items.length?items.map(u=>pathRowHtml(u.path,u.readySelector)).join('')
+              list.innerHTML=items.length?items.map(u=>pathRowHtml(u.path,u.readySelector,u.label)).join('')
                 :'<div class="pathempty">등록된 검사 경로가 없습니다 — 아래에서 추가하거나 [검사 경로 자동 수집]을 이용하세요.</div>';
               list.querySelectorAll('.pathrow').forEach(r=>bindPathRow(el,r));
               updatePathCount(el,items.length)}
             function syncPaths(el){const rows=[...el.querySelectorAll('.pathlist .pathrow')];
               const lines=rows.map(r=>{const p=r.querySelector('.pp').value.trim();if(!p)return '';
-                const s=r.querySelector('.ps').value.trim();return s?p+' | '+s:p}).filter(Boolean);
+                const s=r.querySelector('.ps').value.trim(),lb=r.querySelector('.pl').value.trim();
+                return lb?(p+' | '+s+' | '+lb):(s?p+' | '+s:p)}).filter(Boolean);
               el.querySelector('[name=urls]').value=lines.join('\\n');updatePathCount(el,lines.length)}
-            function addPath(el,path,sel,flash){const list=el.querySelector('.pathlist');
+            function addPath(el,path,sel,flash,label){const list=el.querySelector('.pathlist');
               const empty=list.querySelector('.pathempty');if(empty)list.innerHTML='';
-              const tmp=document.createElement('div');tmp.innerHTML=pathRowHtml(path,sel||'');
+              const tmp=document.createElement('div');tmp.innerHTML=pathRowHtml(path,sel||'',label||'');
               const row=tmp.firstChild;list.appendChild(row);bindPathRow(el,row);
               if(flash){row.classList.add('justadded');setTimeout(()=>row.classList.remove('justadded'),2000)}
               syncPaths(el);return row}

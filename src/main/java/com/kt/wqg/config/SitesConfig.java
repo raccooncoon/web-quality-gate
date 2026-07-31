@@ -39,8 +39,15 @@ public record SitesConfig(List<Site> sites, Checks checks, Output output) {
         public boolean isStorage() { return "storage".equalsIgnoreCase(type); }
     }
 
+    /**
+     * 검사 경로. label 은 리포트 '대상 페이지' 카드에 쓸 표시명(예: "홈 &gt; 시작하기").
+     * 비어 있으면 경로 기반 빵부스러기("홈 &gt; app &gt; w &gt; 1 &gt; start")로 자동 표기.
+     */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record Url(String path, String readySelector) {}
+    public record Url(String path, String readySelector, String label) {
+        /** label 없는 기존 호출·설정과의 호환용. */
+        public Url(String path, String readySelector) { this(path, readySelector, null); }
+    }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Checks(Accessibility accessibility, Markup markup, Compatibility compatibility) {}

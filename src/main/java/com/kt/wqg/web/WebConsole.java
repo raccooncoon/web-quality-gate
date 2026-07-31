@@ -133,12 +133,22 @@ public final class WebConsole {
             m.put("credId", credentials.savedId(s.name()));
             m.put("hasSession", java.nio.file.Files.isRegularFile(CheckService.sessionFile(s.name())));
             // 비밀번호는 브라우저로 내려보내지 않는다(노출 방지 + 옛 값 재저장 방지). 저장 여부만 hasCredentials 로 표시.
-            m.put("urls", s.urls().stream().map(SitesConfig.Url::path).toList());
+            // "path | readySelector | label" 로 인코딩 — 표시명(label)·대기 셀렉터까지 UI 로 왕복.
+            m.put("urls", s.urls().stream().map(WebConsole::encodeUrl).toList());
             m.put("auto", s.auto() == null ? List.of() : s.auto());
             m.put("configured", s.baseUrl() != null && !s.baseUrl().contains("TODO"));
             list.add(m);
         }
         return Map.of("systems", list);
+    }
+
+    /** 검사 경로를 UI 편집기용 "path | readySelector | label" 한 줄로 인코딩(뒤쪽 빈 칸은 생략). */
+    private static String encodeUrl(SitesConfig.Url u) {
+        String rs = u.readySelector() == null ? "" : u.readySelector();
+        String lb = u.label() == null ? "" : u.label();
+        if (!lb.isBlank()) return u.path() + " | " + rs + " | " + lb;
+        if (!rs.isBlank()) return u.path() + " | " + rs;
+        return u.path();
     }
 
     private void saveSystem(HttpExchange ex, String name) throws IOException {
@@ -164,7 +174,9 @@ public final class WebConsole {
         for (JsonNode u : b.path("urls")) {
             String p = u.path("path").asText("").trim();
             String rs = u.path("readySelector").asText("").trim();
-            if (!p.isEmpty()) urls.add(new SitesConfig.Url(p, rs.isEmpty() ? null : rs));
+            String lb = u.path("label").asText("").trim();
+            if (!p.isEmpty()) urls.add(new SitesConfig.Url(p,
+                    rs.isEmpty() ? null : rs, lb.isEmpty() ? null : lb));
         }
         if (urls.isEmpty()) urls = cur.urls();
 
