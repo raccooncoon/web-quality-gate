@@ -453,6 +453,7 @@ public final class WebConsole {
         List<Map<String, Object>> items = catalog.items().stream().map(c -> Map.<String, Object>of(
                 "no", c.no(), "code", c.code(), "title", c.title(), "category", c.category(),
                 "siClassification", c.siClassification(), "automation", c.automation(),
+                "resolverType", c.resolver() == null ? "" : c.resolver().type(),
                 "excluded", ex.contains(c.code()))).toList();
         return Map.of("items", items, "excludedCount", ex.size());
     }

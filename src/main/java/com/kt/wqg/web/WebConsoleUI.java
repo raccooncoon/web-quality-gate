@@ -350,6 +350,9 @@ final class WebConsoleUI {
               const {items:realItems,excludedCount}=await api('/api/items');
               // ④ 점검 항목 탭에서 제외한 '미사용' 코드 — 기준·도구 표에 취소선으로 표시
               const exSet=new Set((realItems||[]).filter(it=>it.excluded).map(it=>it.code));
+              // WQG 엔진 표기용 — 코드별 automation·resolverType (검사 결과와 일치)
+              const byCode={};(realItems||[]).forEach(it=>byCode[it.code]=it);
+              const engOf=code=>{const it=byCode[code]||{};return wqgEngine(it.automation,it.resolverType)};
               const offCls=code=>exSet.has(code)?' class=offrow':'';
               const offTag=code=>exSet.has(code)?' <span class="pill off">미사용</span>':'';
               const P=TOOLLBL;  // 도구 커버리지 pill — 공통 단일 소스 재사용
@@ -399,7 +402,7 @@ final class WebConsoleUI {
                 ['c-browser','브라우저 호환성'],['c-reflow','해상도·확대(200%)']];
               const kiwacCell=kiwacPill;  // KIWAC(KWCAG 2.1) 셀 — 공통 단일 소스
               const grpHd=l=>'<tr><td colspan=5 style="background:var(--govsoft);color:var(--navy);font-weight:700;font-size:11.5px;letter-spacing:.03em">'+l+'</td></tr>';
-              const itRow=r=>'<tr'+offCls(r[0])+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+offTag(r[0])+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td>'+toolTds(r[0])+'</tr>';
+              const itRow=r=>'<tr'+offCls(r[0])+'><td><code style="color:var(--gov);font-weight:700;font-size:12px">'+r[0]+'</code> '+r[1]+offTag(r[0])+'</td><td style="white-space:nowrap">'+kiwacCell(r[0])+'</td>'+toolTds(r[0],engOf(r[0]))+'</tr>';
               // 뷰1: 원칙별(KWCAG 4원칙)
               const rowsPr=M.map(r=>r[0]==='P'?grpHd(r[1]):itRow(r)).join('');
               // 뷰2: 자동·수동별 — 웹접근성(자동→수동) → 웹호환성(자동→수동)
@@ -953,25 +956,30 @@ final class WebConsoleUI {
               :(String(code)[0]==='c'
                 ?'<span class="pill na" title="KWCAG 밖 · WQG 웹호환성 확장(심사표 외)">웹 호환성</span>'
                 :'<span class="pill wait" title="KWCAG 2.2(2022, KS X OT0003)에서 추가된 항목 — KWCAG 2.1(=KIWAC 24) 밖">2.2 추가</span>');
-            // 도구·엔진 커버리지(공통 단일 소스) — 기준·도구 매핑표와 ④ 점검 항목 탭이 함께 사용.
-            // 값: [카도와, 웹와치, WQG 엔진] · 카도와·웹와치는 근사치(제품 버전·설정별 상이, 참고용).
+            // 외부 도구(카도와·웹와치) 커버리지 근사치 [카도와, 웹와치]. 참고용(제품 버전·설정별 상이).
+            // WQG 엔진은 하드코딩하지 않고 카탈로그 automation 에서 파생(wqgEngine) — 실제 처리와 항상 일치.
             const TOOLMAP={
-              '1.1.1':['a','a','axe'],'1.2.1':['m','m','axe'],'1.3.1':['a','a','axe'],'1.3.2':['m','m','axe'],
-              '1.3.3':['m','m','AI·평가자'],'1.4.1':['m','p','AI·평가자'],'1.4.2':['m','a','axe'],'1.4.3':['a','a','axe'],
-              '1.4.4':['m','m','평가자'],'2.1.1':['m','m','axe'],'2.1.2':['m','m','평가자'],'2.1.3':['n','p','axe'],
-              '2.1.4':['m','m','axe'],'2.2.1':['m','m','axe'],'2.2.2':['m','a','axe'],'2.3.1':['m','a','axe'],
-              '2.4.1':['a','a','axe'],'2.4.2':['a','a','axe'],'2.4.3':['a','a','axe'],'2.4.4':['m','m','axe'],
-              '2.5.1':['m','m','axe'],'2.5.2':['m','m','axe'],'2.5.3':['m','m','axe'],'2.5.4':['m','m','axe'],
-              '3.1.1':['a','a','axe'],'3.2.1':['m','m','axe'],'3.2.2':['m','m','AI·평가자'],'3.3.1':['m','m','axe'],
-              '3.3.2':['a','a','axe'],'3.3.3':['m','m','axe'],'3.3.4':['m','m','AI·평가자'],'4.1.1':['p','a','vnu'],
-              '4.2.1':['m','m','axe'],'c-webstandard':['n','p','vnu·평가자'],'c-deprecated':['n','p','vnu'],
-              'c-browser':['n','n','Playwright'],'c-reflow':['n','p','Playwright']};
+              '1.1.1':['a','a'],'1.2.1':['m','m'],'1.3.1':['a','a'],'1.3.2':['m','m'],
+              '1.3.3':['m','m'],'1.4.1':['m','p'],'1.4.2':['m','a'],'1.4.3':['a','a'],
+              '1.4.4':['m','m'],'2.1.1':['m','m'],'2.1.2':['m','m'],'2.1.3':['n','p'],
+              '2.1.4':['m','m'],'2.2.1':['m','m'],'2.2.2':['m','a'],'2.3.1':['m','a'],
+              '2.4.1':['a','a'],'2.4.2':['a','a'],'2.4.3':['a','a'],'2.4.4':['m','m'],
+              '2.5.1':['m','m'],'2.5.2':['m','m'],'2.5.3':['m','m'],'2.5.4':['m','m'],
+              '3.1.1':['a','a'],'3.2.1':['m','m'],'3.2.2':['m','m'],'3.3.1':['m','m'],
+              '3.3.2':['a','a'],'3.3.3':['m','m'],'3.3.4':['m','m'],'4.1.1':['p','a'],
+              '4.2.1':['m','m'],'c-webstandard':['n','p'],'c-deprecated':['n','p'],
+              'c-browser':['n','n'],'c-reflow':['n','p']};
             // a=자동 m=수동 p=부분 n=미지원 — 도구 커버리지 pill(카도와·웹와치 공통)
             const TOOLLBL={a:'<span class="pill ok" title="해당 도구가 자동 검출">자동</span>',m:'<span class="pill wait" title="도구에 항목은 있고 사람이 최종 확인">수동</span>',p:'<span class="pill wait" title="부분 지원(제품 버전·설정에 따라 다름)">부분</span>',n:'<span class="pill na" title="해당 도구 미지원 — 항목 자체가 없음(주로 KWCAG 2.2 신설 항목이거나 웹호환성 등 도구 범위 밖)">—</span>'};
-            // 카도와·웹와치·WQG 엔진 3개 <td> 생성(코드 미매핑 시 —)
-            const toolTds=code=>{const t=TOOLMAP[code]||['n','n','—'];
+            // WQG 엔진 표기 — 실제 처리(카탈로그 automation)에서 파생해 검사 결과(수동확인 여부)와 일치시킨다.
+            //  auto → 판정 엔진명(axe·vnu·Playwright) · screen → 엔진·평가자(스크리닝+사람 확정) · manual → 평가자 · na → —
+            const ENGBYTYPE={axe:'axe',markup:'vnu',compat:'Playwright',probe:'Playwright'};
+            const wqgEngine=(auto,rtype)=>auto==='na'?'—':auto==='auto'?(ENGBYTYPE[rtype]||'axe')
+              :auto==='screen'?((ENGBYTYPE[rtype]||'axe')+'·평가자'):'평가자';
+            // 카도와·웹와치·WQG 엔진 3개 <td> 생성. wqgEng 은 wqgEngine(automation, resolverType) 결과.
+            const toolTds=(code,wqgEng)=>{const t=TOOLMAP[code]||['n','n'];
               return '<td style="text-align:center">'+(TOOLLBL[t[0]]||'—')+'</td><td style="text-align:center">'+(TOOLLBL[t[1]]||'—')+'</td>'
-                +'<td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+esc(t[2])+'</small></td>'};
+                +'<td><small style="font-family:ui-monospace,monospace;color:var(--muted);font-weight:700">'+esc(wqgEng||'—')+'</small></td>'};
             // 공통 분류: KWCAG 4원칙(코드 1/2/3/4) + 웹 호환성(c-*). 그룹·코드 순으로 정렬.
             const PRIN=[['1','인식의 용이성 (Perceivable)'],['2','운용의 용이성 (Operable)'],
               ['3','이해의 용이성 (Understandable)'],['4','견고성 (Robustness)'],['c','웹 호환성']];
@@ -989,21 +997,19 @@ final class WebConsoleUI {
                 if(g!=='c')list=list.slice().sort((a,b)=>csort(a.code,b.code));
                 if(!list.length)return;
                 html+=`<div class=grouphd>${label} (${list.length})</div><table><thead><tr><th style="width:1px">검사</th><th>코드</th><th>항목</th><th style="white-space:nowrap">KIWAC (KWCAG 2.1)</th><th style="white-space:nowrap">판정 방식</th><th style="text-align:center">카도와</th><th style="text-align:center">웹와치</th><th>WQG 엔진</th></tr></thead><tbody>`+
-                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
+                  list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" data-auto="${esc(it.automation)}" ${it.excluded?'':'checked'}></td>
                     <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
                     <td style="white-space:nowrap">${kiwacPill(it.code)}</td>
                     <td class=st title="도구 처리: ${esc(AUTOLBL[it.automation]||it.automation)}">${siLabel(it)}</td>
-                    ${toolTds(it.code)}</tr>`).join('')+'</tbody></table>';
+                    ${toolTds(it.code, wqgEngine(it.automation, it.resolverType))}</tr>`).join('')+'</tbody></table>';
               });
               $('#items').innerHTML=html}
             function allItems(v){document.querySelectorAll('.itemchk').forEach(c=>c.checked=v)}
-            // 자동검사만 선택 — 도구가 스스로 판정하는 항목만 남긴다. 제외 기준:
-            //  ① WQG 엔진에 '평가자'가 든 항목(AI·평가자·평가자·vnu·평가자 = 사람 확인 필요)
-            //  ② 웹 호환성(c-*) 항목 전부
+            // 자동검사만 선택 — 도구가 스스로 판정하는 항목(automation=auto)만 남긴다. 제외 기준:
+            //  ① 스크리닝·수동(automation=screen/manual = 사람 확인 필요) ② 웹 호환성(c-*) 전부
             function autoOnly(){document.querySelectorAll('.itemchk').forEach(c=>{
-              const code=c.dataset.code, eng=(TOOLMAP[code]||[])[2]||'';
-              c.checked=String(code)[0]!=='c' && !eng.includes('평가자')});
-              toast('자동검사 항목만 선택 — 평가자(AI·수동) 항목과 웹 호환성은 제외됩니다. [제외 설정 저장]을 눌러 적용하세요')}
+              c.checked=c.dataset.auto==='auto' && String(c.dataset.code)[0]!=='c'});
+              toast('자동검사 항목만 선택 — 수동·스크리닝(평가자) 항목과 웹 호환성은 제외됩니다. [제외 설정 저장]을 눌러 적용하세요')}
             async function saveItems(){const excluded=[...document.querySelectorAll('.itemchk:not(:checked)')].map(c=>c.dataset.code);
               const r=await api('/api/items/exclude','POST',{excluded});
               const el=document.getElementById('exCount');if(el)el.textContent=r.excludedCount;
@@ -1155,7 +1161,7 @@ final class WebConsoleUI {
               const g=it.guide||{};const needs=it.verdict==='수동확인필요';
               const ev=evTables(it.evidence);
               return `<div class="item ${needs?'needs':'done'}">
-                <div class="it-hd"><span class=st>${it.no}.</span><b>${esc(it.title)}</b><small class=st>${esc(it.code)}</small>
+                <div class="it-hd"><code style="color:var(--gov);font-weight:700">${esc(it.code)}</code> <b>${esc(it.title)}</b>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>
                 <button class="linkbtn" onclick="toggleOverride('${id}')">${needs?'판정하기':'수정'}</button>
                 ${needs?`<button class="linkbtn aibtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
