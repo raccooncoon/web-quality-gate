@@ -940,6 +940,9 @@ final class WebConsoleUI {
 
             // ── 점검 항목 관리 탭 ──
             const AUTOLBL={auto:'자동',na:'해당없음(기본)',screen:'자동 스크리닝',manual:'수동확인'};
+            // 판정 방식 표기는 기준·도구 탭과 동일한 기준(siClassification: 자동 판정/수동 확인)으로 통일
+            const SICLS={auto:'자동 판정',manual:'수동 확인'};
+            const siLabel=it=>(SICLS[it.siClassification]||it.siClassification||'—');
             // KWCAG 버전 구분(공통) — KIWAC WA 심사표 24기준=KWCAG 2.1, 그 밖 접근성 항목=2022 개정 2.2 신설, c-*=웹호환성 확장.
             const KIWAC24={'1.1.1':'1','1.2.1':'2','1.4.1':'3','1.3.3':'4','1.4.3':'5','1.4.2':'6','1.4.4':'7',
               '2.1.1':'8','2.1.2':'9','2.1.3':'10','2.2.1':'11','2.2.2':'12','2.3.1':'13',
@@ -971,7 +974,7 @@ final class WebConsoleUI {
                   list.map(it=>`<tr><td style="width:1px"><input type=checkbox class=itemchk data-code="${esc(it.code)}" ${it.excluded?'':'checked'}></td>
                     <td><code>${esc(it.code)}</code></td><td>${esc(it.title)}</td>
                     <td style="white-space:nowrap">${verPill(it.code)}</td>
-                    <td class=st>${AUTOLBL[it.automation]||it.automation}</td></tr>`).join('')+'</tbody></table>';
+                    <td class=st title="도구 처리: ${esc(AUTOLBL[it.automation]||it.automation)}">${siLabel(it)}</td></tr>`).join('')+'</tbody></table>';
               });
               $('#items').innerHTML=html}
             function allItems(v){document.querySelectorAll('.itemchk').forEach(c=>c.checked=v)}
