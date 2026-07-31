@@ -53,6 +53,13 @@ public final class CompatibilityCheck {
     public static CompatOutput run(Playwright playwright, SitesConfig.Site site,
                                    String timestamp, List<String> engines,
                                    double threshold, String storageState, Path reportDir) {
+        return run(playwright, site, timestamp, engines, threshold, storageState, reportDir, msg -> {});
+    }
+
+    public static CompatOutput run(Playwright playwright, SitesConfig.Site site,
+                                   String timestamp, List<String> engines,
+                                   double threshold, String storageState, Path reportDir,
+                                   java.util.function.Consumer<String> progress) {
         Path shotsDir = reportDir.resolve("screenshots");
         try {
             Files.createDirectories(shotsDir);
@@ -62,11 +69,14 @@ public final class CompatibilityCheck {
 
         Map<String, String> versions = new LinkedHashMap<>();
         Map<String, Capture> captures = new LinkedHashMap<>();
+        int ei = 0;
         for (String engine : engines) {
-            Capture c = captureAll(playwright, engine, site, storageState, shotsDir);
+            ei++;
+            Capture c = captureAll(playwright, engine, site, storageState, shotsDir, progress, ei, engines.size());
             captures.put(engine, c);
             versions.put(engine, c.version());
         }
+        progress.accept("호환성 비교(픽셀 diff) 계산 중…");
 
         String baseline = engines.get(0);
         List<CheckResult> results = new ArrayList<>();
@@ -97,7 +107,9 @@ public final class CompatibilityCheck {
     }
 
     private static Capture captureAll(Playwright playwright, String engine,
-                                      SitesConfig.Site site, String storageState, Path shotsDir) {
+                                      SitesConfig.Site site, String storageState, Path shotsDir,
+                                      java.util.function.Consumer<String> progress, int engIdx, int engTotal) {
+        progress.accept(String.format("호환성 캡처: %s 엔진 기동 (%d/%d)…", engine, engIdx, engTotal));
         Browser browser = browserType(playwright, engine)
                 .launch(new BrowserType.LaunchOptions().setHeadless(true));
         Browser.NewContextOptions opts = new Browser.NewContextOptions();
@@ -106,9 +118,13 @@ public final class CompatibilityCheck {
         Map<String, String> relPaths = new LinkedHashMap<>();
         Map<String, byte[]> bytes = new LinkedHashMap<>();
         String version = browser.version();
+        int total = site.urls().size(), i = 0;
         try (BrowserContext context = browser.newContext(opts)) {
             Page page = context.newPage();
             for (SitesConfig.Url url : site.urls()) {
+                i++;
+                progress.accept(String.format("호환성 캡처: %s (%d/%d) — %d/%d %s",
+                        engine, engIdx, engTotal, i, total, url.path()));
                 // URL 단위 격리 — 로드 불가·다운로드 링크(net::ERR_ABORTED)는 스크린샷을 건너뛴다.
                 // 캡처 실패한 URL 은 bytes/relPaths 에 넣지 않아 아래 diff 루프에서 자연히 제외된다.
                 try {

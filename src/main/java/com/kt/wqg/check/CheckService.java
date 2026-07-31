@@ -116,9 +116,9 @@ public final class CheckService {
             Map<String, String> engineVersions = Map.of();
             if (config.checks().compatibility().enabled()) {
                 SitesConfig.Compatibility compat = config.checks().compatibility();
-                progress.accept("호환성 검사: " + String.join("·", compat.engines()) + " 캡처…");
+                progress.accept("호환성 검사: " + String.join("·", compat.engines()) + " 캡처 시작…");
                 CompatibilityCheck.CompatOutput co = CompatibilityCheck.run(playwright, site, timestamp,
-                        compat.engines(), compat.pixelDiffThreshold(), storageState, reportDir);
+                        compat.engines(), compat.pixelDiffThreshold(), storageState, reportDir, progress);
                 results.addAll(co.results());
                 engineVersions = co.engineVersions();
             }
