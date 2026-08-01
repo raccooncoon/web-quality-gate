@@ -31,19 +31,12 @@ final class WebConsoleUI {
             .navsp{flex:1 1 auto}
             /* 검사 완료 후 검수 유도 바 — '검수하러 가기'를 크고 눈에 띄게 */
             .donebar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
-            .gochk{margin-top:0;background:var(--gov);color:#fff;font-size:14px;font-weight:800;
-              padding:9px 20px;border:none;border-radius:5px;cursor:pointer;box-shadow:0 2px 8px rgba(31,90,166,.35);
-              animation:gopulse 1.6s ease-in-out infinite}
-            .gochk:hover{background:var(--navy2);box-shadow:0 3px 12px rgba(31,90,166,.5)}
-            @keyframes gopulse{0%,100%{box-shadow:0 2px 8px rgba(31,90,166,.35)}50%{box-shadow:0 2px 16px rgba(31,90,166,.6)}}
-            .gorep{margin-top:0;text-decoration:none;font-size:12.5px;padding:8px 14px}
-            /* 실행 표 액션 칸: [검사] 옆 컴팩트 [검수 ▶] 버튼(펄스·확대 없이 나란히) */
+            /* 실행/결과 액션 버튼 — 검사·검수·리포트를 동일 크기·정렬로(펄스·이모지·확대 없이 나란히) */
             .actcell{white-space:nowrap}
-            .actcell #act-,.actcell span{margin-left:0}
-            .actcell .gochk{margin-left:7px;font-size:12.5px;font-weight:700;padding:7px 13px;
-              box-shadow:none;animation:none;white-space:nowrap}
-            .actcell .gochk:hover{box-shadow:0 2px 8px rgba(31,90,166,.4)}
-            .actcell .gorep{margin-left:7px;white-space:nowrap;padding:6px 11px;text-decoration:none}
+            .actcell span{display:contents}   /* 검수·리포트 래퍼를 투명화해 검사와 형제로 정렬 */
+            .actcell .act{margin:0 0 0 7px;font-size:12.5px;font-weight:700;padding:7px 13px;
+              box-shadow:none;animation:none;white-space:nowrap;text-decoration:none;vertical-align:middle;display:inline-block}
+            .actcell .act:first-child{margin-left:0}
             .statcell{white-space:nowrap}
             .statcell .st{white-space:nowrap}
             /* 매핑표: KIWAC·카도와·웹와치 pill 열은 가운데 정렬 */
@@ -122,11 +115,11 @@ final class WebConsoleUI {
             .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
             .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
             .hint{font-size:11px;color:var(--muted);margin-top:3px}
-            button.act{background:var(--gov);color:#fff;border:none;border-radius:4px;padding:6px 13px;
-              font-size:12.5px;font-weight:700;cursor:pointer;margin-top:9px}
-            button.ghost{background:#fff;color:var(--gov);border:1px solid var(--gov)}
-            button.run{background:var(--ok);color:#fff;border:none}
-            button:disabled,button.act:disabled{cursor:not-allowed;opacity:.5;filter:grayscale(1)}
+            .act{display:inline-block;background:var(--gov);color:#fff;border:none;border-radius:4px;padding:6px 13px;
+              font-size:12.5px;font-weight:700;cursor:pointer;margin-top:9px;text-decoration:none;line-height:1.35;box-sizing:border-box}
+            .act.ghost{background:#fff;color:var(--gov);border:1px solid var(--gov)}
+            .act.run{background:var(--ok);color:#fff;border:none}
+            button:disabled,.act:disabled{cursor:not-allowed;opacity:.5;filter:grayscale(1)}
             .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;
               padding:9px 18px;border-radius:4px;font-size:13px;opacity:0;transition:.2s;pointer-events:none}
             .toast.show{opacity:1}
@@ -145,6 +138,17 @@ final class WebConsoleUI {
             .spin{width:15px;height:15px;flex:none;border:2px solid var(--gov);border-right-color:transparent;
               border-radius:50%;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
             .busy .sub{color:var(--muted);font-size:11.5px}
+            /* 검사 진행 시각화 — 단계 스테퍼 + 진행 바 + 현재 항목 */
+            .prog{display:flex;flex-direction:column;gap:5px;min-width:240px}
+            .pline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+            .psteps{display:inline-flex;gap:4px;flex-wrap:wrap}
+            .pstep{font-size:10.5px;padding:1px 8px;border-radius:9px;background:var(--line);color:var(--muted);white-space:nowrap}
+            .pstep.on{background:var(--gov);color:#fff;font-weight:700}
+            .pstep.done{background:var(--okbg);color:var(--ok);font-weight:600}
+            .ppct{font-variant-numeric:tabular-nums;font-weight:700;color:var(--navy)}
+            .pbar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;max-width:280px}
+            .pbar>i{display:block;height:100%;background:var(--gov);border-radius:3px;transition:width .3s ease}
+            .pdet{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:320px}
             /* 결과 카드 — 상태 배지 헤더 + 단계 행 */
             .rcard{margin-top:10px;border:1px solid var(--line);border-radius:6px;overflow:hidden;
               animation:rin .25s ease}@keyframes rin{from{opacity:0;transform:translateY(-3px)}to{opacity:1}}
@@ -918,6 +922,15 @@ final class WebConsoleUI {
               let r;try{r=await api('/api/run-all','POST',{})}catch(e){r={ok:false,detail:String(e)}}
               if(r&&r.ok===false){toast(r.detail||'이미 검사 실행 중');refreshStatus();return}
               toast('전체 검사 시작 ('+(r.count||0)+') — 순차 실행됩니다');refreshStatus()}
+            // 진행 상황 시각화 — 단계 스테퍼(준비→접근성·마크업→호환성→리포트) + i/total 진행 바 + 현재 항목
+            const PROGPHASES=[['준비',/기동|로그인|세션|시작/],['접근성·마크업',/접근성|마크업/],['호환성',/호환성/],['리포트',/리포트|컴플라이언스|생성|제외 항목/]];
+            function progressView(msg){msg=msg||'';
+              let cur=0;PROGPHASES.forEach((p,i)=>{if(p[1].test(msg))cur=i});
+              const m=msg.match(/(\\d+)\\s*\\/\\s*(\\d+)/);const pct=m?Math.min(100,Math.round(+m[1]/+m[2]*100)):null;
+              const steps=PROGPHASES.map((p,i)=>'<span class="pstep'+(i<cur?' done':i===cur?' on':'')+'">'+(i<cur?'✓ ':'')+p[0]+'</span>').join('');
+              const bar=pct!=null?'<div class="pbar" title="'+m[1]+'/'+m[2]+'"><i style="width:'+pct+'%"></i></div>':'';
+              return '<div class="prog"><div class="pline"><span class="pill wait">검사 중</span><span class="psteps">'+steps+'</span>'
+                +(pct!=null?'<span class="st ppct">'+m[1]+'/'+m[2]+'</span>':'')+'</div>'+bar+'<div class="pdet st">'+esc(msg)+'</div></div>'}
             async function refreshStatus(){const {status:raw}=await api('/api/status');
               // 검사 잡만 대상(보조 잡 discover:/shots: 제외)
               const status={};Object.entries(raw).forEach(([k,v])=>{if(!k.includes(':'))status[k]=v;});
@@ -929,13 +942,13 @@ final class WebConsoleUI {
                 setRunBtn(site,st.state==='RUNNING');
                 const el=document.getElementById('stat-'+site);if(!el)return;
                 const ac=document.getElementById('act-'+site);   // 검사 버튼 옆 액션(검수·리포트)
-                if(st.state==='RUNNING'){el.innerHTML='<span class=pill wait>검사 중</span> <span class=st>'+esc(st.message)+'</span>';
+                if(st.state==='RUNNING'){el.innerHTML=progressView(st.message);
                   if(ac)ac.innerHTML=''}
                 else if(st.state==='DONE'){const rel=st.message.replace(/^\\.?\\//,'');const ts=rel.split('/')[2];
                   // 상태칸은 정보만 한 줄, 버튼은 액션칸에 한 줄로
                   el.innerHTML='<span class=pill ok>검사 완료</span> <span id="verdict-'+site+'" class=st></span>';
-                  if(ac)ac.innerHTML='<button class="act gochk" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">✓ 검수 ▶</button>'+
-                    '<a class="act ghost gorep" href="/'+rel+'" target="_blank">리포트 ↗</a>';
+                  if(ac)ac.innerHTML='<button class="act" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">검수</button>'+
+                    '<a class="act ghost" href="/'+rel+'" target="_blank">리포트</a>';
                   loadVerdict(site,ts)}
                 else if(st.state==='ERROR'){el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>';
                   if(ac)ac.innerHTML=''}})}
@@ -1035,7 +1048,7 @@ final class WebConsoleUI {
               <td>${fmtTs(r.timestamp)}${newest?'<span class=newtag>최신</span>':''}</td>
               <td>${statusPill(r)}</td>
               <td>${itemNums(r)}</td>
-              <td><a href="${esc(r.path)}" target="_blank">리포트 ↗</a></td>
+              <td><a class="act ghost" style="margin-top:0;text-decoration:none" href="${esc(r.path)}" target="_blank">리포트</a></td>
               <td><button class="act ${r.pendingTotal>0?'':'ghost'}" style="margin-top:0" onclick="openAssessment('${esc(r.site)}','${esc(r.timestamp)}')">검수${r.pendingTotal>0?' ('+r.pendingTotal+')':''}</button></td></tr>`}
             // 체크박스 선택 → 비교(정확히 2건)·선택 삭제(1건 이상) 버튼 상태 갱신
             function onSel(gi){const all=[...document.querySelectorAll('.cmpchk[data-g="'+gi+'"]')];
