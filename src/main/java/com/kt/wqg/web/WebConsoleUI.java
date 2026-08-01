@@ -914,7 +914,21 @@ final class WebConsoleUI {
               clearInterval(poll);poll=setInterval(refreshStatus,2000)}
             function setRunBtn(name,running){const b=document.getElementById('runbtn-'+name);
               if(!b)return;b.disabled=running;b.textContent=running?'검사 중…':'검사'}
+            // 검사 클릭 → 먼저 설정 확인(헬스체크) → 통과하면 자동으로 검사 진행, 실패하면
+            // 실패 사유 표시 + [무시하고 검사] 버튼(막힌 상태로 두지 않음).
             async function runSys(name){setRunBtn(name,true);
+              const el=document.getElementById('stat-'+name),ac=document.getElementById('act-'+name);
+              if(ac)ac.innerHTML='';
+              if(el)el.innerHTML=busy('설정 확인(헬스체크) 중…','baseUrl 접속·로그인·첫 화면 점검 (최대 30초)');
+              let h;try{h=await api('/api/health/'+name,'POST',{})}catch(e){h={ok:false,steps:[]}}
+              if(!h.ok){setRunBtn(name,false);
+                const fail=(h.steps||[]).filter(s=>!s.ok).map(s=>esc(s.name)+' — '+esc(s.detail)).join('<br>');
+                if(el)el.innerHTML='<span class="pill no">설정 확인 실패</span> <span class=st>'+(fail||'접속 불가')+'</span>';
+                if(ac)ac.innerHTML='<button class="act ghost" onclick="doRun(\\''+name+'\\')">무시하고 검사 ▶</button>';
+                return}
+              doRun(name)}
+            async function doRun(name){setRunBtn(name,true);
+              const ac=document.getElementById('act-'+name);if(ac)ac.innerHTML='';
               let r;try{r=await api('/api/run/'+name,'POST',{})}catch(e){r={ok:false,detail:String(e)}}
               if(r&&r.ok===false){toast(r.detail||'이미 검사 실행 중');setRunBtn(name,false);refreshStatus();return}
               toast('검사 시작: '+name);refreshStatus()}
