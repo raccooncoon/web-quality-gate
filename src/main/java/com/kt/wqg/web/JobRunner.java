@@ -13,12 +13,14 @@ import java.util.function.Function;
  */
 public final class JobRunner {
 
-    public enum State { IDLE, RUNNING, DONE, ERROR }
+    public enum State { IDLE, RUNNING, DONE, ERROR, CANCELLED }
 
     public record Status(String site, State state, String message) {}
 
     private final Executor executor;
     private final Map<String, Status> statuses = new ConcurrentHashMap<>();
+    // 실행 중 검사별 취소 플래그 — requestCancel 로 세우면 work(runSite)가 URL 경계에서 확인해 중단한다.
+    private final Map<String, java.util.concurrent.atomic.AtomicBoolean> cancels = new ConcurrentHashMap<>();
 
     public JobRunner(Executor executor) {
         this.executor = executor;
@@ -37,17 +39,42 @@ public final class JobRunner {
      * 보고된 메시지는 RUNNING 상태의 message 로 실시간 반영된다.
      */
     public void submit(String site, Function<Consumer<String>, String> work) {
+        var flag = new java.util.concurrent.atomic.AtomicBoolean(false);
+        cancels.put(site, flag);
         statuses.put(site, new Status(site, State.RUNNING, "시작 중…"));
         executor.execute(() -> {
             try {
                 Consumer<String> report = msg -> statuses.put(site, new Status(site, State.RUNNING, msg));
                 String result = work.apply(report);
-                statuses.put(site, new Status(site, State.DONE, result));
+                statuses.put(site, flag.get()
+                        ? new Status(site, State.CANCELLED, "검사 취소됨")
+                        : new Status(site, State.DONE, result));
             } catch (Exception e) {
-                String msg = e.getMessage() != null ? e.getMessage() : e.toString();
-                statuses.put(site, new Status(site, State.ERROR, msg));
+                if (flag.get() || e instanceof java.util.concurrent.CancellationException) {
+                    statuses.put(site, new Status(site, State.CANCELLED, "검사 취소됨"));
+                } else {
+                    String msg = e.getMessage() != null ? e.getMessage() : e.toString();
+                    statuses.put(site, new Status(site, State.ERROR, msg));
+                }
+            } finally {
+                cancels.remove(site);
             }
         });
+    }
+
+    /** 실행 중인 검사에 취소를 요청한다(협조적 — 현재 항목 완료 후 다음 경계에서 중단). */
+    public void requestCancel(String site) {
+        var f = cancels.get(site);
+        if (f != null) {
+            f.set(true);
+            statuses.put(site, new Status(site, State.RUNNING, "취소 요청됨 — 현재 항목 완료 후 중단…"));
+        }
+    }
+
+    /** 해당 검사에 취소가 요청됐는지. work(runSite)가 URL 경계마다 확인한다. */
+    public boolean cancelRequested(String site) {
+        var f = cancels.get(site);
+        return f != null && f.get();
     }
 
     public Status status(String site) {

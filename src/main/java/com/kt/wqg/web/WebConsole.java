@@ -103,6 +103,7 @@ public final class WebConsole {
             if (path.startsWith("/api/rlogin/cancel/")) { rloginCancel(ex, path.substring("/api/rlogin/cancel/".length())); return; }
             if (path.equals("/api/run-all")) { runAll(ex); return; }
             if (path.startsWith("/api/run/")) { run(ex, path.substring("/api/run/".length())); return; }
+            if (path.startsWith("/api/cancel/")) { cancel(ex, path.substring("/api/cancel/".length())); return; }
             if (path.equals("/api/assessment")) { assessment(ex); return; }
             if (path.startsWith("/reports/")) { serveReportFile(ex, path); return; }
             send(ex, 404, "text/plain; charset=utf-8", "not found".getBytes(StandardCharsets.UTF_8));
@@ -412,6 +413,12 @@ public final class WebConsole {
         sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
     }
 
+    /** 실행 중인 검사 취소 요청 — 협조적(현재 항목 완료 후 다음 URL 경계에서 중단). */
+    private void cancel(HttpExchange ex, String name) throws IOException {
+        jobs.requestCancel(name);
+        sendJson(ex, Map.of("ok", true));
+    }
+
     private void run(HttpExchange ex, String name) throws IOException {
         if (jobs.hasRunningCheck()) {   // 검사 동시 실행 금지 — 하나 끝나야 다음 시작
             sendJson(ex, Map.of("ok", false, "detail", "이미 검사가 실행 중입니다 — 완료 후 다시 시도하세요."));
@@ -422,7 +429,8 @@ public final class WebConsole {
                 .filter(s -> s.name().equals(name)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
         java.util.Set<String> excluded = exclusions.excluded();
-        jobs.submit(name, report -> CheckService.runSite(config, site, credentials.resolver(), report, excluded)
+        jobs.submit(name, report -> CheckService.runSite(config, site, credentials.resolver(), report, excluded,
+                () -> jobs.cancelRequested(name))
                 .toString().replace('\\', '/'));
         sendJson(ex, Map.of("ok", true, "state", "RUNNING"));
     }

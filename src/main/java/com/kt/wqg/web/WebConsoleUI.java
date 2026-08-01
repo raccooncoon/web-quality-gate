@@ -943,15 +943,20 @@ final class WebConsoleUI {
                 const el=document.getElementById('stat-'+site);if(!el)return;
                 const ac=document.getElementById('act-'+site);   // 검사 버튼 옆 액션(검수·리포트)
                 if(st.state==='RUNNING'){el.innerHTML=progressView(st.message);
-                  if(ac)ac.innerHTML=''}
+                  if(ac)ac.innerHTML='<button class="act ghost cancelbtn" onclick="cancelSys(\\''+site+'\\')">취소</button>'}
                 else if(st.state==='DONE'){const rel=st.message.replace(/^\\.?\\//,'');const ts=rel.split('/')[2];
                   // 상태칸은 정보만 한 줄, 버튼은 액션칸에 한 줄로
                   el.innerHTML='<span class=pill ok>검사 완료</span> <span id="verdict-'+site+'" class=st></span>';
                   if(ac)ac.innerHTML='<button class="act" onclick="openAssessment(\\''+site+'\\',\\''+ts+'\\')">검수</button>'+
                     '<a class="act ghost" href="/'+rel+'" target="_blank">리포트</a>';
                   loadVerdict(site,ts)}
+                else if(st.state==='CANCELLED'){el.innerHTML='<span class=pill wait>취소됨</span> <span class=st>사용자가 검사를 취소했습니다</span>';
+                  if(ac)ac.innerHTML=''}
                 else if(st.state==='ERROR'){el.innerHTML='<span class=pill no>실패</span> <span class=st>'+esc(st.message)+'</span>';
                   if(ac)ac.innerHTML=''}})}
+            async function cancelSys(name){const b=document.querySelector('#act-'+name+' .cancelbtn');if(b){b.disabled=true;b.textContent='취소 중…'}
+              try{await api('/api/cancel/'+name,'POST',{})}catch(e){}
+              toast('취소 요청됨 — 현재 항목 완료 후 중단됩니다');refreshStatus()}
             async function loadVerdict(site,ts){try{
               const d=await api('/api/assessment?site='+encodeURIComponent(site)+'&ts='+encodeURIComponent(ts));
               const el=document.getElementById('verdict-'+site);if(!el)return;

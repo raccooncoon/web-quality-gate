@@ -54,6 +54,17 @@ public final class CheckService {
     public static Path runSite(SitesConfig config, SitesConfig.Site site,
                                UnaryOperator<String> credResolver, Consumer<String> progress,
                                java.util.Set<String> excludedCodes) {
+        return runSite(config, site, credResolver, progress, excludedCodes, () -> false);
+    }
+
+    /**
+     * 시스템 하나를 검사하고 리포트를 저장한 뒤 report.html 경로를 반환한다.
+     * cancelled 가 true 를 반환하면 URL 경계·호환성 시작 전에 검사를 중단(CancellationException)한다.
+     */
+    public static Path runSite(SitesConfig config, SitesConfig.Site site,
+                               UnaryOperator<String> credResolver, Consumer<String> progress,
+                               java.util.Set<String> excludedCodes,
+                               java.util.function.BooleanSupplier cancelled) {
         String timestamp = timestamp();
         Path reportDir = Path.of(config.output().dir(), site.name(), timestamp);
         int total = site.urls().size();
@@ -95,6 +106,7 @@ public final class CheckService {
                 List<String> skipped = new ArrayList<>();
                 int markupFail = 0;
                 for (SitesConfig.Url url : site.urls()) {
+                    if (cancelled.getAsBoolean()) throw new java.util.concurrent.CancellationException("검사 취소됨");
                     i++;
                     // 접근성 검사가 페이지 로드(navigateAndWait)를 겸한다. 이게 실패하면 해당 URL 은
                     // 로드 불가(다운로드 링크·타임아웃 등)로 보고 건너뛴다.
@@ -134,6 +146,7 @@ public final class CheckService {
                 chromium.close();
             }
 
+            if (cancelled.getAsBoolean()) throw new java.util.concurrent.CancellationException("검사 취소됨");
             Map<String, String> engineVersions = Map.of();
             if (compatWillRun) {
                 SitesConfig.Compatibility compat = config.checks().compatibility();
