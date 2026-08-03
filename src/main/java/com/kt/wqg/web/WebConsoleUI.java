@@ -54,6 +54,8 @@ final class WebConsoleUI {
             .cardsteps{font-size:11.5px;color:var(--muted);background:var(--bg);border:1px solid var(--line);
               border-radius:4px;padding:6px 10px;margin:2px 0 10px}.cardsteps b{color:var(--navy)}
             .actbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+            .basicbar{margin:8px 0 12px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+            .basicbar .hint{flex:1 1 260px;line-height:1.6}
             .danger{margin-top:14px;padding-top:10px;border-top:1px dashed var(--line2)}
             .danger .del{color:var(--bad);border-color:var(--bad)}
             .sys{background:var(--card);border:1px solid var(--line);border-radius:6px;margin-bottom:14px;overflow:hidden}
@@ -139,6 +141,7 @@ final class WebConsoleUI {
               border-radius:50%;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
             .busy .sub{color:var(--muted);font-size:11.5px}
             /* 검사 진행 시각화 — 단계 스테퍼 + 진행 바 + 현재 항목 */
+            /* 클래스명 주의: 세로 flex 라 인라인 요약줄에 재사용 금지(검수 요약줄은 .aprog) */
             .prog{display:flex;flex-direction:column;gap:5px;min-width:240px}
             .pline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
             .psteps{display:inline-flex;gap:4px;flex-wrap:wrap}
@@ -198,15 +201,18 @@ final class WebConsoleUI {
             .evcap{margin-top:0;font-size:11.5px;color:var(--fg);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
-            .evt{table-layout:auto;max-width:100%;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
+            /* 고정 레이아웃 — 셀 내용이 길어도 열 너비가 늘지 않아 가로 스크롤이 생기지 않는다(넘치면 …말줄임) */
+            .evtwrap{max-width:100%}
+            .evt{table-layout:fixed;width:100%;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
-            .evt .evno{width:1%;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
-            .evt .evel{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--fg)}
-            .evt .evloc{white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
-            .evtwrap.wrap .evt{width:100%}
-            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible;max-width:none}
+            .evt .evno{width:52px;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--fg)}
+            .evt .evloc{width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
+            /* '펼쳐보기' — 셀 줄바꿈으로 전체 노출. 열 너비는 고정값 그대로(세로로만 늘어남) */
+            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
               border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
             .evcap .evtx:hover{background:var(--govsoft)}
@@ -217,12 +223,15 @@ final class WebConsoleUI {
             .ovbtns{display:flex;gap:8px;margin-top:8px}
             .ovbtns button{flex:1}
             .hd2{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
-            #assessview .body{max-width:920px;margin:0 auto}
+            /* 결과 검수 화면은 가로 스크롤 없이 — 긴 URL·셀렉터는 줄바꿈으로 흘린다 */
+            #assessview .body{max-width:920px;margin:0 auto;overflow-wrap:break-word}
+            #assessview .body pre,#assessview .body code{white-space:pre-wrap;word-break:break-all}
             .item.needs{border-color:var(--warn);background:var(--warnbg)}
             .item.done{opacity:.72}
             .filterbar{display:flex;align-items:center;gap:14px;margin:16px 0 4px;flex-wrap:wrap}
             .filterbar label{display:flex;align-items:center;gap:6px;margin:0;color:var(--fg);font-weight:600;cursor:pointer}
             .filterbar input{width:auto}
+            /* 검수 화면 요약줄 — 실행탭 진행 .prog 와 겹치지 않게 전용 클래스, 항상 한 줄로 */
             .aprog{font-size:12px;color:var(--muted);white-space:nowrap}
             .aprog b{color:var(--fg)}
             .grouphd{font-size:13px;color:var(--navy);font-weight:700;margin:20px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--navy)}
@@ -514,7 +523,7 @@ final class WebConsoleUI {
               let html='<div class="tabintro">설정된 <b>검사 대상</b>의 baseUrl·계정·검사 경로를 편집하는 화면입니다. '
                 +'각 시스템 카드를 펼쳐 채운 뒤 <b>[설정 저장]</b> → <b>[설정 확인(헬스체크)]</b>로 검증하세요. '
                 +'새 시스템 추가는 <b>＋ 시스템 관리</b> 탭, AI 판정 설정은 <b>✦ AI 설정</b> 탭에서 합니다.</div>'
-                +'<div class="autolegend"><span class="autoval-chip">자동</span> 표시된 값은 <b>유형 자동 판별·로그인 필드 자동 감지·검사 경로 자동 수집</b>으로 채워진 것입니다 — 내용을 확인한 뒤 <b>[설정 저장]</b>하세요. 직접 수정하면 표시가 사라집니다.</div>';
+                +'<div class="autolegend"><span class="autoval-chip">자동</span> 표시된 값은 <b>로그인 필드 자동 감지·검사 경로 자동 수집</b>으로 채워진 것입니다 — 내용을 확인한 뒤 <b>[설정 저장]</b>하세요. 직접 수정하면 표시가 사라집니다.</div>';
               if(test.length)html+='<div class=grouphd>테스트 대상</div>'+test.map(sysCard).join('');
               if(real.length)html+='<div class=grouphd>폐쇄망 대상 시스템</div>'+real.map(sysCard).join('');
               if(!systems.length)html+='<div class="cardsteps"><b>＋ 시스템 관리</b> 탭에서 검사 대상 시스템을 먼저 추가하세요.</div>';
@@ -523,18 +532,21 @@ final class WebConsoleUI {
                 el.querySelector('.hd').onclick=()=>el.classList.toggle('open');
                 el.querySelectorAll('.autoval').forEach(attachAutoClear);
                 const setAuthCls=t=>{const b=el.querySelector('.body');
-                  b.classList.toggle('auth-form',t==='form'||t==='sso');
+                  b.classList.toggle('auth-form',t==='sso');
                   b.classList.toggle('auth-storage',t==='storage');};
-                setAuthCls((s.authType==='form'||s.authType==='sso')?s.authType:'storage');
+                setAuthCls(s.authType==='sso'?'sso':'storage');
                 el.querySelector('[name=authType]').onchange=e=>setAuthCls(e.target.value);
                 el.querySelector('.capsess').onclick=()=>captureSession(s.name,el);
                 el.querySelector('.chksess').onclick=()=>checkSession(s.name,el);
                 {const rb=el.querySelector('.rlogin');if(rb)rb.onclick=()=>remoteLogin(s.name,el);}
                 el.querySelector('.save').onclick=()=>saveSys(s.name,el);
+                el.querySelector('.savebasic').onclick=()=>saveBasic(s.name,el);
+                // 표시 이름·baseUrl 은 고치고 Enter 만 눌러도 바로 저장(카드 아래까지 내려갈 필요 없음)
+                ['displayName','baseUrl'].forEach(n=>{const i=el.querySelector('[name='+n+']');
+                  if(i)i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();saveBasic(s.name,el)}}});
                 el.querySelector('.savecred').onclick=()=>saveCred(s.name,el);
                 el.querySelector('.health').onclick=()=>healthCheck(s.name);
                 el.querySelector('.detect').onclick=()=>detectSel(s.name,el);
-                el.querySelector('.dtype').onclick=()=>detectType(s.name,el);
                 el.querySelector('.discover').onclick=()=>discoverUrls(s.name,el);
                 el.querySelector('.shots').onclick=()=>captureShots(s.name,el);
                 initPaths(el);
@@ -600,17 +612,6 @@ final class WebConsoleUI {
               if(r.submitSelector){g('submitSelector').value=r.submitSelector;markAuto(g('submitSelector'))}
               const found=[r.idSelector&&'아이디',r.pwSelector&&'비번',r.submitSelector&&'제출'].filter(Boolean);
               box.innerHTML=warn+'<div class="hbox '+(found.length?'ok':'no')+'">'+(found.length?'✓ 필드 감지: '+found.join('·')+' — 실제 로그인 성공은 <b>설정 확인(헬스체크)</b>로 검증하세요':'✗ 로그인 필드를 못 찾음 — 수동 입력')+'</div>'}
-            async function detectType(name,el){const note=el.querySelector('.dtnote');
-              const baseUrl=el.querySelector('[name=baseUrl]').value.trim();
-              if(!baseUrl){toast('baseUrl 입력');return}
-              note.innerHTML=busy('유형 확인 중…','로그인 필요 시 로그인 후 실제 검사 경로를 엽니다');
-              // name 을 보내면 저장된 로그인·검사경로로 판정(로그인 뒤 SPA 대응)
-              let r;try{r=await api('/api/detect-type','POST',{name,baseUrl})}catch(e){r={error:String(e)}}
-              if(r.error){note.innerHTML='<div class="hbox no">✗ '+esc(r.error)+'</div>';return}
-              if(r.type==='unknown'){ // 로그인 벽에 막힘 — 유형을 덮어쓰지 않음
-                note.innerHTML='<div class="hbox no">⚠ '+esc(r.reason)+'</div>';return}
-              el.querySelector('[name=type]').value=r.type;markAuto(el.querySelector('[name=type]'));
-              note.innerHTML='<div class="hbox ok">✓ <b>'+esc(r.type.toUpperCase())+'</b> 로 설정 — '+esc(r.reason)+'<div class=hint>확인 후 [설정 저장]</div></div>'}
             async function healthCheck(name){const box=document.getElementById('health-'+name);
               box.innerHTML=busy('설정 확인 중…','브라우저 기동·로그인 점검 — 최대 30초');
               try{const r=await api('/api/health/'+name,'POST',{});
@@ -625,24 +626,23 @@ final class WebConsoleUI {
             function sysCard(s){const cfg=s.configured;const A=s.auto||[];const ac=n=>A.includes(n)?' autoval':'';
               return `<div class="sys" id="sys-${s.name}"><div class="hd">
                 <div class="nm"><span class="dispname">${esc(s.displayName)}</span><small>${s.name}</small></div>
-                <div>${s.hasCredentials?'<span class=pill ok>계정 저장됨</span>':(s.authType==='form'?'<span class=pill wait>계정 필요</span>':'')}
+                <div>${s.hasCredentials?'<span class=pill ok>계정 저장됨</span>':(s.authType==='sso'?'<span class=pill wait>계정 필요</span>':'')}
                   ${cfg?'<span class=pill ok>설정됨</span>':'<span class=pill no>미설정</span>'}</div></div>
                 <div class="body">
                 <div class="cardsteps"><b>진행 순서</b> ① 유형·baseUrl → ② 로그인 필드·계정 → ③ 검사 경로 → ④ 설정 저장 → ⑤ 설정 확인(헬스체크)</div>
                 <label>표시 이름 <span class=st>(목록·리포트에 보이는 이름)</span></label>
                 <input name="displayName" value="${esc(s.displayName||'')}" placeholder="예: 결함관리 체험(Plainly)">
-                <div class="row"><div><label>유형</label><select name="type" class="${ac('type').trim()}">
+                <div class="row"><div><label>유형</label><select name="type">
                   <option value="spa" ${s.type==='spa'?'selected':''}>SPA (React/Vue)</option>
                   <option value="mpa" ${s.type==='mpa'?'selected':''}>MPA (서버렌더링)</option></select></div>
                   <div><label>로그인 방식</label><select name="authType">
-                  <option value="storage" ${s.authType!=='form'&&s.authType!=='sso'?'selected':''}>세션 재사용 (수동 로그인)</option>
-                  <option value="form" ${s.authType==='form'?'selected':''}>폼 로그인</option>
+                  <option value="storage" ${s.authType!=='sso'?'selected':''}>세션 재사용 (수동 로그인)</option>
                   <option value="sso" ${s.authType==='sso'?'selected':''}>SSO (Keycloak/OIDC)</option>
                   <option value="none">없음</option></select></div></div>
                 <label>baseUrl</label><input name="baseUrl" value="${esc(s.baseUrl)}" placeholder="http://10.0.x.x">
-                <button class="act ghost dtype">🔎 유형 자동 판별 (MPA/SPA)</button>
-                <div class="hint">baseUrl 입력 후 누르면 서버 응답으로 MPA/SPA 를 추정해 위 '유형'을 채웁니다.</div>
-                <div class="dtnote" id="dtnote-${s.name}"></div>
+                <div class="actbar basicbar"><button class="act savebasic" type="button">기본 정보 저장</button>
+                  <span class="hint" style="margin:0">위 <b>표시 이름·유형·baseUrl</b> 만 즉시 저장합니다(입력 칸에서 <b>Enter</b> 로도 저장).
+                    계정·검사 경로까지 함께 저장하려면 카드 아래 <b>[설정 저장]</b> 을 쓰세요.</span></div>
                 <div class="storage-only">
                   <div class="cardsteps"><b>세션 재사용</b> — SSO·포탈처럼 자동 폼 입력이 어려운 다단계 로그인은,
                     한 번 <b>직접 로그인</b>한 세션(쿠키·토큰)을 저장해 검사에 재사용합니다.
@@ -735,11 +735,20 @@ final class WebConsoleUI {
                 loginPath:g('loginPath'),idSelector:g('idSelector'),pwSelector:g('pwSelector'),
                 submitSelector:g('submitSelector'),urls:parseUrls(g('urls')),auto});
               const cid=g('cid'),cpw=g('cpw');if(cid&&cpw){await api('/api/credentials/'+name,'POST',{id:cid,pw:cpw});markCredSaved(el)}
-              // 카드를 다시 그리지 않고 그대로 유지 — 표시 이름·설정됨 배지만 즉시 갱신
-              const dn=el.querySelector('.hd .dispname');if(dn)dn.textContent=disp;
-              const cfgOk=g('baseUrl')&&!g('baseUrl').includes('TODO');
-              const badge=el.querySelector('.hd .pill.no');if(cfgOk&&badge){badge.className='pill ok';badge.textContent='설정됨'}
+              reflectSaved(el,disp,g('baseUrl'));
               toast('저장됨: '+name)}
+            // 표시 이름·유형·baseUrl 만 즉시 저장 — 보내지 않은 계정·검사 경로 설정은 서버가 기존 값을 유지한다
+            async function saveBasic(name,el){const g=n=>el.querySelector('[name='+n+']').value;
+              const disp=(g('displayName')||'').trim()||name,base=g('baseUrl').trim();
+              if(!base){toast('baseUrl 을 입력하세요');el.querySelector('[name=baseUrl]').focus();return}
+              await api('/api/save/'+name,'POST',{displayName:disp,type:g('type'),authType:g('authType'),baseUrl:base});
+              reflectSaved(el,disp,base);
+              toast('기본 정보 저장됨: '+disp)}
+            // 카드를 다시 그리지 않고 그대로 유지 — 표시 이름·설정됨 배지만 즉시 갱신
+            function reflectSaved(el,disp,base){
+              const dn=el.querySelector('.hd .dispname');if(dn)dn.textContent=disp;
+              const badge=el.querySelector('.hd .pill.no');
+              if(base&&!base.includes('TODO')&&badge){badge.className='pill ok';badge.textContent='설정됨'}}
             function markCredSaved(el){const cp=el.querySelector('.hd .pill.wait');
               if(cp){cp.className='pill ok';cp.textContent='계정 저장됨'}}
             async function saveCred(name,el){const cid=el.querySelector('[name=cid]').value,
@@ -906,7 +915,7 @@ final class WebConsoleUI {
                 '<table><thead><tr><th>시스템</th><th>설정</th><th>상태</th><th></th></tr></thead><tbody>'+
                 systems.map(s=>`<tr><td>${esc(s.displayName)}<br><small class=st>${s.name}</small></td>
                   <td>${s.configured?'<span class=pill ok>준비</span>':'<span class=pill no>미설정</span>'}
-                    ${s.authType==='form'&&!s.hasCredentials?'<span class=pill wait>계정 필요</span>':''}</td>
+                    ${s.authType==='sso'&&!s.hasCredentials?'<span class=pill wait>계정 필요</span>':''}</td>
                   <td class="statcell" id="stat-${s.name}">-</td>
                   <td class="actcell"><button class="act run" id="runbtn-${s.name}" ${s.configured?'':'disabled'} onclick="runSys('${s.name}')">${s.configured?'검사':'미설정'}</button>
                     <span id="act-${s.name}"></span></td></tr>`).join('')+

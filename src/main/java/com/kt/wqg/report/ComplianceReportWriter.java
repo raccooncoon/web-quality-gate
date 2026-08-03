@@ -216,16 +216,20 @@ public final class ComplianceReportWriter {
             .evcap{margin-top:0;font-size:11.5px;color:var(--ink);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
             .evrule{font-family:ui-monospace,monospace;font-size:10px;font-weight:700;color:var(--gov);
               background:var(--govsoft);border:1px solid var(--line2);padding:1px 7px}
-            .evt{table-layout:auto;max-width:100%;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
+            /* 고정 레이아웃 — 열 너비를 내용이 아닌 지정값으로 잡는다.
+               가로 스크롤이 생기지 않고, '펼쳐보기'로 줄바꿈해도 대상·위치 열 폭이 그대로 유지된다. */
+            .evtwrap{max-width:100%}
+            .evt{table-layout:fixed;width:100%;border-collapse:collapse;margin-top:4px;font-size:11.5px;background:#fff;border:1.5px solid var(--navy2)}
             .evt th{background:var(--govsoft);color:var(--navy);text-align:left;padding:5px 9px;
               font-size:10.5px;font-weight:700;border:1px solid var(--line2)}
             .evt td{padding:5px 9px;border:1px solid var(--line);vertical-align:top}
-            .evt .evno{width:1%;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
-            .evt .evel{max-width:520px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--ink)}
-            .evt .evloc{white-space:nowrap;font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
-            /* '펼쳐보기' 누르면 표를 폭 꽉 채우고 셀 줄바꿈 표시(기본은 …말줄임 + 호버 title) */
-            .evtwrap.wrap .evt{width:100%}
-            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible;max-width:none}
+            .evt .evno{width:52px;white-space:nowrap;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+            .evt .evel{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,monospace;color:var(--ink)}
+            .evt .evloc{width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+              font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted)}
+            /* '펼쳐보기' 누르면 셀 줄바꿈으로 전체 노출(기본은 …말줄임 + 호버 title).
+               열 너비는 위 고정값 그대로 — 세로로만 늘어난다. */
+            .evtwrap.wrap .evel,.evtwrap.wrap .evloc{white-space:normal;word-break:break-all;overflow:visible}
             .evcap .evtx{display:none;margin-left:auto;font-size:10px;font-weight:700;color:var(--gov);background:#fff;
               border:1px solid var(--line2);border-radius:3px;padding:1px 8px;cursor:pointer}
             .evcap .evtx:hover{background:var(--govsoft)}
@@ -480,7 +484,7 @@ public final class ComplianceReportWriter {
               <table class="docinfo">
                 <tr><th>대상 시스템</th><td>${esc(R.displayName||R.site)} <code>(${esc(R.site)})</code></td></tr>
                 ${R.target?`<tr><th>검사 대상 URL</th><td class="urlcell"><code>${esc(R.target.baseUrl||'-')}</code></td></tr>
-                <tr><th>검사 계정</th><td>${R.target.account?'<code>'+esc(R.target.account)+'</code>':'<span class="prov">비로그인</span>'} ${R.target.authType==='form'?'<span class="prov">· 폼 로그인 '+esc(R.target.loginPath||'/login')+'</span>':(R.target.authType&&R.target.authType!=='form'&&R.target.authType!=='none'?'<span class="prov">· '+esc(R.target.authType)+'</span>':'')}</td></tr>
+                <tr><th>검사 계정</th><td>${R.target.account?'<code>'+esc(R.target.account)+'</code>':'<span class="prov">비로그인</span>'} ${R.target.authType&&R.target.authType!=='none'?'<span class="prov">· '+esc(R.target.authType)+'</span>':''}</td></tr>
                 <tr><th>검사 경로 <span class="prov">(${(R.target.paths||[]).length})</span></th><td class="pathlist">${(R.target.paths||[]).map(p=>'<code>'+esc(p)+'</code>').join(' ')||'-'}</td></tr>`:''}
                 <tr><th>검사 일시</th><td>${fmtTs(R.timestamp)}</td></tr>
                 <tr><th>검사 기준</th><td>KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 3개 엔진 렌더링 비교</td></tr>
@@ -649,7 +653,7 @@ public final class ComplianceReportWriter {
                   <table class="pinfo"><tbody>
                     <tr><th>대상 시스템</th><td>${esc(R.displayName||R.site)} (${esc(R.site)})</td></tr>
                     ${R.target?`<tr><th>검사 대상 URL</th><td>${esc(R.target.baseUrl||'-')}</td></tr>
-                    <tr><th>검사 계정</th><td>${R.target.account?esc(R.target.account)+(R.target.authType==='form'?' (폼 로그인 '+esc(R.target.loginPath||'/login')+')':''):'비로그인'}</td></tr>
+                    <tr><th>검사 계정</th><td>${R.target.account?esc(R.target.account)+(R.target.authType&&R.target.authType!=='none'?' ('+esc(R.target.authType)+')':''):'비로그인'}</td></tr>
                     <tr><th>검사 경로</th><td>${(R.target.paths||[]).map(x=>esc(x)).join(', ')||'-'}</td></tr>`:''}
                     <tr><th>검사 일시</th><td>${fmtTs(R.timestamp)}</td></tr>
                     <tr><th>검사 기준</th><td>KWCAG 2.2 (KS X OT0003:2022) · WCAG 2.1 AA · 3개 엔진 렌더링 비교</td></tr>

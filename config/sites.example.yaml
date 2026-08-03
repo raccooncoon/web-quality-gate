@@ -5,9 +5,8 @@
 #
 # type: spa → readySelector 대기 + networkidle 후 검사(렌더링 DOM 기준)
 # type: mpa → load 이벤트 후 검사(원본 응답 기준, 서버 렌더링)
-# auth.type: none | form | sso | storage
-#   - form    : loginPath + id/pw/submit 셀렉터로 자동 로그인. 계정은 콘솔/환경변수로 주입.
-#   - sso     : Keycloak/OIDC 등 다단계. 세션 재사용(storage) 권장.
+# auth.type: none | sso | storage
+#   - sso     : Keycloak/OIDC 등 다단계. loginPath + id/pw/submit 셀렉터로 IdP 로그인. 계정은 콘솔/환경변수로 주입.
 #   - storage : 사람이 직접 로그인한 세션(storageState)을 저장해 재사용.
 #   - none    : 로그인 불필요.
 sites:
@@ -16,11 +15,11 @@ sites:
   type: "mpa"
   baseUrl: "https://mpa.example.com"
   auth:
-    type: "form"
-    loginPath: "/login"
-    idSelector: "input[name=username]"
-    pwSelector: "input[name=password]"
-    submitSelector: "button[type=submit]"
+    type: "none"
+    loginPath: null
+    idSelector: null
+    pwSelector: null
+    submitSelector: null
     sso: false
     storage: false
   urls:

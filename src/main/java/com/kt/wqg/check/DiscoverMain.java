@@ -31,7 +31,7 @@ public final class DiscoverMain {
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("사이트를 찾을 수 없음: " + siteName));
 
-        CheckRunner.Credentials creds = CheckRunner.credentialsOf(site.name(), System::getenv);
+        boolean needsLogin = site.auth() != null && site.auth().required();   // SSO 만 실시간 로그인
 
         try (Playwright playwright = Playwright.create()) {
             Browser browser = playwright.chromium()
@@ -39,8 +39,14 @@ public final class DiscoverMain {
             try (BrowserContext context = browser.newContext()) {
                 Page page = context.newPage();
 
-                String finalUrl = CheckRunner.login(page, site, creds);
-                System.out.println("로그인 성공 → " + finalUrl);
+                if (needsLogin) {
+                    CheckRunner.Credentials creds = CheckRunner.credentialsOf(site.name(), System::getenv);
+                    String finalUrl = CheckRunner.login(page, site, creds);
+                    System.out.println("로그인 성공 → " + finalUrl);
+                } else {
+                    page.navigate(CheckRunner.resolveUrl(site.baseUrl(), "/"));
+                    System.out.println("접속 → " + site.baseUrl());
+                }
 
                 List<String> paths = CheckRunner.harvestPaths(page, site.baseUrl());
                 System.out.printf("%n수집된 내부 경로 %d건 (%s):%n", paths.size(), site.baseUrl());

@@ -108,24 +108,6 @@ class CheckRunnerTest {
     }
 
     @Test
-    void 로그인_후_여전히_로그인페이지면_실패로_본다() {
-        assertFalse(CheckRunner.loginSucceeded(
-                "https://defect.example.com/login", "https://defect.example.com/login"));
-    }
-
-    @Test
-    void 로그인_후_로그인페이지를_벗어나면_성공으로_본다() {
-        assertTrue(CheckRunner.loginSucceeded(
-                "https://defect.example.com/login", "https://defect.example.com/dashboard"));
-    }
-
-    @Test
-    void 로그인_실패로_쿼리파라미터가_붙어도_실패로_본다() {
-        assertFalse(CheckRunner.loginSucceeded(
-                "https://defect.example.com/login", "https://defect.example.com/login?error"));
-    }
-
-    @Test
     void 절대경로_내부링크는_경로로_수집한다() {
         assertEquals("/defects",
                 CheckRunner.internalPath("https://defect.example.com", "https://defect.example.com/defects"));

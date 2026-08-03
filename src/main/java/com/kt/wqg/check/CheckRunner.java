@@ -81,39 +81,16 @@ public final class CheckRunner {
     }
 
     /**
-     * form 로그인을 수행한다. 폼을 실제로 채워 submit 하므로 hidden _csrf 등도 함께 전송된다.
-     * submit 후에도 로그인 페이지에 머물러 있으면(loginSucceeded=false) 실패로 보고 예외.
+     * 로그인을 수행한다(SSO). 검사 시 실시간 로그인이 필요한 유형은 SSO 뿐이다.
+     * storage(세션 재사용)는 저장된 storageState 로 처리하므로 여기로 오지 않는다.
      *
      * @return 로그인 성공 후의 최종 URL
      */
     public static String login(Page page, SitesConfig.Site site, Credentials creds) {
         SitesConfig.Auth auth = site.auth();
-        if (auth.isSso()) return loginSso(page, site, creds);
-        // 폼 로그인은 입력 필드 셀렉터가 반드시 필요 — 비어 있으면 원인을 명확히 알린다.
-        if (blank(auth.idSelector()) || blank(auth.pwSelector()) || blank(auth.submitSelector())) {
-            throw new IllegalStateException(
-                    "폼 로그인 필드 셀렉터가 비어 있습니다(아이디·비번·제출 버튼). "
-                    + "[🔍 로그인 필드 자동 감지]로 채우거나 직접 입력한 뒤 [설정 저장]하세요.");
-        }
-        String loginUrl = resolveUrl(site.baseUrl(), auth.loginPath());
-        page.navigate(loginUrl);
-        page.fill(auth.idSelector(), creds.id());
-        page.fill(auth.pwSelector(), creds.pw());
-        // submit 후 곧바로 waitForLoadState 하면 아직 네비게이션이 시작되지 않은
-        // 로그인 페이지의 load 상태를 보고 즉시 반환하는 경쟁 상태가 생긴다.
-        // submit 이 유발한 POST 응답을 실제로 기다려 리다이렉트 체인을 확정한다.
-        // 로그인 페이지 경로(loginPath, 예 /app/login)와 폼 제출 대상(예 /login)이 다른
-        // 앱이 흔하므로, POST 대상 URL은 조건에서 빼고 '제출로 발생한 첫 POST'를 기다린다.
-        page.waitForResponse(
-                r -> "POST".equals(r.request().method()),
-                () -> page.click(auth.submitSelector()));
-        page.waitForLoadState(LoadState.LOAD);
-        String finalUrl = page.url();
-        if (!loginSucceeded(loginUrl, finalUrl)) {
-            throw new IllegalStateException(
-                    "로그인 실패 — submit 후에도 로그인 페이지에 머물러 있음: " + finalUrl);
-        }
-        return finalUrl;
+        if (auth != null && auth.isSso()) return loginSso(page, site, creds);
+        throw new IllegalStateException(
+                "실시간 로그인을 지원하지 않는 유형입니다: " + (auth == null ? "none" : auth.type()));
     }
 
     /**
@@ -151,8 +128,6 @@ public final class CheckRunner {
     private static String orDefault(String v, String def) {
         return v == null || v.isBlank() ? def : v;
     }
-
-    private static boolean blank(String v) { return v == null || v.isBlank(); }
 
     /**
      * 현재 페이지의 앵커(&lt;a href&gt;)에서 점검 대상 내부 경로를 수집한다.
@@ -209,24 +184,6 @@ public final class CheckRunner {
             throw new IllegalStateException("환경변수 " + key + " 가 설정되지 않았습니다");
         }
         return value;
-    }
-
-    /**
-     * 로그인 성공 여부를 최종 URL로 판정한다.
-     * submit 후에도 여전히 로그인 페이지(경로 기준, 쿼리 무시)에 머물러 있으면 실패로 본다.
-     * 실패 시 보통 ?error 같은 쿼리가 붙지만 경로는 그대로이므로 경로만 비교한다.
-     */
-    static boolean loginSucceeded(String loginUrl, String finalUrl) {
-        return !pathOf(finalUrl).equals(pathOf(loginUrl));
-    }
-
-    private static String pathOf(String url) {
-        int scheme = url.indexOf("://");
-        int from = scheme < 0 ? 0 : scheme + 3;
-        int q = url.indexOf('?', from);
-        String noQuery = q < 0 ? url : url.substring(0, q);
-        int slash = noQuery.indexOf('/', from);
-        return slash < 0 ? "/" : noQuery.substring(slash);
     }
 
     /**

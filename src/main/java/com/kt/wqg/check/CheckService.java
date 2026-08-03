@@ -85,7 +85,7 @@ public final class CheckService {
             progress.accept("브라우저 기동…");
             Browser chromium = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions().setHeadless(true));
-            // storage(세션 재사용) 방식: 저장된 storageState 를 컨텍스트에 로드하고 폼 로그인은 생략
+            // storage(세션 재사용) 방식: 저장된 storageState 를 컨텍스트에 로드하고 SSO 로그인은 생략
             boolean useStored = useStoredSession(site);
             Browser.NewContextOptions ctxOpts = new Browser.NewContextOptions();
             if (useStored) ctxOpts.setStorageStatePath(sessionFile(site.name()));
@@ -232,7 +232,7 @@ public final class CheckService {
         return Path.of("config", "storage-" + siteName + ".json");
     }
 
-    /** 저장된 세션을 로드해야 하나? 폼/SSO(실시간 로그인)가 아니고 세션 파일이 있으면 사용. */
+    /** 저장된 세션을 로드해야 하나? SSO(실시간 로그인)가 아니고 세션 파일이 있으면 사용. */
     private static boolean useStoredSession(SitesConfig.Site site) {
         SitesConfig.Auth a = site.auth();
         return (a == null || !a.required())
@@ -493,11 +493,11 @@ public final class CheckService {
         // 대상 정보(리포트 헤더용) — 검사 URL·인증 방식·검사 계정(ID만)·검사 경로 목록
         java.util.Map<String, Object> target = new java.util.LinkedHashMap<>();
         target.put("baseUrl", site.baseUrl());
-        boolean formAuth = site.auth() != null && "form".equals(site.auth().type());
+        boolean credAuth = site.auth() != null && site.auth().required();   // SSO(실시간 로그인)
         target.put("authType", site.auth() == null ? "none" : site.auth().type());
         target.put("loginPath", site.auth() == null ? null : site.auth().loginPath());
         String account = null;
-        if (formAuth) {
+        if (credAuth) {
             try { account = CheckRunner.credentialsOf(site.name(), credResolver).id(); }
             catch (RuntimeException ignore) {
                 account = "env WQG_" + site.name().toUpperCase(java.util.Locale.ROOT).replace('-', '_') + "_ID";
@@ -518,7 +518,7 @@ public final class CheckService {
 
     /**
      * 전체 검사 전에 셋업이 맞는지 빠르게 점검한다:
-     * baseUrl 접속 → (form) 로그인 → 첫 URL 렌더(SPA는 readySelector 확인).
+     * baseUrl 접속 → (SSO) 로그인 → 첫 URL 렌더(SPA는 readySelector 확인).
      * 한 단계라도 실패하면 이후 단계는 건너뛰고 원인을 담아 반환한다.
      */
     public static HealthResult healthCheck(SitesConfig config, SitesConfig.Site site,
@@ -542,7 +542,7 @@ public final class CheckService {
                     return new HealthResult(false, steps);
                 }
 
-                // 2) 로그인 (form 인 경우만)
+                // 2) 로그인 (SSO 인 경우만)
                 if (site.auth() != null && site.auth().required()) {
                     try {
                         String finalUrl = CheckRunner.login(page, site,
@@ -594,7 +594,7 @@ public final class CheckService {
         try (Playwright playwright = Playwright.create()) {
             Browser browser = playwright.chromium()
                     .launch(new BrowserType.LaunchOptions().setHeadless(true));
-            // 세션 파일이 있으면(폼/SSO 아니면) 저장 세션으로 접속(로그인 벽 통과)
+            // 세션 파일이 있으면(SSO 아니면) 저장 세션으로 접속(로그인 벽 통과)
             boolean useStored = useStoredSession(site);
             Browser.NewContextOptions opts = new Browser.NewContextOptions();
             if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
@@ -640,129 +640,6 @@ public final class CheckService {
 
     public record DetectedSelectors(String idSelector, String pwSelector, String submitSelector,
                                     String finalUrl, String requestedPath) {}
-
-    public record DetectedType(String type, String reason) {}
-
-    /**
-     * MPA/SPA 판별: 브라우저로 baseUrl 을 열어 <b>서버 응답 HTML</b> 의 본문 텍스트와
-     * <b>JS 실행 후 렌더된 DOM</b> 의 본문 텍스트를 비교한다.
-     * SPA 는 서버가 빈 셸을 주고 JS 가 본문을 채우므로 렌더 후 텍스트가 급증한다.
-     */
-    /** baseUrl "/" 만 보고 판정(비로그인·신규 시스템용). */
-    public static DetectedType detectType(String baseUrl) {
-        return detectType(baseUrl, "/", null, null);
-    }
-
-    /** 저장된 시스템 기준 판정 — 로그인 필요 시 로그인 후 <b>실제 검사 경로</b>(첫 URL)를 열어 판정. */
-    public static DetectedType detectType(SitesConfig.Site site, java.util.function.UnaryOperator<String> credResolver) {
-        String path = site.urls().isEmpty() ? "/" : site.urls().get(0).path();
-        return detectType(site.baseUrl(), path, site, credResolver);
-    }
-
-    private static DetectedType detectType(String baseUrl, String path,
-                                           SitesConfig.Site site, java.util.function.UnaryOperator<String> credResolver) {
-        String url = CheckRunner.resolveUrl(baseUrl, path);
-        try (Playwright pw = Playwright.create()) {
-            Browser br = pw.chromium().launch(new BrowserType.LaunchOptions().setHeadless(true));
-            // storage(세션 재사용) 방식이면 저장 세션을 로드해 실제 앱 화면으로 판정
-            boolean useStored = site != null && useStoredSession(site);
-            Browser.NewContextOptions opts = new Browser.NewContextOptions();
-            if (useStored) opts.setStorageStatePath(sessionFile(site.name()));
-            try (BrowserContext ctx = br.newContext(opts)) {
-                Page page = ctx.newPage();
-                // 로그인 필요 + 계정 있으면 먼저 로그인 (SPA는 대개 로그인 뒤에 있음)
-                String loginErr = null;
-                if (!useStored && site != null && site.auth() != null && site.auth().required() && credResolver != null) {
-                    try {
-                        CheckRunner.login(page, site, CheckRunner.credentialsOf(site.name(), credResolver));
-                    } catch (RuntimeException e) { loginErr = e.getMessage(); /* 사유는 로그인 벽 안내에 덧붙임 */ }
-                }
-                var resp = page.navigate(url, new Page.NavigateOptions()
-                        .setWaitUntil(com.microsoft.playwright.options.WaitUntilState.DOMCONTENTLOADED)
-                        .setTimeout(20000));
-                String rawHtml = resp != null ? resp.text() : page.content();
-                int rawLen = visibleTextLen(rawHtml);
-                boolean rootDiv = java.util.regex.Pattern
-                        .compile("<(?:div|main)[^>]*id=[\"']?(?:root|app|__next)\\b", java.util.regex.Pattern.CASE_INSENSITIVE)
-                        .matcher(rawHtml).find();
-                try {
-                    page.waitForLoadState(com.microsoft.playwright.options.LoadState.NETWORKIDLE,
-                            new Page.WaitForLoadStateOptions().setTimeout(6000));
-                } catch (RuntimeException ignore) { /* 타임아웃 무시 */ }
-                Object rt = page.evaluate("""
-                        () => {
-                          const q = s => !!document.querySelector(s);
-                          const mount = q('#root, #app, #__next, [data-reactroot], [data-reactid], [data-v-app], [ng-version]');
-                          const bundle = [...document.scripts].some(s => /assets\\/|static\\/js\\/|chunk|bundle|runtime|vendor|\\.[a-f0-9]{6,}\\.js/i.test(s.src||''));
-                          const fw = !!(window.React||window.__NEXT_DATA__||window.__NUXT__||window.Vue||window.ng||window.__vite_plugin_react_preamble_installed__);
-                          const textLen = document.body ? document.body.innerText.replace(/\\s+/g,' ').trim().length : 0;
-                          return {textLen, mount, bundle, fw};
-                        }""");
-                @SuppressWarnings("unchecked")
-                java.util.Map<String, Object> sig = rt instanceof java.util.Map
-                        ? (java.util.Map<String, Object>) rt : java.util.Map.of();
-                int renderedLen = sig.get("textLen") instanceof Number n ? n.intValue() : 0;
-                boolean mount = rootDiv || Boolean.TRUE.equals(sig.get("mount"));
-                boolean bundle = Boolean.TRUE.equals(sig.get("bundle"));
-                boolean fw = Boolean.TRUE.equals(sig.get("fw"));
-                // 로그인 벽 감지: 요청 경로가 로그인 경로가 아닌데 최종 URL이 로그인 페이지면 앱을 못 본 것
-                String loginPath = site != null && site.auth() != null ? site.auth().loginPath() : "/login";
-                String finalPath = pathOfUrl(page.url());
-                if (loginPath != null && finalPath != null && finalPath.equals(loginPath) && !path.equals(loginPath)) {
-                    boolean storage = site != null && site.auth() != null && site.auth().isStorage();
-                    boolean form = site != null && site.auth() != null && "form".equalsIgnoreCase(site.auth().type());
-                    String base = storage
-                            ? "세션 재사용 방식입니다 — [① 세션 로그인](또는 원격 로그인)으로 세션을 먼저 저장한 뒤 다시 시도하세요."
-                            : (form ? "폼 로그인입니다 — 계정을 저장한 뒤 다시 시도하세요."
-                                    : "로그인이 필요합니다 — 세션 또는 계정을 먼저 저장한 뒤 다시 시도하세요.");
-                    String hint = base + (useStored
-                            ? " (저장된 세션이 만료됐을 수 있습니다 — 세션을 다시 저장하세요.)" : "");
-                    if (loginErr != null) hint = "로그인 실패: " + loginErr + " " + base;
-                    return new DetectedType("unknown",
-                            "요청한 경로가 로그인 페이지(" + finalPath + ")로 리다이렉트됨 — 로그인 뒤 화면을 못 봐 자동 판정 불가. "
-                            + hint + " 또는 유형을 직접 지정하세요.");
-                }
-                return classifyType(rawLen, renderedLen, mount, bundle, fw);
-            } finally {
-                br.close();
-            }
-        } catch (Exception e) {
-            throw new RuntimeException("유형 판별 실패: " + url + " — " + e.getMessage(), e);
-        }
-    }
-
-    private static String pathOfUrl(String url) {
-        if (url == null) return null;
-        try {
-            String p = java.net.URI.create(url).getRawPath();
-            return (p == null || p.isEmpty()) ? "/" : p;
-        } catch (RuntimeException e) {
-            return url;
-        }
-    }
-
-    private static int visibleTextLen(String html) {
-        if (html == null) return 0;
-        String s = html.replaceAll("(?is)<script.*?</script>", " ")
-                .replaceAll("(?is)<style.*?</style>", " ")
-                .replaceAll("(?is)<[^>]+>", " ").replaceAll("\\s+", " ").trim();
-        return s.length();
-    }
-
-    /**
-     * SPA/MPA 판정. 마운트 지점(#root 등) + JS 번들/프레임워크 전역이 있으면 SPA(React/Vue 등),
-     * 없더라도 서버 본문 대비 렌더 후 본문이 크게 늘면 SPA. 그 외 MPA(서버 렌더링).
-     */
-    static DetectedType classifyType(int rawLen, int renderedLen, boolean mount, boolean bundle, boolean fw) {
-        boolean spa;
-        if (mount && (bundle || fw)) spa = true;                                   // 클라이언트 프레임워크 마운트
-        else if (mount && renderedLen > 400 && renderedLen > rawLen * 1.5 + 200) spa = true; // 마운트 + 렌더 급증
-        else spa = rawLen < 300 && renderedLen > rawLen * 2 + 400;                 // 빈 셸 급증
-        String reason = String.format("서버 본문 %d자 → 렌더 %d자 · 마운트 %s · JS번들 %s · 프레임워크 %s → %s",
-                rawLen, renderedLen, mount ? "O" : "X", bundle ? "O" : "X", fw ? "O" : "X",
-                spa ? "SPA(클라이언트 렌더링)" : "MPA(서버 렌더링)");
-        return new DetectedType(spa ? "spa" : "mpa", reason);
-    }
 
     /** 로그인 페이지의 필드를 여는 페이지에서 휴리스틱으로 찾는 JS. name>id>type 순으로 셀렉터 생성. */
     private static final String DETECT_JS = """

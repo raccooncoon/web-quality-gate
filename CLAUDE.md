@@ -20,7 +20,7 @@
 - 접근성: AxeBuilder.withTags(sites.yaml checks.accessibility.tags) 사용
 - 호환성: 3개 엔진에서 동일 URL 스크린샷 → 픽셀 diff (threshold: pixelDiffThreshold).
   캡처 전 CSS 주입으로 animation/transition 강제 비활성화
-- 로그인(auth.type: form): 환경변수 WQG_<SITE명 대문자>_ID / _PW 주입.
+- 로그인(auth.type: sso): 환경변수 WQG_<SITE명 대문자>_ID / _PW 주입.
   계정 정보를 코드·설정에 절대 커밋하지 않는다
 - 브라우저는 PLAYWRIGHT_BROWSERS_PATH 오프라인 번들 사용,
   PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 전제. 런타임 다운로드 코드 금지

@@ -77,7 +77,6 @@ public final class WebConsole {
             if (path.equals("/api/systems/add")) { addSystem(ex); return; }
             if (path.startsWith("/api/systems/delete/")) { deleteSystem(ex, path.substring("/api/systems/delete/".length())); return; }
             if (path.equals("/api/detect-selectors")) { detectSelectors(ex); return; }
-            if (path.equals("/api/detect-type")) { detectType(ex); return; }
             if (path.equals("/api/llm")) { sendJson(ex, llmConfigPayload()); return; }
             if (path.equals("/api/llm/save")) { llmSave(ex); return; }
             if (path.equals("/api/llm/test")) { llmTest(ex); return; }
@@ -159,14 +158,16 @@ public final class WebConsole {
                 .filter(s -> s.name().equals(name)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("시스템 없음: " + name));
 
-        String authType = text(b, "authType", cur.auth() == null ? "none" : cur.auth().type());
+        SitesConfig.Auth ca = cur.auth();
+        String authType = text(b, "authType", ca == null ? "none" : ca.type());
         SitesConfig.Auth auth;
-        if ("form".equalsIgnoreCase(authType) || "sso".equalsIgnoreCase(authType)) {
-            boolean sso = "sso".equalsIgnoreCase(authType);
-            auth = new SitesConfig.Auth(sso ? "sso" : "form",
-                    text(b, "loginPath", sso ? "/" : "/login"),
-                    text(b, "idSelector", null), text(b, "pwSelector", null),
-                    text(b, "submitSelector", null));
+        if ("sso".equalsIgnoreCase(authType)) {
+            // 부분 저장(기본 정보만) 대비 — 보내지 않은 필드는 기존 값을 유지한다
+            auth = new SitesConfig.Auth("sso",
+                    text(b, "loginPath", ca == null || ca.loginPath() == null ? "/" : ca.loginPath()),
+                    text(b, "idSelector", ca == null ? null : ca.idSelector()),
+                    text(b, "pwSelector", ca == null ? null : ca.pwSelector()),
+                    text(b, "submitSelector", ca == null ? null : ca.submitSelector()));
         } else {
             auth = new SitesConfig.Auth("none", null, null, null, null);
         }
@@ -352,31 +353,6 @@ public final class WebConsole {
         } catch (RuntimeException e) {
             sendJson(ex, Map.of("error", String.valueOf(e.getMessage())));
         }
-    }
-
-    /** 유형(MPA/SPA) 자동 판별 — baseUrl 서버 응답으로 추정. 동기 응답. */
-    private void detectType(HttpExchange ex) throws IOException {
-        JsonNode b = JSON.readTree(ex.getRequestBody());
-        String baseUrl = b.path("baseUrl").asText("").trim();
-        if (baseUrl.isEmpty() || baseUrl.contains("TODO")) {
-            send(ex, 400, "application/json; charset=utf-8",
-                    "{\"error\":\"baseUrl 을 먼저 입력하세요\"}".getBytes(StandardCharsets.UTF_8));
-            return;
-        }
-        // 저장된 시스템이면 로그인 후 실제 검사 경로(첫 URL)를 열어 판정(로그인 뒤 SPA 대응).
-        // 미저장/신규거나 설정 미완이면 baseUrl "/" 만 보고 판정.
-        String name = b.path("name").asText("").trim();
-        CheckService.DetectedType d;
-        SitesConfig.Site site = name.isEmpty() ? null : configStore.load().sites().stream()
-                .filter(s -> s.name().equals(name)).findFirst().orElse(null);
-        boolean hasSession = site != null && java.nio.file.Files.isRegularFile(CheckService.sessionFile(site.name()));
-        if (site != null && site.baseUrl() != null && !site.baseUrl().contains("TODO")
-                && site.auth() != null && (site.auth().required() || site.auth().isStorage() || hasSession)) {
-            d = CheckService.detectType(site, credentials.resolver());
-        } else {
-            d = CheckService.detectType(baseUrl);
-        }
-        sendJson(ex, Map.of("type", d.type(), "reason", d.reason()));
     }
 
     /** 검사 경로 자동 수집 — 로그인(필요 시) 후 내부 링크에서 후보 경로를 뽑아 반환. 동기 응답. */
