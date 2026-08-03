@@ -14,7 +14,7 @@ set "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1"
 REM 번들 vnu.jar 절대경로 주입 (sites.yaml 수정 불필요)
 set "WQG_VNU_JAR=%~dp0vnu.jar"
 
-REM 포트 (기본 8080). 바꾸려면 두 번째 인자로: start.bat 9090
+REM 포트 (기본 8080). 이미 쓰는 포트면 첫 번째 인자로 바꾼다: start.bat 9090
 set "PORT=%~1"
 if "%PORT%"=="" set "PORT=8080"
 
