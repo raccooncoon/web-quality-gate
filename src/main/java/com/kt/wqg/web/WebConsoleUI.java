@@ -223,8 +223,8 @@ final class WebConsoleUI {
             .filterbar{display:flex;align-items:center;gap:14px;margin:16px 0 4px;flex-wrap:wrap}
             .filterbar label{display:flex;align-items:center;gap:6px;margin:0;color:var(--fg);font-weight:600;cursor:pointer}
             .filterbar input{width:auto}
-            .prog{font-size:12px;color:var(--muted)}
-            .prog b{color:var(--fg)}
+            .aprog{font-size:12px;color:var(--muted);white-space:nowrap}
+            .aprog b{color:var(--fg)}
             .grouphd{font-size:13px;color:var(--navy);font-weight:700;margin:20px 0 8px;padding-bottom:5px;border-bottom:2px solid var(--navy)}
             td .pill{margin-right:6px}
             .discovered{margin-top:8px}
@@ -241,7 +241,7 @@ final class WebConsoleUI {
             .newtag{font-size:10px;font-weight:700;color:var(--gov);background:var(--govsoft);border:1px solid var(--gov);border-radius:3px;padding:0 6px;margin-left:6px}
             .runid{font-size:11px;color:var(--muted);margin-top:3px}.runid code{color:var(--gov);font-size:11px}
             tr.flash td{animation:fl 1.8s ease}@keyframes fl{0%,45%{background:var(--govsoft)}100%{background:transparent}}
-            .cmpbtn{margin-top:0;font-size:12px;padding:5px 12px}
+            .cmpbtn,.delbtn,.histbtn{margin-top:0;font-size:12px;padding:5px 12px}
             .cmphd{display:flex;align-items:center;gap:16px;background:var(--card);border:1px solid var(--line);
               border-radius:6px;padding:14px 18px;margin-bottom:8px}
             .cmphd .cmpcol{flex:1}.cmphd .cmpcol b{font-size:15px}.cmphd .arrow{font-size:22px;color:var(--muted)}
@@ -1105,7 +1105,7 @@ final class WebConsoleUI {
                   <b>${esc(nameOf[g.site]||g.site)}</b> <small>${esc(g.site)}</small>
                   ${statusPill(g.runs[0])} <span class=st>· 검사 ${g.runs.length}회</span>
                   <span style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">
-                    <button class="act ghost" id="selallbtn-${gi}" onclick="selAllG(${gi})">전체 선택</button>
+                    <button class="act ghost histbtn" id="selallbtn-${gi}" onclick="selAllG(${gi})">전체 선택</button>
                     ${cmp?`<button class="act cmpbtn" id="cmpbtn-${gi}" data-site="${esc(g.site)}" disabled onclick="openCompare(${gi})">비교 (0/2)</button>`:''}
                     <button class="act delbtn" id="delbtn-${gi}" data-site="${esc(g.site)}" disabled style="background:var(--bad)" onclick="delSelected(${gi})">선택 삭제 (0)</button>
                   </span></div>
@@ -1252,7 +1252,7 @@ final class WebConsoleUI {
               else html+=`<div class="ok-note">✓ <b>검수 완료</b> — 모든 항목이 확정되었습니다. 종합판정 <b>${esc(comp.status)}</b>. 리포트에 최종 준수율이 반영됩니다.</div>`;
               html+=`<div class="filterbar">
                 <label><input type=checkbox ${assessFilter?'checked':''} onclick="toggleFilter()"> 판정 필요한 항목만 보기</label>
-                <span class="prog">평가자 확정 <b>${confirmed}</b> · 미확정 <b>${comp.pendingTotal}</b> / 전체 ${data.items.length}</span></div>`;
+                <span class="aprog">평가자 확정 <b>${confirmed}</b> · 미확정 <b>${comp.pendingTotal}</b> / 전체 ${data.items.length}</span></div>`;
               html+=comp.categories.map(c=>{
                 const pct=Math.max(0,Math.min(100,c.rate));
                 const col=c.pending>0?'var(--warn)':(c.pass?'var(--ok)':'var(--bad)');
