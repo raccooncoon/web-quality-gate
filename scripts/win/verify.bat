@@ -35,14 +35,33 @@ echo.
 pause
 exit /b %MISS%
 
+REM 아래 서브루틴은 괄호 블록 ( ... ) 을 쓰지 않는다 —
+REM 라벨(%~2)에 괄호가 들어가면(예: "마크업 검사기(vnu)") 블록이 조기 종료돼 구문 오류가 난다.
 :chk
-if exist "%~1" (echo   [OK ] %~2 ^(%~1^)) else (echo   [빠짐] %~2 ^(%~1^) & set /a MISS+=1)
+if not exist "%~1" goto :chk_miss
+echo   [OK ] %~2 ^(%~1^)
 exit /b 0
+:chk_miss
+echo   [빠짐] %~2 ^(%~1^)
+set /a MISS+=1
+exit /b 0
+
 :chkdir
-if exist "%~1\" (echo   [OK ] %~2 ^(%~1\^)) else (echo   [빠짐] %~2 ^(%~1\^) & set /a MISS+=1)
+if not exist "%~1\" goto :chkdir_miss
+echo   [OK ] %~2 ^(%~1\^)
 exit /b 0
+:chkdir_miss
+echo   [빠짐] %~2 ^(%~1\^)
+set /a MISS+=1
+exit /b 0
+
 :chkglob
 set "FOUND="
 for /d %%d in ("%~1") do set "FOUND=1"
-if defined FOUND (echo   [OK ] %~2) else (echo   [빠짐] %~2 & set /a MISS+=1)
+if not defined FOUND goto :chkglob_miss
+echo   [OK ] %~2
+exit /b 0
+:chkglob_miss
+echo   [빠짐] %~2
+set /a MISS+=1
 exit /b 0

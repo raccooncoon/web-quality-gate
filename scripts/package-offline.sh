@@ -48,11 +48,11 @@ mvn -q exec:java -e \
   -D exec.mainClass=com.microsoft.playwright.CLI \
   -D exec.args="install chromium firefox webkit"
 
-echo "[4/6] vnu.jar 다운로드"
-VNU_VERSION=24.10.17
-curl -fsSL -o /tmp/vnu.zip \
-  "https://github.com/validator/validator/releases/download/${VNU_VERSION}/vnu.jar_${VNU_VERSION}.zip"
-unzip -j -o /tmp/vnu.zip "*/vnu.jar" -d "$DIST"
+echo "[4/6] vnu.jar 다운로드 (validator 릴리스의 단일 jar 직접 수신)"
+# validator 프로젝트는 롤링 'latest' 릴리스에 버전 접미사 없는 vnu.jar 를 직접 게시한다.
+# (구 vnu.jar_<버전>.zip 방식은 폐지되어 404). 특정 버전 고정이 필요하면 latest 를 해당 태그로 교체.
+curl -fsSL -o "$DIST/vnu.jar" \
+  "https://github.com/validator/validator/releases/download/latest/vnu.jar"
 
 echo "[5/6] Playwright 실행용 OS 라이브러리 + 한글 폰트 수집 (폐쇄망 최다 실패 지점)"
 DEPS="$PWD/$DIST/deps"

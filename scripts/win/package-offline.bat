@@ -29,17 +29,15 @@ echo [3/6] Playwright 브라우저(윈도우) 다운로드
 set "PLAYWRIGHT_BROWSERS_PATH=%CD%\%OUT%\pw-browsers"
 call mvn -q exec:java -D exec.mainClass=com.microsoft.playwright.CLI -D exec.args="install chromium firefox webkit" || goto :err
 
-echo [4/6] vnu.jar 다운로드 (버전별 zip 을 받아 vnu.jar 추출)
-set "VNU_VER=24.10.17"
-curl -fsSL -o "%TEMP%\vnu.zip" "https://github.com/validator/validator/releases/download/%VNU_VER%/vnu.jar_%VNU_VER%.zip" || goto :err
-if exist "%TEMP%\vnuex" rmdir /s /q "%TEMP%\vnuex"
-mkdir "%TEMP%\vnuex"
-tar -xf "%TEMP%\vnu.zip" -C "%TEMP%\vnuex" || goto :err
-for /r "%TEMP%\vnuex" %%v in (vnu.jar) do if exist "%%v" copy /y "%%v" "%OUT%\vnu.jar" >nul
-if not exist "%OUT%\vnu.jar" (echo vnu.jar 추출 실패 & goto :err)
+echo [4/6] vnu.jar 다운로드 (validator 릴리스의 단일 jar 직접 수신)
+REM validator 프로젝트는 롤링 'latest' 릴리스에 버전 접미사 없는 vnu.jar 를 직접 게시한다.
+REM (구 vnu.jar_<버전>.zip 방식은 폐지되어 404). 특정 버전 고정이 필요하면 latest 를 해당 태그로 교체.
+curl -fsSL -o "%OUT%\vnu.jar" "https://github.com/validator/validator/releases/download/latest/vnu.jar" || goto :err
+if not exist "%OUT%\vnu.jar" (echo vnu.jar 다운로드 실패 & goto :err)
 
 echo [5/6] 최소 JRE 17 생성 (jlink)
-if "%JAVA_HOME%"=="" (echo JAVA_HOME(JDK17) 설정 필요 & goto :err)
+REM 괄호는 ^( ^) 로 이스케이프 — 안 하면 if 블록이 조기 종료돼 항상 구문 오류가 난다
+if "%JAVA_HOME%"=="" (echo JAVA_HOME^(JDK17^) 설정 필요 & goto :err)
 REM java.se = 모든 Java SE 모듈(java.xml 등) — 번들 JRE 로 vnu.jar(HTML/XML 검증)도 실행하므로
 REM 앱뿐 아니라 vnu 의 모듈 요구까지 안전하게 커버한다. jdk.charsets 는 EUC-KR/MS949 페이지용.
 REM ※ 리눅스판 scripts/package-offline.sh 와 모듈 목록·vnu 버전(VNU_VER)을 동기 유지할 것.
