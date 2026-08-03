@@ -191,8 +191,11 @@ final class WebConsoleUI {
             .bar>i{display:block;height:100%}
             .grp{font-size:13px;color:var(--navy);font-weight:700;margin:18px 0 8px}
             .item{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:12px 14px;margin-bottom:8px}
-            .it-hd{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px}
-            .it-hd b{flex:1}
+            /* 항목 헤더는 한 줄 고정 — 판정 배지·버튼이 아랫줄로 밀려나지 않게.
+               제목만 남는 폭을 차지하고 넘치면 …말줄임(전문은 title 툴팁). */
+            .it-hd{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-bottom:4px}
+            .it-hd b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+            .it-hd>code,.it-hd .pill,.it-hd .linkbtn{flex:none;white-space:nowrap}
             .linkbtn{background:none;border:none;color:var(--gov);font-size:12px;cursor:pointer;padding:0;font-weight:700}
             .ev{font-size:12px;color:var(--muted);margin:2px 0}
             /* 증거 — 규칙 캡션 + 각진 표(대상·요소·위치) */
@@ -223,8 +226,8 @@ final class WebConsoleUI {
             .ovbtns{display:flex;gap:8px;margin-top:8px}
             .ovbtns button{flex:1}
             .hd2{display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap}
-            /* 결과 검수 화면은 가로 스크롤 없이 — 긴 URL·셀렉터는 줄바꿈으로 흘린다 */
-            #assessview .body{max-width:920px;margin:0 auto;overflow-wrap:break-word}
+            /* 결과 검수 화면 — 화면 폭을 넓게 쓰되(증거 표가 넓다) 가로 스크롤은 없이 */
+            #assessview .body{max-width:1440px;margin:0 auto;overflow-wrap:break-word}
             #assessview .body pre,#assessview .body code{white-space:pre-wrap;word-break:break-all}
             .item.needs{border-color:var(--warn);background:var(--warnbg)}
             .item.done{opacity:.72}
@@ -1208,7 +1211,7 @@ final class WebConsoleUI {
               const g=it.guide||{};const needs=it.verdict==='수동확인필요';
               const ev=evTables(it.evidence);
               return `<div class="item ${needs?'needs':'done'}">
-                <div class="it-hd"><code style="color:var(--gov);font-weight:700">${esc(it.code)}</code> <b>${esc(it.title)}</b>
+                <div class="it-hd"><code style="color:var(--gov);font-weight:700">${esc(it.code)}</code> <b title="${esc(it.title)}">${esc(it.title)}</b>
                 <span class="pill ${vc}">${esc(it.verdict)}</span>
                 <button class="linkbtn" onclick="toggleOverride('${id}')">${needs?'판정하기':'수정'}</button>
                 ${needs?`<button class="linkbtn aibtn" onclick="aiDraft('${esc(it.code)}','${id}')"><span class="sparkle">✦</span> AI 초안</button>`:''}</div>
