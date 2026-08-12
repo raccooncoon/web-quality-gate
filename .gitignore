@@ -2,6 +2,7 @@ target/
 dependency-reduced-pom.xml
 dist/
 reports/
+logs/
 *.log
 .idea/
 *.iml

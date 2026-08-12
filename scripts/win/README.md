@@ -69,7 +69,7 @@ scripts\win\package-offline.bat
 - [ ] `pw-browsers\chromium*` / `firefox*` / `webkit*` — 3개 엔진 폴더
 - [ ] `vnu.jar` — 마크업 검사기 (+ `start.bat` 이 `WQG_VNU_JAR` 로 주입)
 - [ ] `config\sites.yaml` — 검사 대상
-- [ ] `start.bat` / `run-all.bat` / `verify.bat`
+- [ ] `start.bat` / `run-all.bat` / `verify.bat` / `diag.bat`
 
 `verify.bat` 이 위를 자동 점검합니다. 하나라도 `[빠짐]` 이면 외부망에서 `package-offline.bat` 을 재실행하세요.
 
@@ -86,3 +86,21 @@ scripts\win\package-offline.bat
   번들 브라우저만 쓰도록 강제합니다(폐쇄망에서 인터넷 접근 시도 없음).
 - **계정 커밋 금지**: 계정은 콘솔에서 저장(로컬 `credentials.properties`)하거나 환경변수
   `WQG_<시스템명대문자>_ID` / `_PW` 로 주입 — 설정 파일에 넣지 마세요.
+
+---
+
+## 로그 확인 & 문제 진단
+
+- **로그 위치**: `start.bat`·`run-all.bat`·`diag.bat` 실행 시 출력이 `logs\` 폴더에
+  회차별 파일(`wqg-*.log` / `runall-*.log` / `diag-*.log`)로 **누적 저장**됩니다.
+  실행 창에는 출력이 안 보일 수 있으니 문제가 있으면 이 폴더의 최신 파일을 여세요.
+- **`Failed to create driver` (로그인·검사 시 브라우저가 안 뜸)**: `diag.bat` 를 실행하세요.
+  환경/브라우저 번들 확인 → 드라이버 생성 시도(전체 원인 스택) →
+  추출된 `node.exe` 를 직접 `--version` 실행해 **node 가 실제로 도는지**까지 확인하고
+  `logs\diag-*.log` 에 저장합니다. 이 파일을 그대로 전달하면 원인 파악이 됩니다.
+  - `CreateProcess error=2`: 추출 경로/`%TEMP%` 문제 → `%TEMP%\playwright-java*` 삭제 후 재시도
+  - `error=5`: 백신/EDR 이 임시폴더 `node.exe` 차단 → 예외 등록
+  - `error=193 / 216`: 추출본 손상·아키텍처 불일치 → 임시폴더 정리 후 재시도
+  - `error=126 / 127`: DLL 로드 실패 → **VC++ 재배포 패키지(x64)** 설치
+- **한글이 깨져 보임**: 배치는 UTF-8, 콘솔은 CP949 라 생기던 표시 문제로,
+  각 `.bat` 첫 줄의 `chcp 65001` 과 자바 `-D*.encoding=UTF-8` 로 해결됨(동작에는 무관).

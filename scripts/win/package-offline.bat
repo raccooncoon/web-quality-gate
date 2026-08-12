@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM Phase 1 (윈도우 외부망 PC에서 실행): 폐쇄망 반입 패키지 생성
 REM 산출물: dist\wqg-win\  (이 폴더째 압축해 반입)
@@ -9,6 +10,8 @@ REM   ├─ jre\                     윈도우용 JRE 17 (jlink 로 생성)
 REM   ├─ pw-browsers\             윈도우용 chromium/firefox/webkit
 REM   ├─ config\sites.yaml        검사 대상 설정(없으면 sites.example.yaml 사용)
 REM   ├─ verify.bat               반입 후 완전성 검증기
+REM   ├─ diag.bat                 드라이버(node) 진단기 — 기동 오류 시 실행
+REM   ├─ logs\                    실행 로그 누적(start/run-all/diag)
 REM   └─ reports\                 결과 저장 위치(비어 있음)
 REM 요구: 이 PC 에 JDK 17 + Maven + 인터넷. (JAVA_HOME=JDK17)
 REM ★ 반드시 '윈도우'에서 실행 — JRE·브라우저는 OS 네이티브라 mac/리눅스에서 못 만듦.
@@ -54,6 +57,7 @@ copy /y config\sites.example.yaml "%OUT%\config\sites.example.yaml" >nul
 copy /y scripts\win\start.bat "%OUT%\start.bat" >nul
 copy /y scripts\win\run-all.bat "%OUT%\run-all.bat" >nul
 copy /y scripts\win\verify.bat "%OUT%\verify.bat" >nul
+copy /y scripts\win\diag.bat "%OUT%\diag.bat" >nul
 if exist scripts\win\README.md copy /y scripts\win\README.md "%OUT%\README.md" >nul
 
 echo.

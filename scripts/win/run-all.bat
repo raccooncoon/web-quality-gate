@@ -1,4 +1,5 @@
 @echo off
+chcp 65001 >nul
 REM ============================================================
 REM 전체 시스템 일괄 검사 (주간 예약 실행용, 윈도우 폐쇄망)
 REM 설정된 모든 시스템을 검사하고 reports\ 에 리포트를 생성한다.
@@ -15,9 +16,15 @@ set "WQG_VNU_JAR=%~dp0vnu.jar"
 set "JAVA=%~dp0jre\bin\java.exe"
 if not exist "%JAVA%" set "JAVA=java"
 
-echo [%date% %time%] 전체 시스템 검사 시작
+if not exist "%~dp0logs" mkdir "%~dp0logs"
+set "TS=%RANDOM%"
+for /f "tokens=2 delims==." %%i in ('wmic os get localdatetime /value 2^>nul') do set "DT=%%i"
+if defined DT set "TS=%DT:~0,8%-%DT:~8,6%"
+set "LOG=%~dp0logs\runall-%TS%.log"
+
+echo [%date% %time%] 전체 시스템 검사 시작 (로그: %LOG%)
 REM 시스템명 인자 없이 실행하면 config\sites.yaml 의 모든 시스템을 순회한다.
-"%JAVA%" -jar "%~dp0web-quality-gate.jar" "%~dp0config\sites.yaml"
+"%JAVA%" -Dfile.encoding=UTF-8 -Dsun.stdout.encoding=UTF-8 -Dsun.stderr.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -jar "%~dp0web-quality-gate.jar" "%~dp0config\sites.yaml" > "%LOG%" 2>&1
 echo [%date% %time%] 검사 완료 — reports 폴더에서 결과 확인 (콘솔 결과 탭에서도 열람 가능)
 
 endlocal
