@@ -46,12 +46,9 @@ public final class ComplianceReportWriter {
         java.util.Map<String, Object> enriched = new java.util.LinkedHashMap<>(payload);
         enriched.put("screenshots", scanScreenshots(reportDir));
         Path out = reportDir.resolve("report.html");
-        try {
-            Files.writeString(out, toHtml(enriched));
-            return out;
-        } catch (IOException e) {
-            throw new UncheckedIOException("report.html 저장 실패: " + out, e);
-        }
+        // 재시작이 겹쳐도 반쯤 쓰인 report.html 이 남지 않도록 원자적으로 저장한다.
+        com.kt.wqg.util.AtomicWrite.string(out, toHtml(enriched));
+        return out;
     }
 
     /** reports/&lt;&gt;/screenshots/&lt;engine&gt;-&lt;slug&gt;.png 를 slug(화면)별로 엔진 목록으로 묶는다. */

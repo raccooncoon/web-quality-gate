@@ -17,12 +17,7 @@ public final class ComplianceStore {
     private ComplianceStore() {}
 
     public static void write(Path dir, ComplianceDoc doc) {
-        try {
-            Files.createDirectories(dir);
-            JSON.writeValue(dir.resolve("compliance.json").toFile(), doc);
-        } catch (IOException e) {
-            throw new UncheckedIOException("compliance.json 저장 실패: " + dir, e);
-        }
+        com.kt.wqg.util.AtomicWrite.json(JSON, dir.resolve("compliance.json"), doc);
     }
 
     public static ComplianceDoc read(Path dir) {

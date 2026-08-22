@@ -45,12 +45,9 @@ public final class AssessmentStore {
 
     public void save(String code, ItemVerdict verdict, String memo) {
         entries.put(code, new Entry(verdict.name(), memo));
-        try {
-            Files.createDirectories(file.getParent());
-            JSON.writeValue(file.toFile(), new Doc(entries));
-        } catch (IOException e) {
-            throw new UncheckedIOException("assessment.json 저장 실패: " + file, e);
-        }
+        // 평가자가 손으로 넣은 유일본 — 덮어쓰기 전 .bak 을 남기고 원자적으로 저장한다.
+        com.kt.wqg.util.AtomicWrite.backup(file);
+        com.kt.wqg.util.AtomicWrite.json(JSON, file, new Doc(entries));
     }
 
     public List<ItemResult> merge(List<ItemResult> auto) {

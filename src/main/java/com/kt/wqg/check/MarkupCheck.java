@@ -21,6 +21,9 @@ import java.util.List;
  */
 public final class MarkupCheck {
 
+    /** vnu 프로세스 상한. 대형 DOM도 여유롭게 끝나되, 행이 걸리면 러너 전체를 막지 않도록. */
+    private static final long VNU_TIMEOUT_SEC = 120;
+
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private MarkupCheck() {}
@@ -70,17 +73,33 @@ public final class MarkupCheck {
 
     private static String runVnu(String vnuJarPath, Path htmlFile)
             throws IOException, InterruptedException {
-        Process proc = new ProcessBuilder(
-                javaExe(), "-jar", vnuJarPath,
-                "--format", "json", "--exit-zero-always",
-                htmlFile.toString())
-                .redirectErrorStream(false)
-                .start();
-        // vnu 는 JSON 을 stderr 로 출력한다
-        String stderr = new String(proc.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-        String stdout = new String(proc.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-        proc.waitFor();
-        return !stdout.isBlank() ? stdout : stderr;
+        // stdout/stderr 를 순차로 읽으면 한쪽 파이프 버퍼(약 64KB)가 차는 순간 vnu 가 write 에서 막히고
+        // 우리는 다른 쪽 read 에서 막혀 영구 교착이 된다(단일 스레드 러너라 이후 검사가 전부 정지).
+        // → 두 스트림을 파일로 리다이렉트해 파이프 자체를 없애고, 타임아웃으로 상한을 둔다.
+        Path outFile = Files.createTempFile("vnu-out", ".txt");
+        Path errFile = Files.createTempFile("vnu-err", ".txt");
+        try {
+            Process proc = new ProcessBuilder(
+                    javaExe(), "-jar", vnuJarPath,
+                    "--format", "json", "--exit-zero-always",
+                    htmlFile.toString())
+                    .redirectOutput(outFile.toFile())
+                    .redirectError(errFile.toFile())
+                    .start();
+            if (!proc.waitFor(VNU_TIMEOUT_SEC, java.util.concurrent.TimeUnit.SECONDS)) {
+                proc.destroyForcibly();
+                proc.waitFor(5, java.util.concurrent.TimeUnit.SECONDS);
+                throw new RuntimeException(
+                        "vnu 마크업 검증 타임아웃(" + VNU_TIMEOUT_SEC + "초): " + htmlFile);
+            }
+            // vnu 는 JSON 을 stderr 로 출력한다
+            String stdout = Files.readString(outFile, StandardCharsets.UTF_8);
+            String stderr = Files.readString(errFile, StandardCharsets.UTF_8);
+            return !stdout.isBlank() ? stdout : stderr;
+        } finally {
+            try { Files.deleteIfExists(outFile); } catch (IOException ignore) { /* 정리 실패 무시 */ }
+            try { Files.deleteIfExists(errFile); } catch (IOException ignore) { /* 정리 실패 무시 */ }
+        }
     }
 
     /**

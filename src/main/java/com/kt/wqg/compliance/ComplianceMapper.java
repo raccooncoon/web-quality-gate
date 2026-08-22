@@ -72,13 +72,19 @@ public final class ComplianceMapper {
                     });
                 });
 
+        // 검사가 '수행되었는지' 와 '위반이 없었는지' 는 다르다.
+        // vnu.jar 미탑재 등으로 마크업 검사가 아예 안 돌면 결과가 0건인데,
+        // 이를 '오류 0건 = 적합' 으로 집계하면 검사하지 않은 항목이 통과로 찍힌다(거짓 적합).
+        boolean markupRan = results.stream().anyMatch(r -> "markup".equals(r.checkType()));
+        boolean compatRan = results.stream().anyMatch(r -> "compatibility".equals(r.checkType()));
+
         Map<String, ItemResult> out = new LinkedHashMap<>();
         for (CatalogItem item : catalog.items()) {
             ItemResult res;
             if ("markup".equals(item.resolver().type())) {
-                res = resolveMarkup(item, markupErrors);
+                res = markupRan ? resolveMarkup(item, markupErrors) : notRun(item, "마크업(vnu) 검사");
             } else if ("compat".equals(item.resolver().type())) {
-                res = resolveCompat(item, results);
+                res = compatRan ? resolveCompat(item, results) : notRun(item, "브라우저 호환성 검사");
             } else {
                 res = RuleResolver.resolve(item, pool);
             }
@@ -128,6 +134,15 @@ public final class ComplianceMapper {
             ev.add(new ItemResult.Evidence("전체 화면", "cross-browser", "3개 엔진 렌더링 차이 임계값 이내 · 통과"));
         }
         return ev.isEmpty() ? res : new ItemResult(res.code(), res.verdict(), res.source(), ev, res.memo());
+    }
+
+    /** 해당 검사가 수행되지 않았을 때 — 통과가 아니라 '판정 불가'로 둔다. */
+    private static ItemResult notRun(CatalogItem item, String what) {
+        return new ItemResult(item.code(), ItemVerdict.수동확인필요, "auto",
+                List.of(new ItemResult.Evidence("전체 화면", "not-run",
+                        what + "가 수행되지 않았습니다 — 결과 없음. 검사 환경(vnu.jar 경로 등)을 확인한 뒤 재검사하세요. "
+                        + "미수행을 통과로 집계하지 않기 위해 판정을 보류합니다.")),
+                null);
     }
 
     private static ItemResult resolveMarkup(CatalogItem item, List<Finding> markupErrors) {
