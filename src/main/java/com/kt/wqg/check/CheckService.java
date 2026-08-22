@@ -102,6 +102,11 @@ public final class CheckService {
                 // 호환성 검사가 돌면 chromium 스크린샷을 만들어 '대상 페이지' 썸네일로 재사용한다.
                 // 호환성이 꺼졌거나 c-* 전부 제외로 건너뛰면 그 썸네일이 비므로, 이 경우엔
                 // 메인 루프에서 미리보기 1장(chromium 뷰포트)을 같은 경로에 남겨 썸네일을 유지한다.
+                // 인증이 필요한 사이트인데 로그인이 실제로 적용되지 않으면(설정 누락·세션 만료 등)
+                // 모든 URL 이 로그인 화면으로 리다이렉트되고, 그 화면을 검사한 결과가 정상 리포트처럼 나온다.
+                // 실제로 그런 사고가 있었으므로(폼 로그인이 required() 에서 누락) 첫 URL 로 사전 확인한다.
+                assertNotStuckOnLogin(page, site, progress);
+
                 int i = 0;
                 List<String> skipped = new ArrayList<>();
                 int markupFail = 0;
@@ -421,6 +426,33 @@ public final class CheckService {
 
     private static String enc(String s) {
         return java.net.URLEncoder.encode(s, java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+
+    /**
+     * 첫 검사 URL 이 로그인 화면으로 되돌아가면 검사를 중단한다.
+     * 로그인 화면을 N번 검사하고 "적합"을 내는 것이 조용한 오검수의 원인이 되기 때문.
+     */
+    private static void assertNotStuckOnLogin(Page page, SitesConfig.Site site, Consumer<String> progress) {
+        SitesConfig.Auth auth = site.auth();
+        if (auth == null || "none".equalsIgnoreCase(auth.type()) || site.urls().isEmpty()) return;
+        String loginPath = auth.loginPath();
+        if (loginPath == null || loginPath.isBlank()) return;
+        String first = site.urls().get(0).path();
+        if (loginPath.equals(first)) return;   // 로그인 페이지 자체를 검사 대상으로 넣은 경우는 통과
+        try {
+            page.navigate(CheckRunner.resolveUrl(site.baseUrl(), first));
+        } catch (RuntimeException e) {
+            return;   // 접속 자체 실패는 URL 루프의 개별 오류 처리에 맡긴다
+        }
+        String landed = java.net.URI.create(page.url()).getRawPath();
+        if (landed != null && landed.equals(loginPath)) {
+            throw new IllegalStateException(
+                    "로그인이 적용되지 않았습니다 — 첫 검사 경로(" + first + ")가 로그인 화면("
+                    + loginPath + ")으로 리다이렉트됩니다. 로그인 화면을 검사한 결과가 리포트로 나가는 것을"
+                    + " 막기 위해 검사를 중단합니다. 계정·로그인 방식 설정을 확인한 뒤 다시 실행하세요.");
+        }
+        progress.accept("로그인 확인됨 — 검사 시작");
     }
 
     /** 페이지(URL)별 판정·스크린샷·미디어 정보를 만든다. 대상 페이지/페이지별 평가표/동영상 표에서 사용. */
