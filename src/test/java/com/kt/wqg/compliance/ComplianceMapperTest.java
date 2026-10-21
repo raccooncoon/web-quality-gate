@@ -74,10 +74,9 @@ class ComplianceMapperTest {
     }
 
     @Test
-    void na_항목은_해당없음_probe의_auto는_매칭없으면_적합() {
+    void na_항목은_해당없음() {
         Map<String, ItemResult> m = mapper.map(List.of());
         assertEquals(ItemVerdict.해당없음, m.get("2.4.4").verdict());
-        assertEquals(ItemVerdict.적합, m.get("c-browser").verdict()); // probe auto → no findings = 적합
     }
 
     @Test
@@ -107,8 +106,10 @@ class ComplianceMapperTest {
     }
 
     @Test
-    void 호환성_결과없으면_c_browser_적합_처리() {
-        // 호환성 미실행 시 위반 근거 없음 → 적합(자동)
-        assertEquals(ItemVerdict.적합, mapper.map(List.of()).get("c-browser").verdict());
+    void 호환성_미실행이면_c_browser_수동확인필요() {
+        // 검사를 안 돌린 것은 '위반 없음'이 아니다 — 적합으로 집계하면 거짓 적합(84dd0fd)
+        ItemResult r = mapper.map(List.of()).get("c-browser");
+        assertEquals(ItemVerdict.수동확인필요, r.verdict());
+        assertEquals("not-run", r.evidence().get(0).rule());
     }
 }
