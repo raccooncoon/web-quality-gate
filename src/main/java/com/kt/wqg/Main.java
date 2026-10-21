@@ -103,7 +103,8 @@ public class Main {
                 .toList();
         if (targets.isEmpty()) {
             System.err.printf("대상 시스템 없음%s%n", onlySite == null ? "" : ": " + onlySite);
-            return;
+            System.out.println("===== 검사 요약: 대상 시스템 없음 — config\\sites.yaml 확인 =====");
+            System.exit(1);
         }
 
         // 계정: 콘솔에서 저장한 로컬 파일 우선, 없으면 환경변수(주간 예약 실행에서 콘솔 설정 재사용)
@@ -113,16 +114,40 @@ public class Main {
         var excluded = new com.kt.wqg.web.ItemExclusionStore(
                 configPath.resolveSibling("excluded-items.txt")).excluded();
 
-        for (SitesConfig.Site site : targets) {
+        List<Outcome> outcomes = targets.stream().map(site -> {
             try {
                 Path report = CheckService.runSite(config, site, credResolver,
                         msg -> System.out.printf("[%s] %s%n", site.name(), msg), excluded);
                 System.out.printf("[%s] 검사 완료 → %s%n", site.name(), report);
+                return new Outcome(true, "%s → %s".formatted(site.name(), report));
             } catch (RuntimeException e) {
                 // 시스템 단위 실패 격리 — 하나가 죽어도 나머지는 계속
                 System.err.printf("[%s] 검사 실패: %s%n", site.name(), e.getMessage());
+                return new Outcome(false, "%s : %s".formatted(site.name(), firstLine(e.getMessage())));
             }
-        }
+        }).toList();
+
+        // 끝에 요약 — run-all.bat 이 '=====', '[OK]', '[FAIL]' 로 시작하는 줄만 골라 화면에 보여준다
+        // (findstr 은 한글 검색어가 불안정해 ASCII 표식 사용). 실패가 있으면 종료코드 1 → 작업 스케줄러에 실패로 기록.
+        long failed = outcomes.stream().filter(o -> !o.ok()).count();
+        System.out.printf("===== 검사 요약: 성공 %d / 실패 %d =====%n", outcomes.size() - failed, failed);
+        outcomes.forEach(o -> System.out.printf("%s %s%n", o.ok() ? "[OK]  " : "[FAIL]", o.line()));
+        if (failed > 0) System.exit(1);
+    }
+
+    /** CLI 일괄 검사의 시스템별 결과 한 줄. */
+    private record Outcome(boolean ok, String line) {}
+
+    /**
+     * 요약용 한 줄 원인. Playwright 예외는 "Error {\n  message='...'\n  stack=..." 처럼 여러 줄이라
+     * 첫 줄만 쓰면 'Error {' 만 남는다 — message= 줄(없으면 첫 의미 있는 줄)을 뽑는다. 전체는 로그 본문에 있다.
+     */
+    private static String firstLine(String msg) {
+        if (msg == null || msg.isBlank()) return "(원인 메시지 없음 — 로그 본문 확인)";
+        return msg.lines().map(String::strip)
+                .map(l -> l.startsWith("message='") ? l.substring("message='".length()) : l)
+                .filter(l -> !l.isEmpty() && !l.equals("Error {"))
+                .findFirst().orElse(msg.strip());
     }
 
     /** 폐쇄망 드라이버 진단('Failed to create driver' 원인 규명). doctor 모드 본체. */
