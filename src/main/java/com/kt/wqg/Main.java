@@ -7,6 +7,7 @@ import com.kt.wqg.web.WebConsole;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 /**
  * web-quality-gate 진입점.
@@ -150,9 +151,14 @@ public class Main {
                 .findFirst().orElse(msg.strip());
     }
 
-    /** 폐쇄망 드라이버 진단('Failed to create driver' 원인 규명). doctor 모드 본체. */
+    /**
+     * 폐쇄망 드라이버 진단('Failed to create driver' 원인 규명). doctor 모드 본체.
+     * 끝에 단계별 [OK]/[FAIL] + 알려진 오류의 조치 [HINT] 요약을 남긴다 — diag.bat 이 이 줄만 골라 보여준다
+     * (findstr 한글 검색어 불안정 → ASCII 표식). 실패가 있으면 종료코드 1.
+     */
     private static void runDoctor() {
         var out = System.out;
+        var summary = new java.util.ArrayList<String>();
         out.println("===== web-quality-gate 진단(doctor) =====");
         out.println("[시스템]");
         for (String k : new String[]{"java.version", "java.vendor", "java.home",
@@ -165,30 +171,40 @@ public class Main {
             out.printf("  %-30s = %s%n", k, System.getenv(k));
         }
         String bp = System.getenv("PLAYWRIGHT_BROWSERS_PATH");
+        boolean bundleOk = bp != null && java.nio.file.Files.isDirectory(Path.of(bp));
         if (bp != null) {
-            Path p = Path.of(bp);
-            out.printf("[브라우저 번들] %s → %s%n", p,
-                    java.nio.file.Files.isDirectory(p) ? "폴더 존재" : "!! 없음");
+            out.printf("[브라우저 번들] %s → %s%n", bp, bundleOk ? "폴더 존재" : "!! 없음");
+        }
+        summary.add(bundleOk ? "[OK]   브라우저 번들 폴더 : " + bp
+                : "[FAIL] 브라우저 번들 폴더 : " + (bp == null ? "PLAYWRIGHT_BROWSERS_PATH 미설정" : "없음 " + bp));
+        if (!bundleOk) {
+            summary.add("[HINT] diag.bat 으로 실행했는지, 번들의 pw-browsers 폴더가 반입됐는지 확인 (verify.bat)");
         }
 
         out.println();
         out.println("[1] Playwright.create() (드라이버 생성) 시도 ...");
+        boolean driverOk = false;
         try (var pw = com.microsoft.playwright.Playwright.create()) {
+            driverOk = true;
             out.println("  드라이버 생성 OK");
+            summary.add("[OK]   드라이버(node) 생성");
             out.println("[2] chromium 헤드리스 기동 시도 ...");
             var b = pw.chromium().launch(
                     new com.microsoft.playwright.BrowserType.LaunchOptions().setHeadless(true));
             out.printf("  chromium %s 기동 OK%n", b.version());
+            summary.add("[OK]   chromium 기동 : " + b.version());
             b.close();
-            out.println();
-            out.println("===== 결과: 정상 (드라이버·브라우저 모두 OK) =====");
         } catch (Throwable t) {
             out.println("  !! 실패 — 원인 체인:");
+            var causes = new StringBuilder();
             for (Throwable c = t; c != null; c = c.getCause()) {
                 out.printf("   - %s: %s%n", c.getClass().getName(), c.getMessage());
+                causes.append(c).append('\n');
             }
             out.println("  ---- 전체 스택트레이스 ----");
             t.printStackTrace(out);
+            summary.add("[FAIL] " + (driverOk ? "chromium 기동" : "드라이버(node) 생성") + " : " + firstLine(t.getMessage()));
+            hintFor(causes.toString()).ifPresent(h -> summary.add("[HINT] " + h));
         }
 
         // create 가 실패해도, node 가 추출됐으면 직접 실행해 'node 자체가 도는지'를 확정한다.
@@ -211,6 +227,11 @@ public class Main {
             if (nodes.isEmpty()) {
                 out.println("  추출된 node 를 찾지 못함(드라이버가 아직 안 풀림).");
                 out.println("  → 위 [1] 오류가 추출 단계 실패입니다. TEMP 권한/백신 차단을 확인하세요.");
+                // 드라이버가 정상이면 node 도 정상 — 임시폴더가 이미 정리됐을 뿐이라 실패로 치지 않는다
+                if (!driverOk) {
+                    summary.add("[FAIL] node 추출 : " + tmp + " 아래에서 못 찾음");
+                    summary.add("[HINT] TEMP 폴더 쓰기 권한·백신 차단 확인, %TEMP%\\playwright-java* 삭제 후 재시도");
+                }
             }
             for (Path node : nodes) {
                 out.printf("  발견: %s%n", node);
@@ -224,17 +245,43 @@ public class Main {
                             done ? proc.exitValue() : "timeout(응답없음)", ver);
                     if (done && proc.exitValue() == 0) {
                         out.println("    → node 실행 정상. (드라이버 실패라면 node 외 다른 원인)");
+                        summary.add("[OK]   node 실행 : " + ver);
+                    } else {
+                        summary.add("[FAIL] node 실행 : " + (done ? "exit=" + proc.exitValue() : "응답 없음") + " " + node);
                     }
                 } catch (Exception e) {
                     out.printf("    !! node 실행 실패: %s%n", e);
                     out.println("    → 이 메시지의 'CreateProcess error=숫자'가 근본 원인입니다"
                             + " (2=경로/추출, 5=백신·권한, 193/216=손상·아키텍처, 126/127=DLL/VC++).");
+                    summary.add("[FAIL] node 실행 : " + firstLine(e.getMessage()));
+                    hintFor(String.valueOf(e)).ifPresent(h -> summary.add("[HINT] " + h));
                 }
             }
         } catch (Exception e) {
             out.printf("  node 탐색 실패: %s%n", e);
         }
+
+        long failed = summary.stream().filter(l -> l.startsWith("[FAIL]")).count();
         out.println();
-        out.println("===== 진단 끝 (이 로그 전체를 그대로 보내주세요) =====");
+        out.printf("===== 진단 요약: %s =====%n", failed == 0 ? "정상" : "문제 " + failed + "건");
+        summary.forEach(out::println);
+        out.println("===== 진단 끝 (해결이 안 되면 이 로그 전체를 그대로 보내주세요) =====");
+        if (failed > 0) System.exit(1);
+    }
+
+    /** 알려진 오류 문구 → 조치 한 줄. 위에서부터 먼저 맞는 것 하나. error=N 은 쉼표까지 맞춰 error=2 가 error=216 에 걸리지 않게. */
+    private static final List<Map.Entry<String, String>> HINTS = List.of(
+            Map.entry("Executable doesn't exist",
+                    "jar 와 맞는 브라우저가 pw-browsers 에 없음 — 같은 package-offline.bat 산출물의 jar·pw-browsers 를 함께 반입"),
+            Map.entry("error=5,", "백신/EDR 이 임시폴더의 node.exe 실행을 차단 — %TEMP%\\playwright-java* 예외 등록"),
+            Map.entry("error=2,", "추출 경로 문제 — %TEMP%\\playwright-java* 삭제 후 재시도"),
+            Map.entry("error=193,", "추출본 손상·아키텍처 불일치 — %TEMP%\\playwright-java* 삭제 후 재시도"),
+            Map.entry("error=216,", "추출본 손상·아키텍처 불일치 — %TEMP%\\playwright-java* 삭제 후 재시도"),
+            Map.entry("error=126,", "DLL 로드 실패 — Microsoft Visual C++ 재배포 패키지(x64) 설치"),
+            Map.entry("error=127,", "DLL 로드 실패 — Microsoft Visual C++ 재배포 패키지(x64) 설치"),
+            Map.entry("Host system is missing dependencies", "OS 라이브러리 누락 — install-offline.sh 재실행(리눅스)"));
+
+    private static java.util.Optional<String> hintFor(String text) {
+        return HINTS.stream().filter(h -> text.contains(h.getKey())).map(Map.Entry::getValue).findFirst();
     }
 }

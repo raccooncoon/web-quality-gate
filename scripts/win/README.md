@@ -101,8 +101,10 @@ scripts\win\package-offline.bat
   실행 창에는 출력이 안 보일 수 있으니 문제가 있으면 이 폴더의 최신 파일을 여세요.
 - **`Failed to create driver` (로그인·검사 시 브라우저가 안 뜸)**: `diag.bat` 를 실행하세요.
   환경/브라우저 번들 확인 → 드라이버 생성 시도(전체 원인 스택) →
-  추출된 `node.exe` 를 직접 `--version` 실행해 **node 가 실제로 도는지**까지 확인하고
-  `logs\diag-*.log` 에 저장합니다. 이 파일을 그대로 전달하면 원인 파악이 됩니다.
+  추출된 `node.exe` 를 직접 `--version` 실행해 **node 가 실제로 도는지**까지 확인합니다.
+  화면에는 단계별 요약 `[OK]`/`[FAIL]` 과 알려진 오류의 조치 `[HINT]` 만 표시되고,
+  전체 로그는 `logs\diag-latest.log`(최신 회차)에 저장됩니다(끝에 메모장으로 열기 Y/N).
+  해결이 안 되면 이 파일 하나를 그대로 전달하면 원인 파악이 됩니다.
   - `CreateProcess error=2`: 추출 경로/`%TEMP%` 문제 → `%TEMP%\playwright-java*` 삭제 후 재시도
   - `error=5`: 백신/EDR 이 임시폴더 `node.exe` 차단 → 예외 등록
   - `error=193 / 216`: 추출본 손상·아키텍처 불일치 → 임시폴더 정리 후 재시도
